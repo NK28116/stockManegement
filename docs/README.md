@@ -33,3 +33,23 @@
          1. 移動平均線
          2. 騰落レシオ
          3. RSI
+
+### ディレクトリ構造
+```
+.
+.
+├─ gas/         ← Google Apps Script (スプレッドシート操作)
+│   ├─ stock.gs         # 株価取得関数（STOCKPRICEJPなど）
+│   ├─ utils.gs         # 共通関数（ログ、整形など）
+│   └─ alert.gs         # Slack/LINE通知
+│
+├─ python/      ← ローカル分析用
+│   ├─ stockManagement.py   # 売買・監視・分析ロジック
+│   ├─ dailyAggregator.py   # 分足 → 日足へ集計
+│   ├─ weeklyAnalysis.py    # 日足 → 週次分析
+│   ├─ db/                 # SQLite DB 格納用
+│   │   └─ stock.db
+│   └─ utils/              # テクニカル指標や通知
+│       ├─ indicators.py   # 移動平均、RSI、騰落レシオ
+│       └─ alert.py        # Slack/LINE通知
+```
