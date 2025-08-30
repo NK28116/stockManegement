@@ -1,0 +1,8 @@
+.vscode
+.history
+*.code-workspace
+.env
+venv/*
+.venv/*
+python/utils/__pycache__/*
+*.db

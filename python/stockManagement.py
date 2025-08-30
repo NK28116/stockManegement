@@ -2,6 +2,8 @@ import sqlite3
 from datetime import datetime
 from utils.indicators import moving_average
 from utils.alert import send_alert
+from utils.api_rakuten import fetch_intraday, fetch_daily
+from utils.api_sbi import fetch_intraday_sbi
 
 DB_PATH = "python/db/stock.db"
 
@@ -84,3 +86,18 @@ if __name__ == "__main__":
     monitor_and_trade("7203")  # トヨタの例
 
 
+def update_intraday(code, provider="rakuten"):
+    if provider == "rakuten":
+        data = fetch_intraday(code)
+    else:
+        data = fetch_intraday_sbi(code)
+
+    conn = sqlite3.connect("stock.db")
+    cur = conn.cursor()
+    for ts, price in data:
+        cur.execute(
+            "INSERT INTO intraday (code, timestamp, price) VALUES (?, ?, ?)",
+            (code, ts, price)
+        )
+    conn.commit()
+    conn.close()
