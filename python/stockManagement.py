@@ -1,103 +1,152 @@
-import sqlite3
+import yfinance as yf
+import os
+import logging
 from datetime import datetime
-from utils.indicators import moving_average
-from utils.alert import send_alert
-from utils.api_rakuten import fetch_intraday, fetch_daily
-from utils.api_sbi import fetch_intraday_sbi
+from typing import List, Dict, Optional
+import pandas as pd
 
-DB_PATH = "python/db/stock.db"
+# ログ設定
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('python/logs/stock_management.log', encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
-import sqlite3
+# 出力先をdata/analysis_result.txtに
+OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "../data/analysis_result.txt")
 
-def init_db():
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    # intraday（分足用）
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS intraday (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            code TEXT,
-            timestamp TEXT,
-            price REAL
-        )
-    """)
-    # daily（日足用）
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS daily (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            code TEXT,
-            date TEXT,
-            open REAL,
-            high REAL,
-            low REAL,
-            close REAL
-        )
-    """)
-    # weekly（週足用）
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS weekly (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            code TEXT,
-            week_start TEXT,
-            week_end TEXT,
-            open REAL,
-            high REAL,
-            low REAL,
-            close REAL
-        )
-    """)
-    conn.commit()
-    conn.close()
-
-
-def monitor_and_trade(code: str):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-
-    # 最新の分足データを取得
-    cur.execute("SELECT timestamp, price FROM intraday WHERE code=? ORDER BY timestamp DESC LIMIT 3", (code,))
-    rows = cur.fetchall()
-    if len(rows) < 3:
-        return
+def fetch_stock_data(ticker: str, period="1mo") -> Optional[pd.DataFrame]:
+    """
+    株価データを取得する
     
-    prices = [r[1] for r in rows[::-1]]  # 古い順に並べ替え
-    signals = []
+    Args:
+        ticker: ティッカーシンボル
+        period: 取得期間
+        
+    Returns:
+        DataFrame: 株価データ、エラーの場合はNone
+    """
+    try:
+        logger.info(f"株価データ取得開始: {ticker}")
+        stock = yf.Ticker(ticker)
+        df = stock.history(period=period)
+        
+        if df.empty:
+            logger.error(f"データが取得できませんでした: {ticker}")
+            return None
+            
+        logger.info(f"株価データ取得完了: {ticker} - {len(df)}件")
+        return df
+        
+    except Exception as e:
+        logger.error(f"株価データ取得エラー: {ticker} - {e}")
+        return None
 
-    for i in range(1, len(prices)):
-        if prices[i] > prices[i-1]:
-            signals.append("+")
-        elif prices[i] < prices[i-1]:
-            signals.append("-")
+def analyze_stock(df: pd.DataFrame) -> List[str]:
+    """
+    株価データを分析する
+    
+    Args:
+        df: 株価データ
+        
+    Returns:
+        List[str]: 分析結果
+    """
+    try:
+        if df is None or df.empty:
+            logger.error("分析対象のデータがありません")
+            return ["エラー: 分析対象のデータがありません"]
+        
+        closes = df["Close"].tolist()
+        signals = []
+        
+        for i in range(1, len(closes)):
+            change = "+" if closes[i] > closes[i-1] else "-"
+            signals.append(change)
+        
+        results = []
+        buy_price = None  # 買値を記録
+        buy_date = None   # 買いの日付
 
-    decision = None
-    if signals == ["+", "+"]:
-        decision = "BUY"
-    elif signals == ["+", "-"]:
-        decision = "HOLD"
-    elif signals == ["-", "-"]:
-        decision = "SELL"
+        for i in range(1, len(signals)):
+            pattern = signals[i-1] + signals[i]
+            date = df.index[i].strftime("%Y-%m-%d")
+            price = closes[i]
 
-    if decision:
-        send_alert(f"{datetime.now()} {code}: {decision} {prices[-1]}")
-    conn.close()
+            if pattern == "++" and buy_price is None:
+                # 買いエントリー
+                buy_price = price
+                buy_date = date
+                results.append(f"{date} {price:.2f}円: ++ → 買いエントリー")
+            
+            elif pattern == "+-":
+                results.append(f"{date} {price:.2f}円: +- → 次に++または--が出たら売却")
+
+            elif pattern == "--" and buy_price is not None:
+                # 売却
+                diff = price - buy_price
+                results.append(f"{date} {price:.2f}円: -- → 売却（買値 {buy_price:.2f}円 → 損益 {diff:.2f}円）")
+                buy_price = None  # リセット
+                buy_date = None
+
+            elif pattern == "++" and buy_price is not None:
+                results.append(f"{date} {price:.2f}円: ++ → 継続保持中")
+
+            elif pattern == "+-" and buy_price is not None:
+                results.append(f"{date} {price:.2f}円: +- → 継続保持中")
+
+            else:
+                results.append(f"{date} {price:.2f}円: 継続 ({pattern})")
+
+        logger.info(f"分析完了: {len(results)}件の結果")
+        return results
+        
+    except Exception as e:
+        logger.error(f"分析エラー: {e}")
+        return [f"エラー: 分析中に問題が発生しました - {e}"]
+
+def save_results(results: List[str]) -> bool:
+    """
+    分析結果を保存する
+    
+    Args:
+        results: 分析結果のリスト
+        
+    Returns:
+        bool: 保存が成功したかどうか
+    """
+    try:
+        os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+        
+        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+            f.write(f"# 分析結果 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("=" * 50 + "\n\n")
+            for line in results:
+                f.write(line + "\n")
+        
+        logger.info(f"結果を {OUTPUT_FILE} に保存しました")
+        return True
+        
+    except Exception as e:
+        logger.error(f"結果保存エラー: {e}")
+        return False
 
 if __name__ == "__main__":
-    init_db()
-    monitor_and_trade("7203")  # トヨタの例
-
-
-def update_intraday(code, provider="rakuten"):
-    if provider == "rakuten":
-        data = fetch_intraday(code)
-    else:
-        data = fetch_intraday_sbi(code)
-
-    conn = sqlite3.connect("stock.db")
-    cur = conn.cursor()
-    for ts, price in data:
-        cur.execute(
-            "INSERT INTO intraday (code, timestamp, price) VALUES (?, ?, ?)",
-            (code, ts, price)
-        )
-    conn.commit()
-    conn.close()
+    try:
+        ticker = "7203.T"  # トヨタ（例）
+        df = fetch_stock_data(ticker)
+        if df is not None:
+            results = analyze_stock(df)
+            if save_results(results):
+                print("分析完了")
+            else:
+                print("結果保存に失敗しました")
+        else:
+            print("データ取得に失敗しました")
+    except Exception as e:
+        logger.error(f"メイン処理エラー: {e}")
+        print(f"エラーが発生しました: {e}")
