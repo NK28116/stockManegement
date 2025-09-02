@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+import argparse
+import os
+import sys
+from datetime import datetime
+
+import pandas as pd
+
+try:
+    import yfinance as yf
+except Exception:
+    yf = None
+
+CODES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "codes.csv")
+
+def load_codes(path: str) -> pd.DataFrame:
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"ファイルがありません: {path}")
+    df = pd.read_csv(path)
+    expected = ["code","name","quantity","purchase_price","purchase_date","sector"]
+    # 余分な列は残しつつ、最低限の列がなければ補完
+    for col in expected:
+        if col not in df.columns:
+            if col in ["name","sector","purchase_date"]:
+                df[col] = ""
+            elif col == "quantity":
+                df[col] = 0
+            elif col == "purchase_price":
+                df[col] = 0.0
+    # 型整形
+    df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce").fillna(0).astype(int)
+    df["purchase_price"] = pd.to_numeric(df["purchase_price"], errors="coerce").fillna(0.0)
+    return df
+
+def save_codes(df: pd.DataFrame, path: str):
+    df.to_csv(path, index=False, encoding="utf-8")
+    print(f"更新完了: {os.path.relpath(path, os.path.dirname(__file__))}")
+
+def get_price(code: str) -> float:
+    if yf is None:
+        return 0.0
+    try:
+        t = yf.Ticker(code)
+        hist = t.history(period="1d")
+        if not hist.empty:
+            return float(hist["Close"].iloc[-1])
+    except Exception:
+        pass
+    return 0.0
+
+def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFrame:
+    today = datetime.now().strftime("%Y-%m-%d")
+    idx = df.index[df["code"] == code]
+    if price is None:
+        price = get_price(code)
+    if len(idx) == 0:
+        # 新規行
+        df.loc[len(df)] = {
+            "code": code,
+            "name": code,
+            "quantity": qty,
+            "purchase_price": float(price) if price else 0.0,
+            "purchase_date": today,
+            "sector": ""
+        }
+        if "status" in df.columns:
+            df.loc[len(df)-1, "status"] = "保有中"
+    else:
+        i = idx[0]
+        old_q = int(df.at[i, "quantity"])
+        old_p = float(df.at[i, "purchase_price"])
+        new_q = old_q + qty
+        if new_q <= 0:
+            # 全部売却の形になった場合は0で保持
+            df.at[i, "quantity"] = 0
+            if "status" in df.columns:
+                df.at[i, "status"] = "売却済"
+        else:
+            # 加重平均（priceが0の場合は平均を維持）
+            if price and old_q > 0:
+                new_p = (old_q * old_p + qty * float(price)) / new_q
+            elif price and old_q == 0:
+                new_p = float(price)
+            else:
+                new_p = old_p
+            df.at[i, "quantity"] = new_q
+            df.at[i, "purchase_price"] = round(new_p, 2)
+            if "status" in df.columns:
+                df.at[i, "status"] = "保有中"
+        # 購入日は初回のまま残す（必要なら更新: df.at[i,"purchase_date"]=today）
+    print(f"買い: {code} +{qty}株 @¥{price if price else 'N/A'}")
+    return df
+
+def sell(df: pd.DataFrame, code: str, qty: int) -> pd.DataFrame:
+    idx = df.index[df["code"] == code]
+    if len(idx) == 0:
+        print(f"エラー: {code} はcodes.csvに存在しません")
+        return df
+    i = idx[0]
+    cur_q = int(df.at[i, "quantity"])
+    if qty > cur_q:
+        print(f"エラー: 売却数量が保有数を超えています (保有 {cur_q}株)")
+        return df
+    new_q = cur_q - qty
+    df.at[i, "quantity"] = new_q
+    if new_q == 0:
+        if "status" in df.columns:
+            df.at[i, "status"] = "売却済"
+        # 平均取得単価はそのまま保持（必要なら0にする: df.at[i,"purchase_price"]=0.0）
+    else:
+        if "status" in df.columns:
+            df.at[i, "status"] = "保有中"
+    print(f"売り: {code} -{qty}株（残 {new_q}株）")
+    return df
+
+# 価格更新用: yfinanceで現在値と損益を更新
+def refresh_prices(df: pd.DataFrame, target_code: str | None = None) -> pd.DataFrame:
+    if not {"purchase_price","quantity"}.issubset(df.columns):
+        return df
+    from datetime import datetime
+    updated = df.copy()
+    now_str = datetime.now().strftime("%Y-%m-%d")
+    for i, row in updated.iterrows():
+        code = str(row.get("code","")).strip()
+        if not code:
+            continue
+        if target_code and code != target_code:
+            continue
+        cur = get_price(code)
+        if "current_price" in updated.columns:
+            updated.at[i,"current_price"] = round(cur, 2)
+        qty = int(row.get("quantity",0) or 0)
+        pp  = float(row.get("purchase_price",0.0) or 0.0)
+        if "profit_loss" in updated.columns:
+            updated.at[i,"profit_loss"] = round((cur - pp) * qty, 2)
+        if "profit_loss_percent" in updated.columns:
+            updated.at[i,"profit_loss_percent"] = f"{((cur-pp)/pp*100):+.2f}%" if pp > 0 else "0.00%"
+        if "last_updated" in updated.columns:
+            updated.at[i,"last_updated"] = now_str
+        if "status" in updated.columns:
+            updated.at[i,"status"] = "保有中" if qty > 0 else "売却済"
+    return updated
+
+def main():
+    parser = argparse.ArgumentParser(description="codes.csvの売買操作ツール")
+    sub = parser.add_subparsers(dest="action", required=True)
+
+    p_buy = sub.add_parser("buy")
+    p_buy.add_argument("code")
+    p_buy.add_argument("quantity", type=int)
+    p_buy.add_argument("--price", type=float, default=None)
+
+    p_sell = sub.add_parser("sell")
+    p_sell.add_argument("code")
+    p_sell.add_argument("quantity", type=int)
+
+    p_refresh = sub.add_parser("refresh")
+    p_refresh.add_argument("code", nargs="?", help="特定銘柄のみ更新（省略時は全銘柄）")
+
+    args = parser.parse_args()
+
+    df = load_codes(CODES_PATH)
+
+    if args.action == "buy":
+        df = buy(df, args.code, args.quantity, getattr(args, "price", None))
+    elif args.action == "sell":
+        df = sell(df, args.code, args.quantity)
+    elif args.action == "refresh":
+        df = refresh_prices(df, getattr(args, "code", None))
+
+    save_codes(df, CODES_PATH)
+
+if __name__ == "__main__":
+    main()
