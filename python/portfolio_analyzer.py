@@ -45,40 +45,71 @@ class PortfolioAnalyzer:
     def load_portfolio_from_file(self, file_path: str) -> Dict[str, Dict]:
         """
         外部ファイルからポートフォリオ情報を読み込み
-        
+    
         Args:
             file_path: CSVファイルのパス
-            
+        
         Returns:
             Dict: ポートフォリオ情報
         """
         try:
+            print(f"ファイル読み込み開始: {file_path}")
+            
+            # ファイルの存在確認
+            if not os.path.exists(file_path):
+                print(f"ファイルが存在しません: {file_path}")
+                return {}
+            
+            # ファイルサイズ確認
+            file_size = os.path.getsize(file_path)
+            print(f"ファイルサイズ: {file_size} bytes")
+            
+            # CSV読み込み
             df = pd.read_csv(file_path)
+            print(f"CSV読み込み完了: {len(df)}行")
+            print(f"列名: {list(df.columns)}")
+            
             portfolio = {}
             
-            for _, row in df.iterrows():
-                code = row['code']
-                portfolio[code] = {
-                    'name': row.get('name', code),
-                    'quantity': row['quantity'],
-                    'purchase_price': row['purchase_price'],
-                    'purchase_date': row.get('purchase_date', ''),
-                    'sector': row.get('sector', ''),
-                    'weight': 0.0  # 後で計算
-                }
+            for idx, row in df.iterrows():
+                try:
+                    code = row['code']
+                    print(f"処理中: {code}")
+                    
+                    portfolio[code] = {
+                        'name': row.get('name', code),
+                        'quantity': int(row['quantity']),
+                        'purchase_price': float(row['purchase_price']),
+                        'purchase_date': row.get('purchase_date', ''),
+                        'sector': row.get('sector', ''),
+                        'weight': 0.0  # 後で計算
+                    }
+                    print(f"  {code} の処理完了")
+                    
+                except Exception as row_error:
+                    print(f"行 {idx} の処理エラー: {row_error}")
+                    print(f"行データ: {row.to_dict()}")
+                    continue
+            
+            if not portfolio:
+                print("ポートフォリオが空です")
+                return {}
             
             # ウェイト計算
             total_value = sum(item['quantity'] * item['purchase_price'] for item in portfolio.values())
+            print(f"総投資額: {total_value:,.0f}円")
+            
             for item in portfolio.values():
                 item['weight'] = (item['quantity'] * item['purchase_price']) / total_value
             
-            logger.info(f"ポートフォリオ読み込み完了: {len(portfolio)}銘柄")
+            print(f"ポートフォリオ読み込み完了: {len(portfolio)}銘柄")
             return portfolio
             
         except Exception as e:
-            logger.error(f"ポートフォリオ読み込みエラー: {e}")
-            return {}
-    
+            print(f"ポートフォリオ読み込みエラー: {e}")
+            import traceback
+            traceback.print_exc()
+            return {}    
     def fetch_historical_data(self, codes: List[str], start_date: str, end_date: str) -> Dict[str, pd.DataFrame]:
         """
         複数銘柄の履歴データを取得
@@ -277,8 +308,14 @@ def analyze_portfolio_sample():
     """サンプルポートフォリオの分析（6-8月データ使用）"""
     analyzer = PortfolioAnalyzer()
     
+    # 絶対パスでファイルを指定
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    portfolio_file = os.path.join(current_dir, "..", "data", "portfolio_stable.csv")
+    
+    print(f"ポートフォリオファイル: {portfolio_file}")
+    
     # 特定のCSVファイルを読み込み
-    portfolio = analyzer.load_portfolio_from_file('../data/portfolio_stable.csv')
+    portfolio = analyzer.load_portfolio_from_file(portfolio_file)
     
     if not portfolio:
         print("ポートフォリオの読み込みに失敗しました")

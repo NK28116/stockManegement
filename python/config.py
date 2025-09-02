@@ -10,9 +10,10 @@ class Config:
     """設定管理クラス"""
     
     def __init__(self):
-        self.db_path = os.getenv("DB_PATH", "python/db/stock.db")
-        self.output_dir = os.getenv("OUTPUT_DIR", "data")
-        self.log_dir = os.getenv("LOG_DIR", "python/logs")
+        # データベースパスを統一
+        self.db_path = os.path.join(os.path.dirname(__file__), "db/stock.db")
+        self.output_dir = os.path.join(os.path.dirname(__file__), "../data")
+        self.log_dir = os.path.join(os.path.dirname(__file__), "logs")
         
         # アラート設定
         self.slack_webhook = os.getenv("SLACK_WEBHOOK", "")
@@ -35,7 +36,7 @@ class Config:
         
         # ポートフォリオ分析パラメータ
         self.risk_free_rate = float(os.getenv("RISK_FREE_RATE", "0.001"))
-        self.default_portfolio_file = os.getenv("PORTFOLIO_FILE", "data/portfolio.csv")
+        self.default_portfolio_file = os.path.join(os.path.dirname(__file__), "../data/portfolio.csv")
     
     def get_database_config(self) -> Dict[str, Any]:
         """データベース設定を取得"""
