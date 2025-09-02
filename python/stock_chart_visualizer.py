@@ -21,7 +21,7 @@ from trading_rules import ImprovedTradingRules
 
 # Set font with fallbacks - suppress font warnings
 import matplotlib
-matplotlib.rcParams.update({'font.family': 'DejaVu Sans'})
+matplotlib.rcParams.update({'font.family': 'Arial'})
 # Suppress font warning messages
 import logging
 matplotlib_logger = logging.getLogger('matplotlib.font_manager')
@@ -33,13 +33,18 @@ class StockChartVisualizer:
     def __init__(self, period="3mo"):
         self.period = period
         self.trading_rules = ImprovedTradingRules()
-        self.output_dir = "../data/charts"
+        self.output_dir = "../data/chartImg"  # 出力先を変更
         os.makedirs(self.output_dir, exist_ok=True)
     
     def load_portfolio_stocks(self, portfolio_file: str) -> List[Dict]:
         """ポートフォリオファイルから株式リストを読み込み"""
         try:
-            portfolio_path = f"../data/{portfolio_file}"
+            # 実際の運用用のcodes.csvを使用
+            if portfolio_file == "codes.csv":
+                portfolio_path = "../data/codes.csv"
+            else:
+                portfolio_path = f"../data/practice/{portfolio_file}"
+            
             df = pd.read_csv(portfolio_path)
             
             stocks = []
@@ -294,7 +299,8 @@ def main():
     
     # Available portfolios
     portfolios = [
-        "portfolio_practice.csv",
+        "codes.csv",  # 実際の運用用
+        "portfolio_practice.csv",  # 練習用
         "portfolio_beginner.csv", 
         "portfolio_diversified.csv",
         "portfolio_growth.csv",
@@ -304,7 +310,10 @@ def main():
     print("=== 株価チャート可視化ツール ===")
     print("利用可能なポートフォリオ:")
     for i, portfolio in enumerate(portfolios, 1):
-        print(f"{i}. {portfolio}")
+        if portfolio == "codes.csv":
+            print(f"{i}. {portfolio} (実際の運用用)")
+        else:
+            print(f"{i}. {portfolio} (練習用)")
     
     # User selection
     try:

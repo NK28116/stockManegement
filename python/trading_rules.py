@@ -126,7 +126,7 @@ class ImprovedTradingRules:
                         'price': price,
                         'action': 'HOLD',
                         'pattern': pattern,
-                        'reason': f'継続保持（ストップ: {position["stop_loss_price"]:.2f}円）'
+                        'reason': f'継続保持（ストップ値: {position["stop_loss_price"]:.2f}円）'
                     })
         
         return trades
@@ -158,28 +158,6 @@ class ImprovedTradingRules:
         
         return metrics
 
-def compare_trading_rules(df: pd.DataFrame) -> Dict:
-    """新旧ルールの比較"""
-    # 旧ルール
-    old_rules = ImprovedTradingRules(stop_loss_percent=0.0, take_profit_percent=0.0)
-    old_trades = old_rules.analyze_with_improved_rules(df)
-    old_metrics = old_rules.calculate_performance_metrics(old_trades)
-    
-    # 新ルール（改善版）
-    new_rules = ImprovedTradingRules()
-    new_trades = new_rules.analyze_with_improved_rules(df)
-    new_metrics = new_rules.calculate_performance_metrics(new_trades)
-    
-    return {
-        'old_rules': {
-            'trades': old_trades,
-            'metrics': old_metrics
-        },
-        'new_rules': {
-            'trades': new_trades,
-            'metrics': new_metrics
-        }
-    }
 
 def generate_trading_report(comparison: Dict) -> str:
     """取引ルール比較レポートを生成"""
@@ -190,15 +168,6 @@ def generate_trading_report(comparison: Dict) -> str:
     report.append(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     report.append("")
     
-    # 旧ルール
-    report.append("【旧ルール（提案前）】")
-    old_metrics = comparison['old_rules']['metrics']
-    report.append(f"総取引数: {old_metrics.get('total_trades', 0)}")
-    report.append(f"完了取引数: {old_metrics.get('completed_trades', 0)}")
-    report.append(f"勝率: {old_metrics.get('win_rate', 0):.2%}")
-    report.append(f"平均損益: {old_metrics.get('average_profit', 0):.2%}")
-    report.append(f"総リターン: {old_metrics.get('total_return', 0):.2%}")
-    report.append("")
     
     # 新ルール
     report.append("【新ルール（改善版）】")
@@ -239,6 +208,16 @@ if __name__ == "__main__":
     ticker = "7203.T"
     df = yf.Ticker(ticker).history(period="3mo")
     
-    comparison = compare_trading_rules(df)
+
+    rules = ImprovedTradingRules()
+    trades = rules.analyze_with_improved_rules(df)
+    metrics = rules.calculate_performance_metrics(trades)
+    
+    comparison = {
+        'new_rules': {
+            'metrics': metrics
+        }
+    }
+    
     report = generate_trading_report(comparison)
     print(report)

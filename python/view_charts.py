@@ -10,7 +10,7 @@ import sys
 
 def open_charts_folder():
     """チャートフォルダを開く"""
-    charts_dir = "../data/charts"
+    charts_dir = "../data/chartImg"
     abs_path = os.path.abspath(charts_dir)
     
     print(f"チャート保存先: {abs_path}")
@@ -44,7 +44,7 @@ def open_charts_folder():
 
 def print_summary():
     """トレーディングサマリーを表示"""
-    charts_dir = "../data/charts"
+    charts_dir = "../data/chartImg"
     summary_file = os.path.join(charts_dir, "trading_summary_portfolio_practice.txt")
     
     if os.path.exists(summary_file):

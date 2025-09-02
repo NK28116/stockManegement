@@ -13,7 +13,7 @@ import sys
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 import matplotlib.pyplot as plt
-import seaborn as sns
+# import seaborn as sns
 
 # 現在のディレクトリをパスに追加
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -308,9 +308,8 @@ def analyze_portfolio_sample():
     """サンプルポートフォリオの分析（6-8月データ使用）"""
     analyzer = PortfolioAnalyzer()
     
-    # 絶対パスでファイルを指定
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    portfolio_file = os.path.join(current_dir, "..", "data", "portfolio_stable.csv")
+    # 相対パスでファイルを指定（python/ディレクトリから実行する場合）
+    portfolio_file = "../data/codes.csv"
     
     print(f"ポートフォリオファイル: {portfolio_file}")
     

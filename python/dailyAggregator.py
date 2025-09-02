@@ -3,8 +3,7 @@ import os
 from datetime import datetime
 from typing import Optional, Tuple
 
-# データベースパスを統一
-DB_PATH = os.path.join(os.path.dirname(__file__), "db/stock.db")
+DB_PATH = "python/db/stock.db"
 
 def aggregate_daily(code: str) -> bool:
     """

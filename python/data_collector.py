@@ -28,7 +28,7 @@ except ImportError as e:
 
 # ログ設定
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('logs/data_collector.log', encoding='utf-8'),
@@ -153,6 +153,7 @@ class DataCollector:
         else:
             # デフォルトのサンプルポートフォリオ
             portfolio = {
+                '7203.T': {'name': 'トヨタ自動車', 'quantity': 100, 'purchase_price': 2500, 'weight': 0.15},
                 '6758.T': {'name': 'ソニーグループ', 'quantity': 50, 'purchase_price': 12000, 'weight': 0.12},
                 '9984.T': {'name': 'ソフトバンクグループ', 'quantity': 200, 'purchase_price': 6000, 'weight': 0.20},
                 '6861.T': {'name': 'キーエンス', 'quantity': 10, 'purchase_price': 50000, 'weight': 0.08},
@@ -223,22 +224,6 @@ def main():
 def collect_from_portfolio(portfolio_file: str):
     """ポートフォリオファイルから証券コードを抽出してデータ収集"""
     try:
-        # 絶対パスに変換
-        abs_path = os.path.abspath(portfolio_file)
-        print(f"ポートフォリオファイルの絶対パス: {abs_path}")
-        
-        if not os.path.exists(abs_path):
-            print(f"ファイルが存在しません: {abs_path}")
-            return
-            
-        # DBディレクトリの作成
-        os.makedirs(os.path.dirname(config.get_database_config()["path"]), exist_ok=True)
-        
-        # 以降の処理は同じ
-        collector = DataCollector()
-        analyzer = PortfolioAnalyzer()
-        portfolio = analyzer.load_portfolio_from_file(abs_path)
-        # ...
         print(f"ポートフォリオファイル処理開始: {portfolio_file}")
         
         collector = DataCollector()

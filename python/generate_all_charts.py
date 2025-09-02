@@ -18,17 +18,17 @@ def main():
     # Create visualizer
     visualizer = StockChartVisualizer(period="3mo")
     
-    # Generate charts for practice portfolio
-    portfolio_file = "portfolio_practice.csv"
+    # Generate charts for actual portfolio (codes.csv)
+    portfolio_file = "codes.csv"
     
-    print(f"対象ポートフォリオ: {portfolio_file}")
+    print(f"対象ポートフォリオ: {portfolio_file} (実際の運用用)")
     print("期間: 3ヶ月")
     
     # Generate all charts
     visualizer.visualize_all_stocks(portfolio_file)
     
     print("\n=== チャート生成完了 ===")
-    print("チャートファイルは data/charts フォルダに保存されました")
+    print("チャートファイルは data/chartImg フォルダに保存されました")
     print("取引サマリーレポートも同じフォルダに保存されています")
 
 if __name__ == "__main__":
