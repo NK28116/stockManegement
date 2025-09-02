@@ -57,7 +57,7 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
         # 新規行
         df.loc[len(df)] = {
             "code": code,
-            "name": code,
+            "name": get_name(code),
             "quantity": qty,
             "purchase_price": float(price) if price else 0.0,
             "purchase_date": today,
@@ -141,6 +141,34 @@ def refresh_prices(df: pd.DataFrame, target_code: str | None = None) -> pd.DataF
             updated.at[i,"status"] = "保有中" if qty > 0 else "売却済"
     return updated
 
+# 追加
+def get_name(code: str) -> str:
+    if yf is None:
+        return code
+    try:
+        t = yf.Ticker(code)
+        info = {}
+        try:
+            info = t.get_info()  # yfinance>=0.2
+        except Exception:
+            info = getattr(t, "info", {}) or {}
+        name = info.get("shortName") or info.get("longName") or info.get("symbol")
+        return str(name) if name else code
+    except Exception:
+        return code
+
+# 追加: 既存レコードのnameを補完
+def fix_names(df: pd.DataFrame) -> pd.DataFrame:
+    updated = df.copy()
+    for i, row in updated.iterrows():
+        code = str(row.get("code","")).strip()
+        name = str(row.get("name","")).strip()
+        if not code:
+            continue
+        if (not name) or (name == code):
+            updated.at[i, "name"] = get_name(code)
+    return updated
+
 def main():
     parser = argparse.ArgumentParser(description="codes.csvの売買操作ツール")
     sub = parser.add_subparsers(dest="action", required=True)
@@ -157,6 +185,8 @@ def main():
     p_refresh = sub.add_parser("refresh")
     p_refresh.add_argument("code", nargs="?", help="特定銘柄のみ更新（省略時は全銘柄）")
 
+    p_fixnames = sub.add_parser("fixnames")
+
     args = parser.parse_args()
 
     df = load_codes(CODES_PATH)
@@ -167,6 +197,8 @@ def main():
         df = sell(df, args.code, args.quantity)
     elif args.action == "refresh":
         df = refresh_prices(df, getattr(args, "code", None))
+    elif args.action == "fixnames":
+        df = fix_names(df)
 
     save_codes(df, CODES_PATH)
 

@@ -73,7 +73,7 @@ ALERT_CONFIG = {
 }
 ```
 
-## �� **indicators.py - テクニカル指標**
+##  **indicators.py - テクニカル指標**
 
 ### **利用可能な指標**
 

@@ -14,6 +14,7 @@ import sys
 from typing import Dict, List, Tuple, Optional
 import warnings
 warnings.filterwarnings('ignore')
+import shutil
 
 # Add current directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -21,7 +22,8 @@ from trading_rules import ImprovedTradingRules
 
 # Set font with fallbacks - suppress font warnings
 import matplotlib
-matplotlib.rcParams.update({'font.family': 'Arial'})
+matplotlib.rcParams['font.family'] = 'Hiragino Sans'  # 日本語対応（macOS標準）
+matplotlib.rcParams['axes.unicode_minus'] = False     # マイナス記号の文字化け対策
 # Suppress font warning messages
 import logging
 matplotlib_logger = logging.getLogger('matplotlib.font_manager')
@@ -35,7 +37,19 @@ class StockChartVisualizer:
         self.trading_rules = ImprovedTradingRules()
         self.output_dir = "../data/chartImg"  # 出力先を変更
         os.makedirs(self.output_dir, exist_ok=True)
-    
+
+    def clean_output_dir(self):
+        """出力先の既存PNGを削除"""
+        removed = 0
+        for name in os.listdir(self.output_dir):
+            if name.lower().endswith(".png"):
+                try:
+                    os.remove(os.path.join(self.output_dir, name))
+                    removed += 1
+                except Exception:
+                    pass
+        print(f"既存PNGを削除: {removed}件")
+
     def load_portfolio_stocks(self, portfolio_file: str) -> List[Dict]:
         """ポートフォリオファイルから株式リストを読み込み"""
         try:

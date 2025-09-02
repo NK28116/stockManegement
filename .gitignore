@@ -3,7 +3,11 @@
 *.code-workspace
 .env
 venv/*
-.venv/*
-python/utils/__pycache__/*
+data/chartImg/*
+data/practice/*
+data/report/*
+data/ChartsExample/*
+
+python/__pycache__/*
 *.db
 logs/*

@@ -15,7 +15,7 @@ import logging
 # 現在のディレクトリをパスに追加
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from trading_rules import ImprovedTradingRules, compare_trading_rules, generate_trading_report
+from trading_rules import ImprovedTradingRules, generate_trading_report
 
 # ログ設定
 logging.basicConfig(
@@ -149,55 +149,76 @@ class EveryStockAnalyzer:
         report.append(f"分析成功: {len(successful_results)}銘柄")
         report.append(f"分析失敗: {len(error_results)}銘柄")
         report.append("")
-        
-        # エラー銘柄の一覧
+
         if error_results:
             report.append("【分析失敗銘柄】")
             for error in error_results:
                 report.append(f"• {error['code']}: {error['message']}")
             report.append("")
-        
-        # 成功した銘柄のサマリー
+
         if successful_results:
-            report.append("【分析成功銘柄サマリー】")
-            
-            # パフォーマンス別に分類
-            profitable_stocks = []
-            loss_stocks = []
-            no_trades = []
-            
-            for result in successful_results:
-                if result['metrics'].get('completed_trades', 0) == 0:
-                    no_trades.append(result)
-                elif result['metrics'].get('total_return', 0) > 0:
-                    profitable_stocks.append(result)
-                else:
-                    loss_stocks.append(result)
-            
-            report.append(f"利益銘柄: {len(profitable_stocks)}銘柄")
-            report.append(f"損失銘柄: {len(loss_stocks)}銘柄")
-            report.append(f"取引なし: {len(no_trades)}銘柄")
+            report.append("【前日の各銘柄ステータス】")
+            # 前日（カレンダー上の1日前。データ側の直近営業日に補正）
+            target = datetime.now() - timedelta(days=1)
+            for r in successful_results:
+                line = self._get_status_for_date(r, target)
+                report.append(f"{r['code']}: {line}")
             report.append("")
-            
-            # トップ5銘柄
-            if profitable_stocks:
-                profitable_stocks.sort(key=lambda x: x['metrics'].get('total_return', 0), reverse=True)
-                report.append("【トップ5銘柄（利益）】")
-                for i, stock in enumerate(profitable_stocks[:5], 1):
-                    metrics = stock['metrics']
-                    report.append(f"{i}. {stock['code']}: {metrics.get('total_return', 0):+.2%} (勝率: {metrics.get('win_rate', 0):.1%})")
-                report.append("")
-            
-            # ワースト5銘柄
-            if loss_stocks:
-                loss_stocks.sort(key=lambda x: x['metrics'].get('total_return', 0))
-                report.append("【ワースト5銘柄（損失）】")
-                for i, stock in enumerate(loss_stocks[:5], 1):
-                    metrics = stock['metrics']
-                    report.append(f"{i}. {stock['code']}: {metrics.get('total_return', 0):+.2%} (勝率: {metrics.get('win_rate', 0):.1%})")
-                report.append("")
-        
+
         return "\n".join(report)
+    
+    def _get_status_for_date(self, result: Dict, target_date: datetime) -> str:
+        """指定日のステータスを 'YYYY-MM-DD: STATUS - 理由 (ストップ: XXX円)' 形式で返す"""
+        try:
+            df = result.get('data')
+            trades = result.get('trades', [])
+            if df is None or df.empty:
+                return f"{target_date.strftime('%Y-%m-%d')}: データなし"
+
+            # タイムゾーン除去 + 指定日以前で最後の営業日を取得
+            idx = df.index.tz_localize(None) if getattr(df.index, 'tz', None) else df.index
+            mask = idx <= target_date.replace(tzinfo=None)
+            if not mask.any():
+                return f"{target_date.strftime('%Y-%m-%d')}: データなし"
+            day = idx[mask][-1]
+            day_str = day.strftime('%Y-%m-%d')
+
+            # 取引履歴から当日(=day)の記録を優先、それが無ければ直近過去の記録
+            day_trade = None
+            last_trade = None
+            for t in trades:
+                if 'date' not in t:
+                    continue
+                try:
+                    td = pd.to_datetime(t.get('date'))
+                    if hasattr(td, 'tz_localize'):
+                        td = td.tz_localize(None)
+                    if td.date() == day.date():
+                        day_trade = t
+                    if td <= day:
+                        if (last_trade is None) or (pd.to_datetime(last_trade.get('date')).tz_localize(None) < td):
+                            last_trade = t
+                except Exception:
+                    continue
+
+            if day_trade:
+                status = day_trade.get('action', 'HOLD')
+                reason = day_trade.get('reason', '継続保持')
+                stop_price = self.calculate_daily_stop_price(df, day, day_trade)
+            elif last_trade:
+                status = last_trade.get('action', 'HOLD')
+                reason = last_trade.get('reason', '継続保持')
+                stop_price = self.calculate_daily_stop_price(df, day, last_trade)
+            else:
+                status = 'HOLD'
+                reason = '継続保持'
+                stop_price = self.calculate_daily_stop_price(df, day, None)
+
+            stop_txt = f" (ストップ: {stop_price}円)" if stop_price is not None else ""
+            return f"{day_str}: {status} - {reason}{stop_txt}"
+        except Exception as e:
+            logger.error(f"前日ステータス取得エラー: {e}")
+            return f"{target_date.strftime('%Y-%m-%d')}: 取得エラー"
     
     def generate_detailed_report(self, results: List[Dict]) -> str:
         """詳細レポート生成（損益詳細観察形式）"""
@@ -277,6 +298,7 @@ class EveryStockAnalyzer:
             # 詳細レポート
             detailed_report = self.generate_detailed_report(results)
             detailed_file = f"../data/report/detailed/detailed_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            os.makedirs(os.path.dirname(detailed_file), exist_ok=True)
             
             with open(detailed_file, 'w', encoding='utf-8') as f:
                 f.write(detailed_report)
@@ -409,6 +431,8 @@ class EveryStockAnalyzer:
         except Exception as e:
             logger.error(f"ストップ値計算エラー: {e}")
             return None
+
+# 追加: 前日ステータス取得ヘルパ
 
 def main():
     """メイン実行関数"""
