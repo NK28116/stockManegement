@@ -17,11 +17,11 @@ def load_codes(path: str) -> pd.DataFrame:
     if not os.path.exists(path):
         raise FileNotFoundError(f"ファイルがありません: {path}")
     df = pd.read_csv(path)
-    expected = ["code","name","quantity","purchase_price","purchase_date","sector","status"]
+    expected = ["code", "name", "quantity", "purchase_price", "purchase_date", "sector", "status"]
     # 余分な列は残しつつ、最低限の列がなければ補完
     for col in expected:
         if col not in df.columns:
-            if col in ["name","sector","purchase_date"]:
+            if col in ["name", "sector", "purchase_date", "status"]:
                 df[col] = ""
             elif col == "quantity":
                 df[col] = 0
