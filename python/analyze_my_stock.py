@@ -75,8 +75,9 @@ def analyze_stock(df: pd.DataFrame) -> List[str]:
 
         for i in range(1, len(signals)):
             pattern = signals[i-1] + signals[i]
-            date = df.index[i].strftime("%Y-%m-%d")
-            price = closes[i]
+            # Off-by-one 修正: パターンは signals[i] を含むため、date/price も i+1 を参照
+            date = df.index[i+1].strftime("%Y-%m-%d")
+            price = closes[i+1]
 
             if pattern == "++" and buy_price is None:
                 # 買いエントリー

@@ -63,7 +63,7 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
             "sector": ""
         }
         if "status" in df.columns:
-            df.loc[len(df)-1, "status"] = "保有中"
+            df.loc[len(df) - 1, "status"] = "保有中"
     else:
         i = idx[0]
         old_q = int(df.at[i, "quantity"])
@@ -75,10 +75,10 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
             if "status" in df.columns:
                 df.at[i, "status"] = "売却済"
         else:
-            # 加重平均（priceが0の場合は平均を維持）
-            if price and old_q > 0:
+            # 加重平均は購入時（qty > 0）のみ計算
+            if qty > 0 and price and old_q > 0:
                 new_p = (old_q * old_p + qty * float(price)) / new_q
-            elif price and old_q == 0:
+            elif qty > 0 and price and old_q == 0:
                 new_p = float(price)
             else:
                 new_p = old_p
@@ -89,7 +89,6 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
         # 購入日は初回のまま残す（必要なら更新: df.at[i,"purchase_date"]=today）
     print(f"買い: {code} +{qty}株 @¥{price if price else 'N/A'}")
     return df
-
 def sell(df: pd.DataFrame, code: str, qty: int) -> pd.DataFrame:
     idx = df.index[df["code"] == code]
     if len(idx) == 0:
