@@ -233,13 +233,17 @@ class EveryStockAnalyzer:
         
         for result in successful_results:
             # 基本情報
-            report.append(f"資産名: {result['code']}")
+            report.append(f"資産名: {result['code']}-{result['name'] }")
             
             # 購入情報（codes.csvから取得）
             purchase_info = self.get_purchase_info(result['code'])
             if purchase_info:
-                report.append(f"購入日: {purchase_info.get('purchase_date', 'N/A')}")
-                report.append(f"購入額(所持数): ¥{purchase_info.get('purchase_price', 0):,.0f}({purchase_info.get('quantity', 0)}株)")
+                if result['status'] == '保有中':
+                    report.append(f"購入日: {purchase_info.get('purchase_date', 'N/A')}")
+                    report.append(f"購入額(所持数): ¥{purchase_info.get('purchase_price', 0):,.0f}({purchase_info.get('quantity', 0)}株)")
+                elif result['status'] == '購入予定':
+                    report.append(f"監視開始日: {purchase_info.get('purchase_date', 'N/A')}")
+                    report.append(f"購入予定額(予定数): ¥{purchase_info.get('purchase_price', 0):,.0f}({purchase_info.get('quantity', 0)}株)")
             else:
                 report.append("購入情報: N/A")
             

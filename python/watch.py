@@ -11,6 +11,7 @@ import time
 import os
 import sys
 from datetime import datetime, timedelta
+import argparse
 from typing import Dict, List, Optional, Tuple
 
 # 現在のディレクトリをパスに追加
@@ -32,8 +33,8 @@ logger = logging.getLogger(__name__)
 class StockWatcher:
     """株価監視クラス"""
     
-    def __init__(self):
-        self.db_config = config.get_database_config()
+    def __init__(self, db_config: Optional[Dict[str, str]] = None):
+        self.db_config = db_config if db_config is not None else config.get_database_config()
         self.alert_thresholds = {
             "crash_threshold": -5.0,  # 5%以上の急落でアラート
             "volatility_threshold": 3.0,  # 3%以上の変動でアラート
@@ -257,6 +258,30 @@ class StockWatcher:
             
         except Exception as e:
             logger.error(f"データ保存エラー: {e}")
+    
+    def fetch_historical_data(self, target_date: str):
+        """指定日の株価データを取得してDBに保存"""
+        codes = self._get_target_codes()
+        for code in codes:
+            try:
+                ticker = yf.Ticker(f"{code}.T")
+                hist = ticker.history(start=target_date, end=target_date)
+                if not hist.empty:
+                    # データをintradayテーブルに保存
+                    conn = sqlite3.connect(self.db_config["path"])
+                    cur = conn.cursor()
+                    for index, row in hist.iterrows():
+                        cur.execute("""
+                            INSERT OR REPLACE INTO intraday 
+                            (code, timestamp, price, volume) 
+                            VALUES (?, ?, ?, ?)
+                        """, (code, index.strftime("%Y-%m-%d %H:%M:%S"),
+                              row["Close"], row["Volume"]))
+                    conn.commit()
+                    conn.close()
+                    print(f"{code}: データ保存完了")
+            except Exception as e:
+                print(f"{code}: データ取得エラー - {e}")
 
 def watch_stocks(codes: List[str], mode: str = "daily") -> None:
     """
@@ -279,6 +304,23 @@ def watch_stocks(codes: List[str], mode: str = "daily") -> None:
         print("\n=== 評価結果 ===")
         for code, evaluation in evaluations.items():
             print(f"{code}: {evaluation}")
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("mode", choices=["realtime", "yesterday"], 
+                       help="実行モード: realtime=リアルタイム監視, yesterday=昨日のデータ取得")
+    args = parser.parse_args()
+
+    if args.mode == "yesterday":
+        yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        print(f"昨日({yesterday})のデータを取得します...")
+        # 昨日のデータを取得して保存
+        watcher = StockWatcher(db_config={"path": "db/stock.db"})
+        watcher.fetch_historical_data(target_date=yesterday)
+    else:
+        # 既存のリアルタイム監視処理
+        watcher = StockWatcher()
+        watcher.start()
 
 if __name__ == "__main__":
     # 監視する銘柄リスト（例）

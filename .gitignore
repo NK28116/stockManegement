@@ -7,7 +7,8 @@ data/chartImg/*
 data/practice/*
 data/report/*
 data/ChartsExample/*
+data/charts/*
 
-python/__pycache__/*
 *.db
-logs/*
+*/logs/*
+*/__pycache__/*

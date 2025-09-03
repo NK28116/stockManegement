@@ -17,7 +17,7 @@ def load_codes(path: str) -> pd.DataFrame:
     if not os.path.exists(path):
         raise FileNotFoundError(f"ファイルがありません: {path}")
     df = pd.read_csv(path)
-    expected = ["code","name","quantity","purchase_price","purchase_date","sector"]
+    expected = ["code","name","quantity","purchase_price","purchase_date","sector","status"]
     # 余分な列は残しつつ、最低限の列がなければ補完
     for col in expected:
         if col not in df.columns:
@@ -169,6 +169,43 @@ def fix_names(df: pd.DataFrame) -> pd.DataFrame:
             updated.at[i, "name"] = get_name(code)
     return updated
 
+def pre_buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFrame:
+    today = datetime.now().strftime("%Y-%m-%d")
+    idx = df.index[df["code"] == code]
+    if price is None:
+        price = get_price(code)
+    if len(idx) == 0:
+        # 新規行
+        df.loc[len(df)] = {
+            "code": code,
+            "name": get_name(code),
+            "quantity": qty,
+            "purchase_price": float(price) if price else 0.0,
+            "purchase_date": today,
+            "sector": "",
+            "status": "購入予定"
+        }
+    else:
+        i = idx[0]
+        if df.at[i, "status"] == "購入予定":
+            # 既存の購入予定があれば更新
+            df.at[i, "quantity"] = qty
+            df.at[i, "purchase_price"] = float(price) if price else 0.0
+            df.at[i, "purchase_date"] = today
+        else:
+            # 既存の保有株とは別に新規行として追加
+            df.loc[len(df)] = {
+                "code": code,
+                "name": df.at[i, "name"],
+                "quantity": qty,
+                "purchase_price": float(price) if price else 0.0,
+                "purchase_date": today,
+                "sector": df.at[i, "sector"],
+                "status": "購入予定"
+            }
+    print(f"購入予定: {code} {qty}株 @¥{price if price else 'N/A'}")
+    return df
+
 def main():
     parser = argparse.ArgumentParser(description="codes.csvの売買操作ツール")
     sub = parser.add_subparsers(dest="action", required=True)
@@ -177,6 +214,12 @@ def main():
     p_buy.add_argument("code")
     p_buy.add_argument("quantity", type=int)
     p_buy.add_argument("--price", type=float, default=None)
+
+    # 購入予定用のパーサーを追加
+    p_prebuy = sub.add_parser("prebuy")
+    p_prebuy.add_argument("code")
+    p_prebuy.add_argument("quantity", type=int)
+    p_prebuy.add_argument("--price", type=float, default=None)
 
     p_sell = sub.add_parser("sell")
     p_sell.add_argument("code")
@@ -193,6 +236,8 @@ def main():
 
     if args.action == "buy":
         df = buy(df, args.code, args.quantity, getattr(args, "price", None))
+    elif args.action == "prebuy":
+        df = pre_buy(df, args.code, args.quantity, getattr(args, "price", None))
     elif args.action == "sell":
         df = sell(df, args.code, args.quantity)
     elif args.action == "refresh":
