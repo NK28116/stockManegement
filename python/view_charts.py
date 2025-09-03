@@ -36,11 +36,11 @@ def open_charts_folder():
     print(f"\n詳細レポート: trading_summary_portfolio_practice.txt")
     
     # Try to open folder in Finder (macOS)
-    try:
-        subprocess.run(['open', abs_path], check=True)
-        print(f"\nFinderでフォルダを開きました: {abs_path}")
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print(f"\n手動でフォルダを確認してください: {abs_path}")
+    # try:
+      #  subprocess.run(['open', abs_path], check=True)
+      #  print(f"\nFinderでフォルダを開きました: {abs_path}")
+   # except (subprocess.CalledProcessError, FileNotFoundError):
+    #    print(f"\n手動でフォルダを確認してください: {abs_path}")
 
 def print_summary():
     """トレーディングサマリーを表示"""
