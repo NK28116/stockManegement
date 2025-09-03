@@ -33,13 +33,13 @@ logger = logging.getLogger(__name__)
 class StockWatcher:
     """株価監視クラス"""
     
-    def __init__(self, db_config: Optional[Dict[str, str]] = None):
-        self.db_config = db_config if db_config is not None else config.get_database_config()
-        self.alert_thresholds = {
-            "crash_threshold": -5.0,  # 5%以上の急落でアラート
-            "volatility_threshold": 3.0,  # 3%以上の変動でアラート
-            "volume_spike": 2.0,  # 出来高が2倍以上でアラート
-        }
+    def __init__(self, db_config: Optional[Dict[str, object]] = None):
+            self.db_config = db_config if db_config is not None else config.get_database_config()
+            self.alert_thresholds = {
+                "crash_threshold": -5.0,  # 5%以上の急落でアラート
+                "volatility_threshold": 3.0,  # 3%以上の変動でアラート
+                "volume_spike": 2.0,  # 出来高が2倍以上でアラート
+            }
     
     def watch_intraday(self, codes: List[str], interval: int = 60) -> None:
         """
@@ -261,7 +261,15 @@ class StockWatcher:
     
     def fetch_historical_data(self, target_date: str):
         """指定日の株価データを取得してDBに保存"""
-        codes = self._get_target_codes()
+        # Obtain the list of target codes safely
+        if hasattr(self, "_get_target_codes") and callable(getattr(self, "_get_target_codes")):
+            codes = self._get_target_codes()
+        elif hasattr(self, "get_target_codes") and callable(getattr(self, "get_target_codes")):
+            codes = self.get_target_codes()
+        elif hasattr(self, "codes"):
+            codes = self.codes
+        else:
+            raise AttributeError("No method or attribute found to obtain target codes.")
         for code in codes:
             try:
                 ticker = yf.Ticker(f"{code}.T")

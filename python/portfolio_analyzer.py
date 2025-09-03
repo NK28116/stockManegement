@@ -334,7 +334,12 @@ def analyze_portfolio_sample():
     print("分析中...")
     returns = analyzer.calculate_returns(data)
     metrics = analyzer.calculate_portfolio_metrics(portfolio, returns)
-    correlation_matrix = analyzer.calculate_correlation_matrix(returns)
+    
+    # calculate_correlation_matrix が存在しない場合に備えてチェック
+    if hasattr(analyzer, "calculate_correlation_matrix"):
+        correlation_matrix = analyzer.calculate_correlation_matrix(returns)
+    else:
+        correlation_matrix = None
     
     print("レポート生成中...")
     report = analyzer.generate_portfolio_report(portfolio, metrics, correlation_matrix)
