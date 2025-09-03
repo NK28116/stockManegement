@@ -10,5 +10,14 @@ data/ChartsExample/*
 data/charts/*
 
 *.db
-*/logs/*
-*/__pycache__/*
+python/__pycache__/*
+__pycache__/*
+*.pyc
+logs/*
+*.log
+
+python/__pycache__/stock_chart_visualizer.cpython-313.pyc
+python/logs/every_stock_analysis.log
+python/__pycache__/config.*
+
+python/logs/portfolio_analyzer.log
