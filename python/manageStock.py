@@ -21,7 +21,7 @@ def load_codes(path: str) -> pd.DataFrame:
     # 余分な列は残しつつ、最低限の列がなければ補完
     for col in expected:
         if col not in df.columns:
-            if col in ["name", "sector", "purchase_date", "status"]:
+            if col in ["name", "sector", "purchase_date", "status", "code"]:
                 df[col] = ""
             elif col == "quantity":
                 df[col] = 0
