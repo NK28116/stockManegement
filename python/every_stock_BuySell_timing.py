@@ -221,70 +221,69 @@ class EveryStockAnalyzer:
             return f"{target_date.strftime('%Y-%m-%d')}: 取得エラー"
     
     def generate_detailed_report(self, results: List[Dict]) -> str:
-        """詳細レポート生成（損益詳細観察形式）"""
-        successful_results = [r for r in results if r['status'] == 'success']
+            """詳細レポート生成（損益詳細観察形式）"""
+            successful_results = [r for r in results if r['status'] == 'success']
     
-        report = []
-        report.append("=" * 80)
-        report.append("全銘柄損益詳細観察レポート")
-        report.append("=" * 80)
-        report.append(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        report.append("")
-    
-        for result in successful_results:
-            # 基本情報
-            report.append(f"資産名: {result['code']}-{result.get('name', '')}")
-        
-            # 購入情報（codes.csvから取得）
-            purchase_info = self.get_purchase_info(result['code'])
-            if purchase_info:
-                if result['status'] == '保有中':
-                    report.append(f"購入日: {purchase_info.get('purchase_date', 'N/A')}")
-                    report.append(f"購入額(所持数): ¥{purchase_info.get('purchase_price', 0):,.0f}({purchase_info.get('quantity', 0)}株)")
-                elif result['status'] == '購入予定':
-                    report.append(f"監視開始日: {purchase_info.get('purchase_date', 'N/A')}")
-                    report.append(f"購入予定額(予定数): ¥{purchase_info.get('purchase_price', 0):,.0f}({purchase_info.get('quantity', 0)}株)")
-            else:
-                report.append("購入情報: N/A")
-        
-            report.append("---")
-        
-            # 月次損益計算
-            monthly_returns = self.calculate_monthly_returns(result)
-            for month, return_value in monthly_returns.items():
-                report.append(f"{month}: {return_value:+.2%}")
-        
-            report.append("---")
-        
-            # 直近1ヶ月の値動き（取引履歴形式）
-            report.append("直近1ヶ月の値動き")
-            daily_status = self.get_daily_status(result['data'], result['trades'], days=30)
-            if daily_status:
-                for date, status_info in daily_status.items():
-                    # 1行にまとめて表示
-                    line = f"{date}: {status_info['status']} - {status_info['reason']}"
-                    if status_info.get('stop_price'):
-                        line += f" (ストップ: {status_info['stop_price']}円)"
-                    report.append(line)
-            else:
-                report.append("直近1ヶ月のデータなし")
-        
-            report.append("---")
-        
-            # 売却額と損益
-            current_value = result['current_price'] * purchase_info.get('quantity', 0) if purchase_info else 0
-            purchase_value = purchase_info.get('purchase_price', 0) * purchase_info.get('quantity', 0) if purchase_info else 0
-            profit_loss = current_value - purchase_value
-            profit_loss_percent = (profit_loss / purchase_value * 100) if purchase_value > 0 else 0
-        
-            report.append(f"売却額: ¥{current_value:,.0f}")
-            report.append(f"損益: ¥{profit_loss:+,.0f} ({profit_loss_percent:+.2%})")
-        
-            report.append("")
+            report = []
             report.append("=" * 80)
+            report.append("全銘柄損益詳細観察レポート")
+            report.append("=" * 80)
+            report.append(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             report.append("")
     
-        return "\n".join(report)
+            for result in successful_results:
+                # 基本情報
+                report.append(f"資産名: {result['code']}-{result.get('name', '')}")
+        
+                # 購入情報（codes.csvから取得）
+                purchase_info = self.get_purchase_info(result['code'])
+                if purchase_info:
+                    purchase_date = purchase_info.get('purchase_date', 'N/A')
+                    purchase_price = purchase_info.get('purchase_price', 0)
+                    quantity = purchase_info.get('quantity', 0)
+                    report.append(f"購入日: {purchase_date}")
+                    report.append(f"購入額(所持数): ¥{purchase_price:,.0f}({quantity}株)")
+                else:
+                    report.append("購入情報: N/A")
+        
+                report.append("---")
+        
+                # 月次損益計算
+                monthly_returns = self.calculate_monthly_returns(result)
+                for month, return_value in monthly_returns.items():
+                    report.append(f"{month}: {return_value:+.2%}")
+        
+                report.append("---")
+        
+                # 直近1ヶ月の値動き（取引履歴形式）
+                report.append("直近1ヶ月の値動き")
+                daily_status = self.get_daily_status(result['data'], result['trades'], days=30)
+                if daily_status:
+                    for date, status_info in daily_status.items():
+                        # 1行にまとめて表示
+                        line = f"{date}: {status_info['status']} - {status_info['reason']}"
+                        if status_info.get('stop_price'):
+                            line += f" (ストップ: {status_info['stop_price']}円)"
+                        report.append(line)
+                else:
+                    report.append("直近1ヶ月のデータなし")
+        
+                report.append("---")
+        
+                # 売却額と損益
+                current_value = result['current_price'] * purchase_info.get('quantity', 0) if purchase_info else 0
+                purchase_value = purchase_info.get('purchase_price', 0) * purchase_info.get('quantity', 0) if purchase_info else 0
+                profit_loss = current_value - purchase_value
+                profit_loss_percent = (profit_loss / purchase_value * 100) if purchase_value > 0 else 0
+        
+                report.append(f"売却額: ¥{current_value:,.0f}")
+                report.append(f"損益: ¥{profit_loss:+,.0f} ({profit_loss_percent:+.2%})")
+        
+                report.append("")
+                report.append("=" * 80)
+                report.append("")
+    
+            return "\n".join(report)
     
     def save_reports(self, results: List[Dict]) -> None:
         """レポートを保存"""
