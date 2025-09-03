@@ -343,7 +343,7 @@ def analyze_portfolio_sample():
     print(report)
     
     # ファイル保存
-    analyzer.save_analysis_result(report, "sample_portfolio_analysis.txt")
+    analyzer.save_analysis_result(report, "my_portfolio_analysis.txt")
 
 def analyze_custom_portfolio(csv_file: str):
     """カスタムポートフォリオの分析"""
