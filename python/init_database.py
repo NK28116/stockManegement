@@ -43,11 +43,12 @@ def init_database():
         CREATE TABLE IF NOT EXISTS daily (
             code TEXT,
             date DATE,
-            open REAL,
-            high REAL,
-            low REAL,
-            close REAL,
-            volume INTEGER,
+            name TEXT,
+            quantity INTEGER,
+            purchase_price REAL,
+            purchase_date DATE,
+            sector TEXT,
+            status TEXT DEFAULT '保有中',
             PRIMARY KEY (code, date)
         )
         """,
@@ -55,11 +56,12 @@ def init_database():
         CREATE TABLE IF NOT EXISTS sample_daily (
             code TEXT,
             date DATE,
-            open REAL,
-            high REAL,
-            low REAL,
-            close REAL,
-            volume INTEGER,
+            name TEXT,
+            quantity INTEGER,
+            target_price REAL,
+            planned_date DATE,
+            sector TEXT,
+            status TEXT DEFAULT '購入予定',
             PRIMARY KEY (code, date)
         )
         """,
@@ -96,8 +98,8 @@ def init_database():
     print(f"データベース初期化完了: {main_db_path}")
     print("作成されたテーブル:")
     print("- intraday (分足データ)")
-    print("- daily (日足データ)")
-    print("- sample_daily (サンプル日足データ)")
+    print("- daily (保有中の銘柄データ)")
+    print("- sample_daily (購入予定の銘柄データ)")
     print("- portfolio (ポートフォリオ情報)")
 
 def check_database_status():
