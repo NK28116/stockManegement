@@ -128,22 +128,22 @@ class StockChartVisualizer:
         # Plot buy signals
         if buy_dates:
             ax1.scatter(buy_dates, buy_prices, color='green', s=100, marker='^', 
-                       label=f'買い ({len(buy_dates)}回)', zorder=5)
+                    label=f'買い ({len(buy_dates)}回)', zorder=5)
             
             # Add annotations for buy signals
             for i, (date, price, reason) in enumerate(zip(buy_dates, buy_prices, buy_reasons)):
                 ax1.annotate(f'買い\n¥{price:.0f}', 
-                           xy=(date, price), 
-                           xytext=(10, 30), 
-                           textcoords='offset points',
-                           bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgreen', alpha=0.7),
-                           arrowprops=dict(arrowstyle='->', color='green'),
-                           fontsize=9, ha='center')
+                        xy=(date, price), 
+                        xytext=(10, 30), 
+                        textcoords='offset points',
+                        bbox=dict(boxstyle='round,pad=0.3', facecolor='lightgreen', alpha=0.7),
+                        arrowprops=dict(arrowstyle='->', color='green'),
+                        fontsize=9, ha='center')
         
         # Plot sell signals
         if sell_dates:
             ax1.scatter(sell_dates, sell_prices, color='red', s=100, marker='v', 
-                       label=f'売り ({len(sell_dates)}回)', zorder=5)
+                    label=f'売り ({len(sell_dates)}回)', zorder=5)
             
             # Add annotations for sell signals
             for i, (date, price, reason) in enumerate(zip(sell_dates, sell_prices, sell_reasons)):
@@ -156,12 +156,12 @@ class StockChartVisualizer:
                         break
                 
                 ax1.annotate(f'売り\n¥{price:.0f}{profit_loss}', 
-                           xy=(date, price), 
-                           xytext=(10, -40), 
-                           textcoords='offset points',
-                           bbox=dict(boxstyle='round,pad=0.3', facecolor='lightcoral', alpha=0.7),
-                           arrowprops=dict(arrowstyle='->', color='red'),
-                           fontsize=9, ha='center')
+                        xy=(date, price), 
+                        xytext=(10, -40), 
+                        textcoords='offset points',
+                        bbox=dict(boxstyle='round,pad=0.3', facecolor='lightcoral', alpha=0.7),
+                        arrowprops=dict(arrowstyle='->', color='red'),
+                        fontsize=9, ha='center')
         
         # Add moving averages
         if len(df) >= 25:

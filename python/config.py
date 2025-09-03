@@ -10,9 +10,9 @@ class Config:
     """設定管理クラス"""
     
     def __init__(self):
-        self.db_path = os.getenv("DB_PATH", "python/db/stock.db")
+        self.db_path = os.getenv("DB_PATH", "db/stock.db")
         self.output_dir = os.getenv("OUTPUT_DIR", "data")
-        self.log_dir = os.getenv("LOG_DIR", "python/logs")
+        self.log_dir = os.getenv("LOG_DIR", "logs")
         
         # アラート設定
         self.slack_webhook = os.getenv("SLACK_WEBHOOK", "")

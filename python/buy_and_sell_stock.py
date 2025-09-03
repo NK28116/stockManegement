@@ -10,7 +10,6 @@ try:
     import yfinance as yf
 except Exception:
     yf = None
-
 CODES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "codes.csv")
 
 def load_codes(path: str) -> pd.DataFrame:

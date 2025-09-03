@@ -1,3 +1,4 @@
+# ひょっとして使われていない？
 import yfinance as yf
 import os
 import logging
