@@ -10,8 +10,7 @@ data/ChartsExample/*
 data/charts/*
 
 *.db
-python/__pycache__/*
-__pycache__/*
+*/__pycache__/*
 *.pyc
 logs/*
 *.log
