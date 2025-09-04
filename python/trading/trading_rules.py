@@ -12,9 +12,9 @@ class ImprovedTradingRules:
     """改善された売買ルールクラス"""
     
     def __init__(self, 
-                 stop_loss_percent: float = 0.05,  # 5%ストップロス
-                 take_profit_percent: float = 0.10,  # 10%利確
-                 trailing_stop_percent: float = 0.03):  # 3%トレーリングストップ
+                stop_loss_percent: float = 0.05,  # 5%ストップロス
+                take_profit_percent: float = 0.10,  # 10%利確
+                trailing_stop_percent: float = 0.03):  # 3%トレーリングストップ
         self.stop_loss_percent = stop_loss_percent
         self.take_profit_percent = take_profit_percent
         self.trailing_stop_percent = trailing_stop_percent

@@ -18,6 +18,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from trading_rules import ImprovedTradingRules, generate_trading_report
 
 # ログ設定
+import os
+
+# ログディレクトリ作成
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',

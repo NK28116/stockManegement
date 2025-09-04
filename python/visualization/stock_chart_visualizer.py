@@ -18,7 +18,7 @@ import shutil
 
 # Add current directory to path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from trading_rules import ImprovedTradingRules
+from python.trading.trading_rules import ImprovedTradingRules
 
 # Set font with fallbacks - suppress font warnings
 import matplotlib

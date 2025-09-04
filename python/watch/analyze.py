@@ -3,7 +3,7 @@ import sqlite3
 import pandas as pd
 import logging
 from typing import Tuple, Optional
-from .config import config
+from ..config import config
 
 logger = logging.getLogger(__name__)
 
