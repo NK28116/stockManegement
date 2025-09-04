@@ -8,10 +8,11 @@ from datetime import datetime, timedelta
 import pandas as pd
 import yfinance as yf
 from typing import Tuple, Dict, Optional
+from pathlib import Path
 
-# configモジュールのインポート
-
-from config import Config
+# プロジェクトルートをパスに追加（analysis/ から上に戻る）
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+from config import config  # ←インスタンスをimportする
 
 class StockDataCollector:
     def __init__(self):
@@ -77,13 +78,13 @@ class StockDataCollector:
             'ボラティリティ': f"{df['Volatility'].mean():.4f}",
         }
     # 銘柄一覧の読み込み
-    if not os.path.exists(Config.CODES_PATH):
-        print(f"エラー: 銘柄一覧ファイルが存在しません: {Config.CODES_PATH}")
+    if not os.path.exists(config.codes_path):
+        print(f"エラー: 銘柄一覧ファイルが存在しません: {config.codes_path}")
         sys.exit(1)
     try:
-        codes_df = pd.read_csv(Config.CODES_PATH)
+        codes_df = pd.read_csv(config.codes_path)
     except FileNotFoundError:
-        print(f"エラー: 銘柄一覧ファイルが見つかりません: {Config.CODES_PATH}")
+        print(f"エラー: 銘柄一覧ファイルが見つかりません: {config.codes_path}")
         sys.exit(1)
     except Exception as e:
         print(f"エラー: 銘柄一覧ファイルの読み込みに失敗しました: {e}")
@@ -94,22 +95,28 @@ def main():
     results = []
     
     # 銘柄一覧の読み込み
-    codes_df = pd.read_csv(Config.CODES_PATH)
+    #./data/codes.csv
+    codes_df = pd.read_csv(config.codes_path)
     
     for _, row in codes_df.iterrows():
     #    結果の保存
-        output_path = os.path.join(Config.OUTPUT_DIR, "quarterly_analysis.csv")
-    os.makedirs(Config.OUTPUT_DIR, exist_ok=True)  # ディレクトリがなければ作成
-    pd.DataFrame(results).to_csv(output_path, index=False, encoding='utf-8')
-    print(f"\n分析結果を保存しました: {output_path}")
-    if stock_data is not None:
-            analysis['コード'] = code
-            analysis['銘柄名'] = row['name'] if 'name' in row else ''
-            results.append(analysis)
-            results.append(analysis)
+        output_path = os.path.join(config.output_dir, "quarterly_analysis.csv")
+        os.makedirs(config.output_dir, exist_ok=True)  # ディレクトリがなければ作成
+        pd.DataFrame(results).to_csv(output_path, index=False, encoding='utf-8')
+        print(f"\n分析結果を保存しました: {output_path}")
+        
+        stock_data = collector.collect_stock_data(row['code'])
+        if stock_data is None:
+            continue
+
+        analysis = dict(stock_data)
+        analysis['コード'] = row['code']
+        analysis['銘柄名'] = row['name'] if 'name' in row else ''
+        results.append(analysis)
+
     
     # 結果の保存
-    output_path = os.path.join(Config.OUTPUT_DIR, "quarterly_analysis.csv")
+    output_path = os.path.join(config.output_dir, "quarterly_analysis.csv")
     pd.DataFrame(results).to_csv(output_path, index=False, encoding='utf-8')
     print(f"\n分析結果を保存しました: {output_path}")
 
