@@ -261,12 +261,12 @@ python3 every_stock_BuySell_timing.py ../data/codes.csv --period 6mo
   - **急落や乱高下に対応**
   - **数日スパンでのトレンド把握**
 
-1. **リアルタイム監視 (watch/)**
+1. **リアルタイム監視 (`watch/`)**
    1. 現状
       - `watch.py` が「株価を定期取得しDBへ格納」
    2. 今後の方針
         - 最初は `yfinance` を分単位で叩く擬似リアルタイム でOK
-        - 将来的に証券会社APIやWebsocketが使えるようになれば差し替え可能
+        - 将来的に証券会社APIやWeb-socketが使えるようになれば差し替え可能
         - `dailyAggregator.py` が 分足 → 日足 を自動集計
         - `analyze.py` が 一定閾値（例: -5%急落）検出 → アラート
    3. 目標
@@ -304,7 +304,7 @@ python3 every_stock_BuySell_timing.py ../data/codes.csv --period 6mo
             - 日足だけでなく、3日移動平均 or MACD を見て「短期トレンド」を補助指標にする
               - 例：ゴールデンクロス（++）が出ても、MACDがまだマイナス圏なら見送り,RSIが70を超えているなら「買われすぎ」でエントリーしない
 
-2. **より高度な分析指標の追加 (utils/indicator.py)**
+2. **より高度な分析指標の追加 (`utils/indicator.py`)**
    1. 現状
       - 移動平均やRSI程度を想定
    2. 方針
@@ -327,13 +327,13 @@ python3 every_stock_BuySell_timing.py ../data/codes.csv --period 6mo
       - ノイズでの往復を防ぐ。
       - ストップロスは -5% のまま、利確は 2〜3% にしてもよい。
 
-3. **アラートの追加 (utils/alert.py)**
+3. **アラートの追加 (`utils/alert.py`)**
    1. 現状
          - まだ未接続
          - Slack/LINE通知予定
    2. 方針
          - 第一段階：print/logging に出力（テスト確認）
-         - 第二段階：Slack Webhook → すぐ実用可
+         - 第二段階：Slack Web-hook → すぐ実用可
          - 第三段階：LINE Notify API → モバイル通知
    3. 役割分担
          - `alert.py` は通知方法をラップ
