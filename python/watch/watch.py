@@ -141,7 +141,8 @@ class StockWatcher:
             ticker = yf.Ticker(code)
             df = ticker.history(period="1mo")
             
-            if df.empty or len(df) < 25:
+            # 25日移動平均線とその前日分を使用するためには少なくとも26本のデータが必要
+            if df.empty or len(df) < 26:
                 return "データ不足"
             
             # 移動平均線計算

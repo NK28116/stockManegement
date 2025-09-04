@@ -161,9 +161,13 @@ class PortfolioAnalyzer:
         Returns:
             Dict: ポートフォリオ指標
         """
+        # returns が空の場合は計算不要
+        if not returns:
+            return {}
         try:
             # ポートフォリオリターン計算
-            portfolio_returns = pd.Series(0.0, index=next(iter(returns.values())).index)
+            first_series = next(iter(returns.values()))
+            portfolio_returns = pd.Series(0.0, index=first_series.index)
             
             for code, weight in {k: v['weight'] for k, v in portfolio.items()}.items():
                 if code in returns:
@@ -199,6 +203,10 @@ class PortfolioAnalyzer:
         except Exception as e:
             logger.error(f"ポートフォリオ指標計算エラー: {e}")
             return {}
+            
+        except Exception as e:
+            logger.error(f"ポートフォリオ指標計算エラー: {e}")
+            return {}
     
     def calculate_correlation_matrix(self, returns: Dict[str, pd.Series]) -> pd.DataFrame:
         """相関行列を計算"""
@@ -210,72 +218,84 @@ class PortfolioAnalyzer:
         except Exception as e:
             logger.error(f"相関行列計算エラー: {e}")
             return pd.DataFrame()
-    
-    def _calculate_max_drawdown(self, returns: pd.Series) -> float:
-        """最大ドローダウンを計算"""
-        cumulative = (returns + 1).cumprod()
-        running_max = cumulative.expanding().max()
-        drawdown = (cumulative - running_max) / running_max
-        return drawdown.min()
-    
     def generate_portfolio_report(self, portfolio: Dict, metrics: Dict, correlation_matrix: pd.DataFrame) -> str:
-        """ポートフォリオ分析レポートを生成"""
-        report = []
-        report.append("=" * 60)
-        report.append("ポートフォリオ分析レポート")
-        report.append("=" * 60)
-        report.append(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        report.append(f"対象銘柄数: {len(portfolio)}")
-        report.append("")
-        
-        # ポートフォリオ概要
-        report.append("【ポートフォリオ概要】")
-        total_value = sum(item['quantity'] * item['purchase_price'] for item in portfolio.values())
-        report.append(f"総投資額: {total_value:,.0f}円")
-        report.append("")
-        
-        # 銘柄別詳細
-        report.append("【銘柄別詳細】")
-        for code, item in portfolio.items():
-            report.append(f"{code} ({item['name']})")
-            report.append(f"  数量: {item['quantity']:,}株")
-            report.append(f"  購入価格: {item['purchase_price']:,.0f}円")
-            report.append(f"  投資額: {item['quantity'] * item['purchase_price']:,.0f}円")
-            report.append(f"  ウェイト: {item['weight']:.2%}")
-            if code in metrics.get('individual_metrics', {}):
-                ind_metrics = metrics['individual_metrics'][code]
-                report.append(f"  リターン: {ind_metrics['return']:.2%}")
-                report.append(f"  ボラティリティ: {ind_metrics['volatility']:.2%}")
-                report.append(f"  シャープレシオ: {ind_metrics['sharpe']:.2f}")
+            """ポートフォリオ分析レポートを生成"""
+            report = []
+            report.append("=" * 60)
+            report.append("ポートフォリオ分析レポート")
+            report.append("=" * 60)
+            report.append(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            report.append(f"対象銘柄数: {len(portfolio)}")
             report.append("")
         
-        # ポートフォリオ指標
-        report.append("【ポートフォリオ指標】")
-        report.append(f"総リターン: {metrics.get('total_return', 0):.2%}")
-        report.append(f"年率リターン: {metrics.get('annualized_return', 0):.2%}")
-        report.append(f"ボラティリティ: {metrics.get('volatility', 0):.2%}")
-        report.append(f"シャープレシオ: {metrics.get('sharpe_ratio', 0):.2f}")
-        report.append(f"最大ドローダウン: {metrics.get('max_drawdown', 0):.2%}")
-        report.append(f"VaR(95%): {metrics.get('var_95', 0):.2%}")
-        report.append(f"VaR(99%): {metrics.get('var_99', 0):.2%}")
-        report.append("")
+            # ポートフォリオ概要
+            report.append("【ポートフォリオ概要】")
+            total_value = sum(item['quantity'] * item['purchase_price'] for item in portfolio.values())
+            report.append(f"総投資額: {total_value:,.0f}円")
+            report.append("")
         
-        # 分散効果
-        report.append("【分散効果】")
-        if len(portfolio) > 1:
-            avg_correlation = (correlation_matrix.sum().sum() - len(correlation_matrix)) / (len(correlation_matrix) ** 2 - len(correlation_matrix))
-            report.append(f"平均相関係数: {avg_correlation:.3f}")
-            
-            if avg_correlation < 0.3:
-                report.append("✅ 良好な分散効果")
-            elif avg_correlation < 0.6:
-                report.append("⚠️ 中程度の分散効果")
-            else:
-                report.append("❌ 分散効果が限定的")
-        report.append("")
+            # 銘柄別詳細
+            report.append("【銘柄別詳細】")
+            for code, item in portfolio.items():
+                report.append(f"{code} ({item['name']})")
+                report.append(f"  数量: {item['quantity']:,}株")
+                report.append(f"  購入価格: {item['purchase_price']:,.0f}円")
+                report.append(f"  投資額: {item['quantity'] * item['purchase_price']:,.0f}円")
+                report.append(f"  ウェイト: {item['weight']:.2%}")
+                if code in metrics.get('individual_metrics', {}):
+                    ind_metrics = metrics['individual_metrics'][code]
+                    report.append(f"  リターン: {ind_metrics['return']:.2%}")
+                    report.append(f"  ボラティリティ: {ind_metrics['volatility']:.2%}")
+                    report.append(f"  シャープレシオ: {ind_metrics['sharpe']:.2f}")
+                report.append("")
         
-        # 推奨事項
-        report.append("【推奨事項】")
+            # ポートフォリオ指標
+            report.append("【ポートフォリオ指標】")
+            report.append(f"総リターン: {metrics.get('total_return', 0):.2%}")
+            report.append(f"年率リターン: {metrics.get('annualized_return', 0):.2%}")
+            report.append(f"ボラティリティ: {metrics.get('volatility', 0):.2%}")
+            report.append(f"シャープレシオ: {metrics.get('sharpe_ratio', 0):.2f}")
+            report.append(f"最大ドローダウン: {metrics.get('max_drawdown', 0):.2%}")
+            report.append(f"VaR(95%): {metrics.get('var_95', 0):.2%}")
+            report.append(f"VaR(99%): {metrics.get('var_99', 0):.2%}")
+            report.append("")
+        
+            # 分散効果
+            report.append("【分散効果】")
+            if len(portfolio) > 1:
+                if correlation_matrix is not None and len(correlation_matrix) > 1:
+                    denom = len(correlation_matrix) ** 2 - len(correlation_matrix)
+                    if denom != 0:
+                        avg_correlation = (correlation_matrix.sum().sum() - len(correlation_matrix)) / denom
+                        report.append(f"平均相関係数: {avg_correlation:.3f}")
+                    
+                        if avg_correlation < 0.3:
+                            report.append("✅ 良好な分散効果")
+                        elif avg_correlation < 0.6:
+                            report.append("⚠️ 中程度の分散効果")
+                        else:
+                            report.append("❌ 分散効果が限定的")
+                else:
+                    report.append("平均相関係数: N/A")
+            report.append("")
+        
+            # 推奨事項
+            report.append("【推奨事項】")
+            if metrics.get('sharpe_ratio', 0) < 1.0:
+                report.append("• リスク調整後リターンの改善を検討")
+            if metrics.get('max_drawdown', 0) < -0.15:
+                report.append("• リスク管理の強化を検討")
+            if len(portfolio) < 5:
+                report.append("• 銘柄数の増加を検討")
+        
+            return "\n".join(report)
+            report.append("• リスク調整後リターンの改善を検討")
+        if metrics.get('max_drawdown', 0) < -0.15:
+            report.append("• リスク管理の強化を検討")
+        if len(portfolio) < 5:
+            report.append("• 銘柄数の増加を検討")
+        
+        return "\n".join(report)
         if metrics.get('sharpe_ratio', 0) < 1.0:
             report.append("• リスク調整後リターンの改善を検討")
         if metrics.get('max_drawdown', 0) < -0.15:
@@ -342,7 +362,35 @@ def analyze_portfolio_sample():
         correlation_matrix = None
     
     print("レポート生成中...")
-    report = analyzer.generate_portfolio_report(portfolio, metrics, correlation_matrix)
+    if hasattr(analyzer, "generate_portfolio_report"):
+        report = analyzer.generate_portfolio_report(portfolio, metrics, correlation_matrix)
+    else:
+        # generate_portfolio_report が存在しない場合の簡易レポート
+        report_lines = ["ポートフォリオ分析レポート", "-" * 30]
+        report_lines.append("銘柄一覧:")
+        for code, weight in portfolio.items():
+            report_lines.append(f"  - {code}: {weight}")
+        report_lines.append("\nメトリクス:")
+        for key, value in metrics.items():
+            report_lines.append(f"  - {key}: {value}")
+        if correlation_matrix is not None:
+            report_lines.append("\n相関行列:")
+            report_lines.append(str(correlation_matrix))
+        report = "\n".join(report_lines)
+    
+    # 結果表示
+    print(report)
+    
+    # ファイル保存
+    analyzer.save_analysis_result(report, "my_portfolio_analysis.txt")
+            report_lines.append(f"  {code}: {weight}")
+        report_lines.append("\nMetrics:")
+        for k, v in metrics.items():
+            report_lines.append(f"  {k}: {v}")
+        if correlation_matrix is not None:
+            report_lines.append("\nCorrelation Matrix:")
+            report_lines.append(str(correlation_matrix))
+        report = "\n".join(report_lines)
     
     # 結果表示
     print(report)

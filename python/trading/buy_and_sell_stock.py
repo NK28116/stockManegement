@@ -93,7 +93,11 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
             if "status" in df.columns:
                 df.at[i, "status"] = "保有中"
         # 購入日は初回のまま残す（必要なら更新: df.at[i,"purchase_date"]=today）
-    print(f"買い: {code} +{qty}株 @¥{price if price else 'N/A'}")
+    action = "買い" if qty > 0 else "売り"
+    sign = "+" if qty > 0 else ""
+    print(f"{action}: {code} {sign}{qty}株 @¥{price if price else 'N/A'}")
+    return df
+    print(f"{action}: {code} {sign}{qty}株 @¥{price if price else 'N/A'}")
     return df
 def sell(df: pd.DataFrame, code: str, qty: int) -> pd.DataFrame:
     idx = df.index[df["code"] == code]
