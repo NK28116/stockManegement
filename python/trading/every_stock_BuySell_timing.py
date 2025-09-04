@@ -9,7 +9,7 @@ import yfinance as yf
 import os
 import sys
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List,Any, Optional
 import logging
 
 # 現在のディレクトリをパスに追加
@@ -83,7 +83,6 @@ class EveryStockAnalyzer:
             
         except Exception as e:
             logger.error(f"CSVファイル読み込みエラー: {e}")
-            return []
                 
             if not code.endswith('.T') and not code.endswith('.JP'):
                     code = code + '.T'
@@ -94,7 +93,6 @@ class EveryStockAnalyzer:
             
         except Exception as e:
             logger.error(f"CSVファイル読み込みエラー: {e}")
-            return []
     
     def analyze_single_stock(self, code: str, period: str = "3mo") -> Dict:
         """単一銘柄の分析"""
@@ -347,114 +345,92 @@ class EveryStockAnalyzer:
             logger.error(f"購入情報取得エラー: {e}")
         return {}
     
-    def calculate_monthly_returns(self, result: Dict) -> Dict[str, float]:
-        """月次リターンを計算"""
+    def calculate_monthly_returns(self, result: Dict[str, Any]) -> Dict[str, float]:
+        """月次リターンを計算（各月の終値/始値 - 1）"""
         try:
-            df = result['data']
-            if df.empty:
+            df = result.get('data')
+            if df is None or df.empty:
                 return {}
-            
-            # タイムゾーン情報を除去して月次リターン計算
-            df_copy = df.copy()
-            df_copy.index = df_copy.index.tz_localize(None)
-            df_copy['month'] = df_copy.index.to_period('M')
-            
-            monthly_returns = {}
-            for month in df_copy['month'].unique():
-                month_data = df_copy[df_copy['month'] == month]
-                if len(month_data) > 1:
 
+            # indexをDatetimeIndexへ
+            if not isinstance(df.index, pd.DatetimeIndex):
+                df = df.copy()
+                df.index = pd.to_datetime(df.index)
 
-                    def get_daily_status(self, df: pd.DataFrame, trades: List[Dict], days: int = 30) -> Dict[str, Dict]:
-                        """直近N日間の毎日のステータスと判断を取得"""
-            try:
-                if df.empty:
-                    return {}
-            
-                # 直近N日間のデータを取得（タイムゾーンを考慮）
-                cutoff_date = datetime.now().replace(tzinfo=None) - timedelta(days=days)
-            
-                # DatetimeIndex をタイムゾーン情報なしで取得
-                if getattr(df.index, 'tz', None) is not None:
-                    index_without_tz = df.index.tz_localize(None)
+            # タイムゾーン除去
+            if getattr(df.index, 'tz', None) is not None:
+                df = df.copy()
+                df.index = df.index.tz_localize(None)
+
+            df = df.copy()
+            df['month'] = df.index.to_period('M')
+
+            grp = df.groupby('month')['Close']
+            monthly = (grp.last() / grp.first() - 1.0).round(6)
+
+            # 返却は {"2025-07": 0.0123, ...} 形式
+            return {str(k): float(v) for k, v in monthly.items()}
+        except Exception as e:
+            logger.exception("月次リターン計算に失敗: %s", e)
+            return {}
+
+    def get_daily_status(
+        self,
+        df: pd.DataFrame,
+        trades: List[Dict[str, any]],
+        days: int = 30
+    ) -> Dict[str, Dict[str, Any]]:
+        """直近N日間の毎日のステータスと判断を取得"""
+        try:
+            if df is None or df.empty:
+                return {}
+
+            # indexをDatetimeIndexへ
+            if not isinstance(df.index, pd.DatetimeIndex):
+                df = df.copy()
+                df.index = pd.to_datetime(df.index)
+
+            # タイムゾーン除去
+            if getattr(df.index, 'tz', None) is not None:
+                df = df.copy()
+                df.index = df.index.tz_localize(None)
+
+            cutoff = datetime.now() - timedelta(days=days)
+            recent = df[df.index >= cutoff].sort_index()
+            if recent.empty:
+                return {}
+
+            # 取引履歴を日付キーで引けるように
+            trade_by_date: Dict[str, Dict[str, Any]] = {}
+            for tr in trades or []:
+                d = pd.to_datetime(tr.get('date')).strftime('%Y-%m-%d')
+                trade_by_date[d] = tr
+
+            daily_status: Dict[str, Dict[str, Any]] = {}
+            for ts, _row in recent.iterrows():
+                date_str = ts.strftime('%Y-%m-%d')
+                tr = trade_by_date.get(date_str)
+
+                if tr:
+                    status = tr.get('action')
+                    reason = tr.get('reason')
+                    stop_price = self.calculate_daily_stop_price(df, ts, tr)
                 else:
-                    index_without_tz = df.index
-            
-                recent_data = df[index_without_tz >= cutoff_date].copy()
-            
-                if recent_data.empty:
-                    return {}
-            
-                daily_status = {}
-                recent_data = recent_data.sort_index()
-            
-                # 取引履歴から日付ごとのステータスを取得
-                trade_by_date = {}
-                for trade in trades:
-                    trade_date = pd.to_datetime(trade['date']).strftime('%Y-%m-%d')
-                    trade_by_date[trade_date] = trade
-            
-                # 毎日のステータスを生成
-                for date in recent_data.index:
-                    # タイムゾーン情報を除去して日付文字列を作成
-                    if getattr(date, 'tzinfo', None) is not None:
-                        date_str = date.tz_localize(None).strftime('%Y-%m-%d')
-                    else:
-                        date_str = date.strftime('%Y-%m-%d')
-                
-                    if date_str in trade_by_date:
-                        # 取引がある日
-                        trade = trade_by_date[date_str]
-                        status = trade['action']
-                        reason = trade['reason']
-                    
-                        # その日のストップ値を取得
-                        stop_price = self.calculate_daily_stop_price(df, date, trade)
-                    
-                        daily_status[date_str] = {
-                            'status': status,
-                            'reason': reason,
-                            'stop_price': stop_price
-                        }
-                    else:
-                        # 取引がない日（HOLD状態）
-                        # その日のストップ値を計算
-                        stop_price = self.calculate_daily_stop_price(df, date, None)
-                    
-                        daily_status[date_str] = {
-                            'status': 'HOLD',
-                            'reason': '継続保持',
-                            'stop_price': stop_price
-                        }
-            
-                return daily_status
-            except Exception as e:
-                logger.error(f"日次ステータス取得エラー: {e}")
-                return {}
-                stop_price = self.calculate_daily_stop_price(df, date, None)
-                    
+                    status = 'HOLD'
+                    reason = '継続保持'
+                    stop_price = self.calculate_daily_stop_price(df, ts, None)
+
                 daily_status[date_str] = {
-                        'status': 'HOLD',
-                        'reason': '継続保持',
-                        'stop_price': stop_price
-                    }
-            
+                    'status': status,
+                    'reason': reason,
+                    'stop_price': stop_price
+                }
+
             return daily_status
+
         except Exception as e:
-            logger.error(f"日次ステータス取得エラー: {e}")
+            logger.exception("日次ステータス取得エラー: %s", e)
             return {}
-                    
-            daily_status[date_str] = {
-                'status': 'HOLD',
-                'reason': '継続保持',
-                'stop_price': stop_price
-            }
-            
-            return daily_status
-        except Exception as e:
-            logger.error(f"日次ステータス取得エラー: {e}")
-            return {}
-    
     def calculate_daily_stop_price(self, df: pd.DataFrame, date: datetime, trade: Dict = None) -> float:
         """その日のストップ値を計算"""
         try:
