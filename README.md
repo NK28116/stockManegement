@@ -1,7 +1,24 @@
-
 # 株式投資分析・運用システム
 
-##  **概要**
+## 修正中 
+- trading :完了
+- analysis
+  - data_collector :完了
+  - portfolio_analyzer: 
+  - analyze_my_stock :
+- watch
+  - watch :
+  - analyze:
+  - dailyAggregator:
+- visualize
+  - stock_chart_visualizer :
+  - view_charts :
+  - generate_all_charts 
+- utils
+  -  alert:
+  -  indicator:
+---
+## **概要**
 保有株式のポートフォリオ分析、売買タイミングの判定、リスク管理を行うPythonベースの投資支援システムです。
 
 ## 📊 **現在の保有株式**
