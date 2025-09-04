@@ -16,9 +16,11 @@ import warnings
 warnings.filterwarnings('ignore')
 import shutil
 
-# Add current directory to path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from python.trading.trading_rules import ImprovedTradingRules
+# Add parent directory and trading directory to path
+parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(parent_dir)
+sys.path.append(os.path.join(parent_dir, 'trading'))
+from trading.trading_rules import ImprovedTradingRules
 
 # Set font with fallbacks - suppress font warnings
 import matplotlib
@@ -232,10 +234,7 @@ class StockChartVisualizer:
                 summary.append(f"  {trade['date']}: ¥{trade['price']:.2f} - {reason}{profit_info}")
         
         return "\n".join(summary)
-        reason_part = f" - {reason}" if reason else ""
-        summary.append(f"  {trade['date']}: ¥{trade['price']:.2f}{reason_part}{profit_info}")
-        
-        return "\n".join(summary)
+
     
     def visualize_all_stocks(self, portfolio_file: str = "portfolio_practice.csv"):
         """全銘柄のチャートを作成"""

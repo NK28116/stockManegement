@@ -21,6 +21,7 @@ class Config:
         self.output_dir = os.getenv("OUTPUT_DIR", str(self.root_dir / "data"))
         self.db_path = os.getenv("DB_PATH", str(self.root_dir / "db" / "stock.db"))
         self.log_dir = os.getenv("LOG_DIR", str(self.root_dir / "logs"))
+        self.trading_rules = os.getenv("TRADING_RULES", str(self.root_dir /"trading" /"trading_rules.py"))
 
         # DB接続設定 (SQLite)
         self.db_options = {
@@ -36,6 +37,7 @@ class Config:
         self.default_period = os.getenv("DEFAULT_PERIOD", "1mo")
         self.ma_short = int(os.getenv("MA_SHORT", "5"))
         self.ma_long = int(os.getenv("MA_LONG", "25"))
+
 
         # リスク管理パラメータ
         self.max_loss_percent = float(os.getenv("MAX_LOSS_PERCENT", "2.0"))
