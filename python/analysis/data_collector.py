@@ -97,8 +97,8 @@ def main():
     codes_df = pd.read_csv(Config.CODES_PATH)
     
     for _, row in codes_df.iterrows():
-    # 結果の保存
-    output_path = os.path.join(Config.OUTPUT_DIR, "quarterly_analysis.csv")
+    #    結果の保存
+        output_path = os.path.join(Config.OUTPUT_DIR, "quarterly_analysis.csv")
     os.makedirs(Config.OUTPUT_DIR, exist_ok=True)  # ディレクトリがなければ作成
     pd.DataFrame(results).to_csv(output_path, index=False, encoding='utf-8')
     print(f"\n分析結果を保存しました: {output_path}")

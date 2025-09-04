@@ -232,8 +232,8 @@ class StockChartVisualizer:
                 summary.append(f"  {trade['date']}: ¥{trade['price']:.2f} - {reason}{profit_info}")
         
         return "\n".join(summary)
-                reason_part = f" - {reason}" if reason else ""
-                summary.append(f"  {trade['date']}: ¥{trade['price']:.2f}{reason_part}{profit_info}")
+        reason_part = f" - {reason}" if reason else ""
+        summary.append(f"  {trade['date']}: ¥{trade['price']:.2f}{reason_part}{profit_info}")
         
         return "\n".join(summary)
     
