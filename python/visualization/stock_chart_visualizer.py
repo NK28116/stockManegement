@@ -219,7 +219,8 @@ class StockChartVisualizer:
         if buy_trades:
             summary.append("\n【買いシグナル】")
             for trade in buy_trades:
-                summary.append(f"  {trade['date']}: ¥{trade['price']:.2f} - {trade['reason']}")
+                reason = trade.get('reason', '')
+                summary.append(f"  {trade['date']}: ¥{trade['price']:.2f} - {reason}")
         
         if sell_trades:
             summary.append("\n【売りシグナル】")
@@ -227,7 +228,12 @@ class StockChartVisualizer:
                 profit_info = ""
                 if 'profit_loss_percent' in trade:
                     profit_info = f" (損益: {trade['profit_loss_percent']:.2%})"
-                summary.append(f"  {trade['date']}: ¥{trade['price']:.2f} - {trade['reason']}{profit_info}")
+                reason = trade.get('reason', '')
+                summary.append(f"  {trade['date']}: ¥{trade['price']:.2f} - {reason}{profit_info}")
+        
+        return "\n".join(summary)
+                reason_part = f" - {reason}" if reason else ""
+                summary.append(f"  {trade['date']}: ¥{trade['price']:.2f}{reason_part}{profit_info}")
         
         return "\n".join(summary)
     

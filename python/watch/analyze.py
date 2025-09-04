@@ -19,12 +19,10 @@ def analyze(code: str) -> Tuple[Optional[pd.DataFrame], Optional[str]]:
     """
     try:
         db_config = config.get_database_config()
-        conn = sqlite3.connect(db_config["path"])
-        
-        # データ取得
-        query = f"SELECT date, close FROM daily WHERE code='{code}' ORDER BY date"
-        df = pd.read_sql_query(query, conn)
-        conn.close()
+        with sqlite3.connect(db_config["path"]) as conn:
+            # データ取得
+            query = f"SELECT date, close FROM daily WHERE code='{code}' ORDER BY date"
+            df = pd.read_sql_query(query, conn)
         
         if df.empty:
             logger.warning(f"データが見つかりません: {code}")
@@ -54,7 +52,6 @@ def analyze(code: str) -> Tuple[Optional[pd.DataFrame], Optional[str]]:
     except Exception as e:
         logger.error(f"分析エラー: {e}")
         return None, None
-
 def _determine_signal(df: pd.DataFrame) -> Optional[str]:
     """シグナルを判定する"""
     try:

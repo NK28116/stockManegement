@@ -67,10 +67,27 @@ class EveryStockAnalyzer:
             # ティッカー形式に変換（.Tがない場合は追加）
             formatted_codes = []
             for code in codes:
-                if isinstance(code, str):
-                    if not code.endswith('.T') and not code.endswith('.JP'):
-                        code = code + '.T'
-                    formatted_codes.append(code)
+                # 文字列以外の型（int, float など）も文字列に変換して扱う
+                if isinstance(code, float):
+                    # 7203.0 のような整数値を含む float は整数に変換してから文字列化
+                    code = str(int(code)) if code.is_integer() else str(code)
+                elif not isinstance(code, str):
+                    code = str(code)
+                
+                if not code.endswith('.T') and not code.endswith('.JP'):
+                    code = code + '.T'
+                formatted_codes.append(code)
+            
+            logger.info(f"銘柄コード読み込み完了: {len(formatted_codes)}銘柄")
+            return formatted_codes
+            
+        except Exception as e:
+            logger.error(f"CSVファイル読み込みエラー: {e}")
+            return []
+                
+                if not code.endswith('.T') and not code.endswith('.JP'):
+                    code = code + '.T'
+                formatted_codes.append(code)
             
             logger.info(f"銘柄コード読み込み完了: {len(formatted_codes)}銘柄")
             return formatted_codes
@@ -280,7 +297,7 @@ class EveryStockAnalyzer:
                 current_value = result['current_price'] * purchase_info.get('quantity', 0) if purchase_info else 0
                 purchase_value = purchase_info.get('purchase_price', 0) * purchase_info.get('quantity', 0) if purchase_info else 0
                 profit_loss = current_value - purchase_value
-                profit_loss_percent = (profit_loss / purchase_value * 100) if purchase_value > 0 else 0
+                profit_loss_percent = (profit_loss / purchase_value) if purchase_value > 0 else 0
         
                 report.append(f"売却額: ¥{current_value:,.0f}")
                 report.append(f"損益: ¥{profit_loss:+,.0f} ({profit_loss_percent:+.2%})")
@@ -346,62 +363,84 @@ class EveryStockAnalyzer:
             for month in df_copy['month'].unique():
                 month_data = df_copy[df_copy['month'] == month]
                 if len(month_data) > 1:
-                    start_price = month_data.iloc[0]['Close']
-                    end_price = month_data.iloc[-1]['Close']
-                    monthly_return = (end_price - start_price) / start_price
-                    month_str = month.strftime('%Y年%m月')
-                    monthly_returns[month_str] = monthly_return
-            
-            return monthly_returns
-        except Exception as e:
-            logger.error(f"月次リターン計算エラー: {e}")
-            return {}
-    
     def get_daily_status(self, df: pd.DataFrame, trades: List[Dict], days: int = 30) -> Dict[str, Dict]:
-        """直近N日間の毎日のステータスと判断を取得"""
-        try:
-            if df.empty:
-                return {}
+            """直近N日間の毎日のステータスと判断を取得"""
+            try:
+                if df.empty:
+                    return {}
             
-            # 直近N日間のデータを取得（タイムゾーンを考慮）
-            cutoff_date = datetime.now().replace(tzinfo=None) - timedelta(days=days)
-            recent_data = df[df.index.tz_localize(None) >= cutoff_date].copy()
+                # 直近N日間のデータを取得（タイムゾーンを考慮）
+                cutoff_date = datetime.now().replace(tzinfo=None) - timedelta(days=days)
             
-            if recent_data.empty:
-                return {}
+                # DatetimeIndex をタイムゾーン情報なしで取得
+                if getattr(df.index, 'tz', None) is not None:
+                    index_without_tz = df.index.tz_localize(None)
+                else:
+                    index_without_tz = df.index
             
-            daily_status = {}
-            recent_data = recent_data.sort_index()
+                recent_data = df[index_without_tz >= cutoff_date].copy()
             
-            # 取引履歴から日付ごとのステータスを取得
-            trade_by_date = {}
-            for trade in trades:
-                trade_date = pd.to_datetime(trade['date']).strftime('%Y-%m-%d')
-                trade_by_date[trade_date] = trade
+                if recent_data.empty:
+                    return {}
             
-            # 毎日のステータスを生成
-            for date in recent_data.index:
-                # タイムゾーン情報を除去して日付文字列を作成
-                date_str = date.tz_localize(None).strftime('%Y-%m-%d')
+                daily_status = {}
+                recent_data = recent_data.sort_index()
+            
+                # 取引履歴から日付ごとのステータスを取得
+                trade_by_date = {}
+                for trade in trades:
+                    trade_date = pd.to_datetime(trade['date']).strftime('%Y-%m-%d')
+                    trade_by_date[trade_date] = trade
+            
+                # 毎日のステータスを生成
+                for date in recent_data.index:
+                    # タイムゾーン情報を除去して日付文字列を作成
+                    if getattr(date, 'tzinfo', None) is not None:
+                        date_str = date.tz_localize(None).strftime('%Y-%m-%d')
+                    else:
+                        date_str = date.strftime('%Y-%m-%d')
                 
-                if date_str in trade_by_date:
-                    # 取引がある日
-                    trade = trade_by_date[date_str]
-                    status = trade['action']
-                    reason = trade['reason']
+                    if date_str in trade_by_date:
+                        # 取引がある日
+                        trade = trade_by_date[date_str]
+                        status = trade['action']
+                        reason = trade['reason']
                     
-                    # その日のストップ値を取得
-                    stop_price = self.calculate_daily_stop_price(df, date, trade)
+                        # その日のストップ値を取得
+                        stop_price = self.calculate_daily_stop_price(df, date, trade)
+                    
+                        daily_status[date_str] = {
+                            'status': status,
+                            'reason': reason,
+                            'stop_price': stop_price
+                        }
+                    else:
+                        # 取引がない日（HOLD状態）
+                        # その日のストップ値を計算
+                        stop_price = self.calculate_daily_stop_price(df, date, None)
+                    
+                        daily_status[date_str] = {
+                            'status': 'HOLD',
+                            'reason': '継続保持',
+                            'stop_price': stop_price
+                        }
+            
+                return daily_status
+            except Exception as e:
+                logger.error(f"日次ステータス取得エラー: {e}")
+                return {}
+                    stop_price = self.calculate_daily_stop_price(df, date, None)
                     
                     daily_status[date_str] = {
-                        'status': status,
-                        'reason': reason,
+                        'status': 'HOLD',
+                        'reason': '継続保持',
                         'stop_price': stop_price
                     }
-                else:
-                    # 取引がない日（HOLD状態）
-                    # その日のストップ値を計算
-                    stop_price = self.calculate_daily_stop_price(df, date, None)
+            
+            return daily_status
+        except Exception as e:
+            logger.error(f"日次ステータス取得エラー: {e}")
+            return {}
                     
                     daily_status[date_str] = {
                         'status': 'HOLD',
