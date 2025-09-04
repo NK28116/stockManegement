@@ -8,7 +8,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from stock_chart_visualizer import StockChartVisualizer
+from python.visualization.stock_chart_visualizer import StockChartVisualizer
 
 def main():
     """全銘柄のチャートを一括生成"""

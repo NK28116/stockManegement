@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 # import seaborn as sns
 
 # 現在のディレクトリをパスに追加
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from config import config
 
@@ -29,7 +29,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('logs/portfolio_analyzer.log', encoding='utf-8'),
+        logging.FileHandler(os.path.join(log_dir, 'portfolio_analyzer.log'), encoding='utf-8'),
         logging.StreamHandler()
     ]
 )

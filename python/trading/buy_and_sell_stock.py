@@ -10,7 +10,13 @@ try:
     import yfinance as yf
 except Exception:
     yf = None
-CODES_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "codes.csv")
+
+
+# プロジェクトのルートディレクトリを取得
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+
+# codes.csvへのパスを設定
+CODES_PATH = os.path.join(PROJECT_ROOT, "data", "codes.csv")
 
 def load_codes(path: str) -> pd.DataFrame:
     if not os.path.exists(path):
