@@ -17,7 +17,6 @@ import matplotlib.pyplot as plt
 
 # 現在のディレクトリをパスに追加
 sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-
 from config import config
 
 # Ensure logs directory exists
@@ -39,7 +38,7 @@ class PortfolioAnalyzer:
     """ポートフォリオ分析クラス"""
     
     def __init__(self):
-        self.db_config = config.get_database_config()
+        self.db_config = config.get_db_config()
         self.risk_free_rate = 0.001  # 無リスク金利（年率0.1%）
     
     def load_portfolio_from_file(self, file_path: str) -> Dict[str, Dict]:
@@ -289,21 +288,6 @@ class PortfolioAnalyzer:
                 report.append("• 銘柄数の増加を検討")
         
             return "\n".join(report)
-            report.append("• リスク調整後リターンの改善を検討")
-            if metrics.get('max_drawdown', 0) < -0.15:
-                report.append("• リスク管理の強化を検討")
-            if len(portfolio) < 5:
-                report.append("• 銘柄数の増加を検討")
-        
-            return "\n".join(report)
-            if metrics.get('sharpe_ratio', 0) < 1.0:
-                report.append("• リスク調整後リターンの改善を検討")
-            if metrics.get('max_drawdown', 0) < -0.15:
-                report.append("• リスク管理の強化を検討")
-            if len(portfolio) < 5:
-                report.append("• 銘柄数の増加を検討")
-        
-            return "\n".join(report)
     
     def save_analysis_result(self, report: str, filename: str = None) -> bool:
         """分析結果を保存"""
@@ -324,8 +308,8 @@ class PortfolioAnalyzer:
             logger.error(f"結果保存エラー: {e}")
             return False
 
-def analyze_portfolio_sample():
-    """サンプルポートフォリオの分析（6-8月データ使用）"""
+def analyze_portfolio():
+    """ポートフォリオの分析（6-8月データ使用）"""
     analyzer = PortfolioAnalyzer()
     
     # 相対パスでファイルを指定（python/ディレクトリから実行する場合）
@@ -341,6 +325,7 @@ def analyze_portfolio_sample():
         return
     
     # 6-8月のデータを取得
+    # TODO:動的な期間指定に変更
     start_date = "2024-06-01"
     end_date = "2024-08-31"
     
@@ -383,61 +368,50 @@ def analyze_portfolio_sample():
     
     # ファイル保存
     analyzer.save_analysis_result(report, "my_portfolio_analysis.txt")
-    report_lines.append(f"  {code}: {weight}")
-    report_lines.append("\nMetrics:")
-    for k, v in metrics.items():
-            report_lines.append(f"  {k}: {v}")
-    if correlation_matrix is not None:
-            report_lines.append("\nCorrelation Matrix:")
-            report_lines.append(str(correlation_matrix))
-            report = "\n".join(report_lines)
-    
-    # 結果表示
-    print(report)
-    
-    # ファイル保存
-    analyzer.save_analysis_result(report, "my_portfolio_analysis.txt")
 
-def analyze_custom_portfolio(csv_file: str):
-    """カスタムポートフォリオの分析"""
-    analyzer = PortfolioAnalyzer()
+
+# # カスタムポートフォリオの分析
+# def analyze_custom_portfolio(csv_file: str):
     
-    # CSVファイルを読み込み
-    portfolio = analyzer.load_portfolio_from_file(csv_file)
+#     analyzer = PortfolioAnalyzer()
     
-    if not portfolio:
-        print(f"ポートフォリオの読み込みに失敗しました: {csv_file}")
-        return
+#     # CSVファイルを読み込み
+#     portfolio = analyzer.load_portfolio_from_file(csv_file)
     
-    # 6-8月のデータを取得
-    start_date = "2024-06-01"
-    end_date = "2024-08-31"
+#     if not portfolio:
+#         print(f"ポートフォリオの読み込みに失敗しました: {csv_file}")
+#         return
     
-    print(f"データ取得中... ({csv_file})")
-    data = analyzer.fetch_historical_data(list(portfolio.keys()), start_date, end_date)
+#     # 6-8月のデータを取得
+#     start_date = "2024-06-01"
+#     end_date = "2024-08-31"
     
-    # 修正: DataFrame の真偽値評価が曖昧なため、適切にチェック
-    if data is None or (hasattr(data, "empty") and data.empty):
-        print("データ取得に失敗しました")
-        return
+#     print(f"データ取得中... ({csv_file})")
+#     data = analyzer.fetch_historical_data(list(portfolio.keys()), start_date, end_date)
     
-    print("分析中...")
-    returns = analyzer.calculate_returns(data)
-    metrics = analyzer.calculate_portfolio_metrics(portfolio, returns)
-    correlation_matrix = analyzer.calculate_correlation_matrix(returns)
+#     # 修正: DataFrame の真偽値評価が曖昧なため、適切にチェック
+#     if data is None or (hasattr(data, "empty") and data.empty):
+#         print("データ取得に失敗しました")
+#         return
     
-    print("レポート生成中...")
-    report = analyzer.generate_portfolio_report(portfolio, metrics, correlation_matrix)
+#     print("分析中...")
+#     returns = analyzer.calculate_returns(data)
+#     metrics = analyzer.calculate_portfolio_metrics(portfolio, returns)
+#     correlation_matrix = analyzer.calculate_correlation_matrix(returns)
     
-    # 結果表示
-    print(report)
+#     print("レポート生成中...")
+#     report = analyzer.generate_portfolio_report(portfolio, metrics, correlation_matrix)
     
-    # ファイル保存
-    filename = f"analysis_{os.path.basename(csv_file).replace('.csv', '')}.txt"
-    analyzer.save_analysis_result(report, filename)
+#     # 結果表示
+#     print(report)
+    
+#     # ファイル保存
+#     filename = f"analysis_{os.path.basename(csv_file).replace('.csv', '')}.txt"
+#     analyzer.save_analysis_result(report, filename)
+
 if __name__ == "__main__":
     # デフォルトのサンプル分析
-    analyze_portfolio_sample()
+    analyze_portfolio()
     
     # 他のポートフォリオも分析したい場合
     # analyze_custom_portfolio('../data/portfolio_growth.csv')
