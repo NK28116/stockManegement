@@ -85,9 +85,9 @@ class EveryStockAnalyzer:
             logger.error(f"CSVファイル読み込みエラー: {e}")
             return []
                 
-                if not code.endswith('.T') and not code.endswith('.JP'):
+            if not code.endswith('.T') and not code.endswith('.JP'):
                     code = code + '.T'
-                formatted_codes.append(code)
+            formatted_codes.append(code)
             
             logger.info(f"銘柄コード読み込み完了: {len(formatted_codes)}銘柄")
             return formatted_codes
@@ -363,8 +363,10 @@ class EveryStockAnalyzer:
             for month in df_copy['month'].unique():
                 month_data = df_copy[df_copy['month'] == month]
                 if len(month_data) > 1:
-    def get_daily_status(self, df: pd.DataFrame, trades: List[Dict], days: int = 30) -> Dict[str, Dict]:
-            """直近N日間の毎日のステータスと判断を取得"""
+
+
+                    def get_daily_status(self, df: pd.DataFrame, trades: List[Dict], days: int = 30) -> Dict[str, Dict]:
+                        """直近N日間の毎日のステータスと判断を取得"""
             try:
                 if df.empty:
                     return {}
@@ -429,9 +431,9 @@ class EveryStockAnalyzer:
             except Exception as e:
                 logger.error(f"日次ステータス取得エラー: {e}")
                 return {}
-                    stop_price = self.calculate_daily_stop_price(df, date, None)
+                stop_price = self.calculate_daily_stop_price(df, date, None)
                     
-                    daily_status[date_str] = {
+                daily_status[date_str] = {
                         'status': 'HOLD',
                         'reason': '継続保持',
                         'stop_price': stop_price
@@ -442,11 +444,11 @@ class EveryStockAnalyzer:
             logger.error(f"日次ステータス取得エラー: {e}")
             return {}
                     
-                    daily_status[date_str] = {
-                        'status': 'HOLD',
-                        'reason': '継続保持',
-                        'stop_price': stop_price
-                    }
+            daily_status[date_str] = {
+                'status': 'HOLD',
+                'reason': '継続保持',
+                'stop_price': stop_price
+            }
             
             return daily_status
         except Exception as e:

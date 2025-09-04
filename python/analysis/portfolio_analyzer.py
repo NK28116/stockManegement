@@ -290,20 +290,20 @@ class PortfolioAnalyzer:
         
             return "\n".join(report)
             report.append("• リスク調整後リターンの改善を検討")
-        if metrics.get('max_drawdown', 0) < -0.15:
-            report.append("• リスク管理の強化を検討")
-        if len(portfolio) < 5:
-            report.append("• 銘柄数の増加を検討")
+            if metrics.get('max_drawdown', 0) < -0.15:
+                report.append("• リスク管理の強化を検討")
+            if len(portfolio) < 5:
+                report.append("• 銘柄数の増加を検討")
         
-        return "\n".join(report)
-        if metrics.get('sharpe_ratio', 0) < 1.0:
-            report.append("• リスク調整後リターンの改善を検討")
-        if metrics.get('max_drawdown', 0) < -0.15:
-            report.append("• リスク管理の強化を検討")
-        if len(portfolio) < 5:
-            report.append("• 銘柄数の増加を検討")
+            return "\n".join(report)
+            if metrics.get('sharpe_ratio', 0) < 1.0:
+                report.append("• リスク調整後リターンの改善を検討")
+            if metrics.get('max_drawdown', 0) < -0.15:
+                report.append("• リスク管理の強化を検討")
+            if len(portfolio) < 5:
+                report.append("• 銘柄数の増加を検討")
         
-        return "\n".join(report)
+            return "\n".join(report)
     
     def save_analysis_result(self, report: str, filename: str = None) -> bool:
         """分析結果を保存"""
@@ -383,14 +383,14 @@ def analyze_portfolio_sample():
     
     # ファイル保存
     analyzer.save_analysis_result(report, "my_portfolio_analysis.txt")
-            report_lines.append(f"  {code}: {weight}")
-        report_lines.append("\nMetrics:")
-        for k, v in metrics.items():
+    report_lines.append(f"  {code}: {weight}")
+    report_lines.append("\nMetrics:")
+    for k, v in metrics.items():
             report_lines.append(f"  {k}: {v}")
-        if correlation_matrix is not None:
+    if correlation_matrix is not None:
             report_lines.append("\nCorrelation Matrix:")
             report_lines.append(str(correlation_matrix))
-        report = "\n".join(report_lines)
+            report = "\n".join(report_lines)
     
     # 結果表示
     print(report)
@@ -416,7 +416,8 @@ def analyze_custom_portfolio(csv_file: str):
     print(f"データ取得中... ({csv_file})")
     data = analyzer.fetch_historical_data(list(portfolio.keys()), start_date, end_date)
     
-    if not data:
+    # 修正: DataFrame の真偽値評価が曖昧なため、適切にチェック
+    if data is None or (hasattr(data, "empty") and data.empty):
         print("データ取得に失敗しました")
         return
     
@@ -434,7 +435,6 @@ def analyze_custom_portfolio(csv_file: str):
     # ファイル保存
     filename = f"analysis_{os.path.basename(csv_file).replace('.csv', '')}.txt"
     analyzer.save_analysis_result(report, filename)
-
 if __name__ == "__main__":
     # デフォルトのサンプル分析
     analyze_portfolio_sample()
