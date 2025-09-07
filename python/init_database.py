@@ -28,6 +28,7 @@ def init_database():
     conn = sqlite3.connect(main_db_path)
     cur = conn.cursor()
     
+# 基本テーブルの作成
     # 基本テーブルの作成
     tables = [
         """
@@ -76,25 +77,35 @@ def init_database():
             weight REAL DEFAULT 0.0,
             PRIMARY KEY (code)
         )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS stock_data (
+            date DATE,
+            open REAL,
+            high REAL,
+            low REAL,
+            close REAL,
+            PRIMARY KEY (date)
+        )
         """
     ]
-    
+        
     for table_sql in tables:
         cur.execute(table_sql)
-    
+        
     # インデックスの作成
     indexes = [
         "CREATE INDEX IF NOT EXISTS idx_intraday_code_date ON intraday(code, DATE(timestamp))",
         "CREATE INDEX IF NOT EXISTS idx_daily_code_date ON daily(code, date)",
         "CREATE INDEX IF NOT EXISTS idx_sample_daily_code_date ON sample_daily(code, date)"
     ]
-    
+        
     for index_sql in indexes:
         cur.execute(index_sql)
-    
+        
     conn.commit()
     conn.close()
-    
+        
     print(f"データベース初期化完了: {main_db_path}")
     print("作成されたテーブル:")
     print("- intraday (分足データ)")

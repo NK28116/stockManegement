@@ -1,342 +1,138 @@
-"""
-監視機能モジュール
-分足・日足での株価監視とアラート機能
-"""
-
-import yfinance as yf
-import sqlite3
-import pandas as pd
-import logging
-import time
-import os
-import sys
-from datetime import datetime, timedelta
+# python/watch/watch.py
 import argparse
-from typing import Dict, List, Optional, Tuple
+import logging
+import sqlite3
+from datetime import datetime, timedelta
+import pandas as pd
+import os
+import time as time_module
+import random
 
-# 現在のディレクトリをパスに追加
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
+# 設定読み込み
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import config
 
-# ログ設定
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('logs/watch.log', encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
-class StockWatcher:
-    """株価監視クラス"""
-    
-    def __init__(self, db_config: Optional[Dict[str, object]] = None):
-            self.db_config = db_config if db_config is not None else config.get_database_config()
-            self.alert_thresholds = {
-                "crash_threshold": -5.0,  # 5%以上の急落でアラート
-                "volatility_threshold": 3.0,  # 3%以上の変動でアラート
-                "volume_spike": 2.0,  # 出来高が2倍以上でアラート
-            }
-    
-    def watch_intraday(self, codes: List[str], interval: int = 60) -> None:
-        """
-        分足で監視して暴落に備える
-        
-        Args:
-            codes: 監視する証券コードのリスト
-            interval: 監視間隔（秒）
-        """
-        logger.info(f"分足監視開始: {codes}")
-        
-        while True:
-            try:
-                for code in codes:
-                    self._check_intraday_crash(code)
-                
-                # データベースに保存
-                self._save_intraday_data(codes)
-                
-                logger.info(f"分足監視完了: {datetime.now().strftime('%H:%M:%S')}")
-                time.sleep(interval)
-                
-            except KeyboardInterrupt:
-                logger.info("分足監視を停止しました")
-                break
-            except Exception as e:
-                logger.error(f"分足監視エラー: {e}")
-                time.sleep(interval)
-    
-    def watch_daily(self, codes: List[str]) -> Dict[str, str]:
-        """
-        日足で監視して売買ルールに基づいた評価をする
-        
-        Args:
-            codes: 監視する証券コードのリスト
-            
-        Returns:
-            Dict[str, str]: 銘柄コードと評価結果
-        """
-        logger.info(f"日足監視開始: {codes}")
-        evaluations = {}
-        
-        try:
-            for code in codes:
-                evaluation = self._evaluate_daily_trading(code)
-                evaluations[code] = evaluation
-                
-                # 重要なシグナルの場合はログ出力
-                if "売り" in evaluation or "買い" in evaluation:
-                    logger.warning(f"重要シグナル: {code} - {evaluation}")
-            
-            logger.info(f"日足監視完了: {len(evaluations)}銘柄")
-            return evaluations
-            
-        except Exception as e:
-            logger.error(f"日足監視エラー: {e}")
-            return {}
-    
-    def _check_intraday_crash(self, code: str) -> None:
-        """分足での暴落チェック"""
-        try:
-            # 最新の株価データを取得
-            ticker = yf.Ticker(code)
-            current_data = ticker.history(period="1d", interval="1m")
-            
-            if current_data.empty:
-                logger.warning(f"データが取得できません: {code}")
-                return
-            
-            # 最新価格と前回価格を比較
-            current_price = current_data['Close'].iloc[-1]
-            prev_price = current_data['Close'].iloc[-2] if len(current_data) > 1 else current_price
-            
-            # 価格変動率を計算
-            price_change_percent = ((current_price - prev_price) / prev_price) * 100
-            
-            # 暴落判定
-            if price_change_percent <= self.alert_thresholds["crash_threshold"]:
-                self._trigger_crash_alert(code, current_price, price_change_percent)
-            
-            # ボラティリティチェック
-            if abs(price_change_percent) >= self.alert_thresholds["volatility_threshold"]:
-                self._trigger_volatility_alert(code, current_price, price_change_percent)
-            
-            # 出来高スパイクチェック
-            current_volume = current_data['Volume'].iloc[-1]
-            avg_volume = current_data['Volume'].rolling(5).mean().iloc[-1]
-            
-            if avg_volume > 0 and current_volume >= avg_volume * self.alert_thresholds["volume_spike"]:
-                self._trigger_volume_alert(code, current_volume, avg_volume)
-                
-        except Exception as e:
-            logger.error(f"暴落チェックエラー: {code} - {e}")
-    
-    def _evaluate_daily_trading(self, code: str) -> str:
-        """日足での売買ルール評価"""
-        try:
-            # 日足データを取得
-            ticker = yf.Ticker(code)
-            df = ticker.history(period="1mo")
-            
-            # 25日移動平均線とその前日分を使用するためには少なくとも26本のデータが必要
-            if df.empty or len(df) < 26:
-                return "データ不足"
-            
-            # 移動平均線計算
-            df['MA5'] = df['Close'].rolling(5).mean()
-            df['MA25'] = df['Close'].rolling(25).mean()
-            
-            # 最新データ
-            current_price = df['Close'].iloc[-1]
-            current_ma5 = df['MA5'].iloc[-1]
-            current_ma25 = df['MA25'].iloc[-1]
-            prev_ma5 = df['MA5'].iloc[-2]
-            prev_ma25 = df['MA25'].iloc[-2]
-            
-            # RSI計算
-            rsi = self._calculate_rsi(df['Close'])
-            current_rsi = rsi.iloc[-1] if not rsi.empty else 50
-            
-            # 評価ロジック
-            evaluation = []
-            
-            # 移動平均線クロス
-            if current_ma5 > current_ma25 and prev_ma5 <= prev_ma25:
-                evaluation.append("ゴールデンクロス（買いシグナル）")
-            elif current_ma5 < current_ma25 and prev_ma5 >= prev_ma25:
-                evaluation.append("デッドクロス（売りシグナル）")
-            
-            # RSI判定
-            if current_rsi >= 70:
-                evaluation.append("RSI過買い（売り検討）")
-            elif current_rsi <= 30:
-                evaluation.append("RSI過売り（買い検討）")
-            
-            # トレンド判定
-            if current_ma5 > current_ma25:
-                evaluation.append("上昇トレンド")
-            else:
-                evaluation.append("下降トレンド")
-            
-            # 価格位置
-            if current_price > current_ma25 * 1.1:
-                evaluation.append("高値圏")
-            elif current_price < current_ma25 * 0.9:
-                evaluation.append("安値圏")
-            
-            return " | ".join(evaluation) if evaluation else "中立"
-            
-        except Exception as e:
-            logger.error(f"日足評価エラー: {code} - {e}")
-            return "エラー"
-    
-    def _calculate_rsi(self, prices: pd.Series, period: int = 14) -> pd.Series:
-        """RSIを計算"""
-        try:
-            delta = prices.diff()
-            gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-            loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-            rs = gain / loss
-            rsi = 100 - (100 / (1 + rs))
-            return rsi
-        except Exception as e:
-            logger.error(f"RSI計算エラー: {e}")
-            return pd.Series()
-    
-    def _trigger_crash_alert(self, code: str, price: float, change_percent: float) -> None:
-        """暴落アラート"""
-        message = f"🚨 暴落アラート: {code} - 価格: {price:.2f}円, 変動: {change_percent:.2f}%"
-        logger.critical(message)
-        print(f"\n{message}\n")
-    
-    def _trigger_volatility_alert(self, code: str, price: float, change_percent: float) -> None:
-        """ボラティリティアラート"""
-        message = f"⚠️ 高ボラティリティ: {code} - 価格: {price:.2f}円, 変動: {change_percent:.2f}%"
-        logger.warning(message)
-        print(f"\n{message}\n")
-    
-    def _trigger_volume_alert(self, code: str, volume: int, avg_volume: float) -> None:
-        """出来高アラート"""
-        message = f"📊 出来高急増: {code} - 出来高: {volume:,}, 平均: {avg_volume:.0f}"
-        logger.info(message)
-        print(f"\n{message}\n")
-    
-    def _save_intraday_data(self, codes: List[str]) -> None:
-        """分足データをデータベースに保存"""
-        try:
-            conn = sqlite3.connect(self.db_config["path"])
-            cur = conn.cursor()
-            
-            # テーブル作成
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS intraday (
-                    code TEXT,
-                    timestamp DATETIME,
-                    price REAL,
-                    volume INTEGER,
-                    PRIMARY KEY (code, timestamp)
-                )
-            """)
-            
-            for code in codes:
-                ticker = yf.Ticker(code)
-                data = ticker.history(period="1d", interval="1m")
-                
-                if not data.empty:
-                    latest = data.iloc[-1]
-                    timestamp = data.index[-1].strftime("%Y-%m-%d %H:%M:%S")
-                    
-                    cur.execute("""
-                        INSERT OR REPLACE INTO intraday (code, timestamp, price, volume)
-                        VALUES (?, ?, ?, ?)
-                    """, (code, timestamp, latest['Close'], latest['Volume']))
-            
-            conn.commit()
-            conn.close()
-            
-        except Exception as e:
-            logger.error(f"データ保存エラー: {e}")
-    
-    def fetch_historical_data(self, target_date: str):
-        """指定日の株価データを取得してDBに保存"""
-        # Obtain the list of target codes safely
-        if hasattr(self, "_get_target_codes") and callable(getattr(self, "_get_target_codes")):
-            codes = self._get_target_codes()
-        elif hasattr(self, "get_target_codes") and callable(getattr(self, "get_target_codes")):
-            codes = self.get_target_codes()
-        elif hasattr(self, "codes"):
-            codes = self.codes
+DB_PATH = config.db_path
+
+# --- データ保存 ---
+def save_data_to_db(code, timestamp, price, volume):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    try:
+        if hasattr(timestamp, 'strftime'):
+            timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S')
         else:
-            raise AttributeError("No method or attribute found to obtain target codes.")
+            timestamp_str = str(timestamp)
+
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS intraday (
+                code TEXT,
+                timestamp DATETIME,
+                price REAL,
+                volume INTEGER,
+                PRIMARY KEY (code, timestamp)
+            )
+        """)
+        c.execute(
+            "INSERT OR REPLACE INTO intraday VALUES (?, ?, ?, ?)",
+            (code, timestamp_str, price, volume)
+        )
+    except Exception as e:
+        logging.error(f"DB保存エラー: {e}")
+    conn.commit()
+    conn.close()
+
+# --- ボラティリティ計算 ---
+def calc_volatility(prices):
+    if len(prices) < 2:
+        return 0
+    return pd.Series(prices).pct_change().std() * 100
+
+# --- 擬似リアルタイム監視(devモード用) ---
+def run_dev_mode(dev_date):
+    logging.info("=== 開発モード: 過去日の擬似リアルタイム監視 ===")
+
+    stock_df = pd.read_csv(config.codes_path)
+    codes = stock_df['code'].tolist()
+
+    start_dt = datetime.strptime(dev_date, "%Y%m%d").replace(hour=10, minute=0)
+    end_dt = start_dt + timedelta(minutes=10)
+    current_dt = start_dt
+
+    price_history = {code: [random.uniform(1000, 2000)] for code in codes}
+    last_price = {code: price_history[code][-1] for code in codes}
+
+    while current_dt <= end_dt:
         for code in codes:
-            try:
-                ticker = yf.Ticker(f"{code}.T")
-                hist = ticker.history(start=target_date, end=target_date)
-                if not hist.empty:
-                    # データをintradayテーブルに保存
-                    conn = sqlite3.connect(self.db_config["path"])
-                    cur = conn.cursor()
-                    for index, row in hist.iterrows():
-                        cur.execute("""
-                            INSERT OR REPLACE INTO intraday 
-                            (code, timestamp, price, volume) 
-                            VALUES (?, ?, ?, ?)
-                        """, (code, index.strftime("%Y-%m-%d %H:%M:%S"),
-                              row["Close"], row["Volume"]))
-                    conn.commit()
-                    conn.close()
-                    print(f"{code}: データ保存完了")
-            except Exception as e:
-                print(f"{code}: データ取得エラー - {e}")
+            change_pct = random.uniform(-0.5, 0.5) / 100
+            price = last_price[code] * (1 + change_pct)
+            volume = random.randint(100, 1000)
 
-def watch_stocks(codes: List[str], mode: str = "daily") -> None:
-    """
-    株価監視のメイン関数
-    
-    Args:
-        codes: 監視する証券コードのリスト
-        mode: 監視モード ("intraday" または "daily")
-    """
-    watcher = StockWatcher()
-    
-    if mode == "intraday":
-        print(f"分足監視開始: {codes}")
-        print("Ctrl+Cで停止")
-        watcher.watch_intraday(codes)
-    else:
-        print(f"日足監視開始: {codes}")
-        evaluations = watcher.watch_daily(codes)
-        
-        print("\n=== 評価結果 ===")
-        for code, evaluation in evaluations.items():
-            print(f"{code}: {evaluation}")
+            save_data_to_db(code, current_dt, price, volume)
 
-def main():
+            history = price_history[code]
+            history.append(price)
+            last_price[code] = price
+
+            # --- 連続下落検知 ---
+            if len(history) >= 3 and history[-1] < history[-2] < history[-3]:
+                logging.warning(f"{code} 連続下落検出: {history[-3]:.1f} -> {history[-2]:.1f} -> {history[-1]:.1f}")
+
+            # --- ボラティリティ警告(直近5本) ---
+            recent_prices = history[-5:]
+            vol = calc_volatility(recent_prices)
+            if vol > config.volatility_threshold:
+                logging.warning(f"{code} ボラティリティ警告: {vol:.2f}%")
+
+            # --- 前回比 -3%以上下落 ---
+            if len(history) >= 2:
+                drop_pct = (history[-1] - history[-2]) / history[-2] * 100
+                if drop_pct <= -3.0:
+                    logging.warning(f"{code} 前回比 -3%以上下落: {history[-2]:.1f} -> {history[-1]:.1f} ({drop_pct:.2f}%)")
+                    # 将来 Slack/LINE 通知は alert.py の send_alert() を呼ぶ
+
+        current_dt += timedelta(minutes=1)
+        time_module.sleep(0.5)
+
+# --- 本番リアルタイム監視（2分周期） ---
+def run_realtime_mode():
+    logging.info("=== リアルタイム監視開始 ===")
+    stock_df = pd.read_csv(config.codes_path)
+    codes = stock_df['code'].tolist()
+    last_price = {code: random.uniform(1000, 2000) for code in codes}  # 仮の前回価格
+
+    while True:
+        current_dt = datetime.now()
+        for code in codes:
+            # TODO: 証券会社APIなどでリアル株価取得
+            price = last_price[code] * (1 + random.uniform(-0.01, 0.01))
+            volume = random.randint(100, 1000)
+
+            save_data_to_db(code, current_dt, price, volume)
+
+            # --- 前回比 -3%以上下落 ---
+            prev = last_price[code]
+            drop_pct = (price - prev) / prev * 100
+            if drop_pct <= -3.0:
+                logging.warning(f"{code} 前回比 -3%以上下落: {prev:.1f} -> {price:.1f} ({drop_pct:.2f}%)")
+
+            # --- 連続下落・ボラティリティ ---
+            # 過去5本の履歴を取得する場合は DB から SELECT するなどで対応可能
+            last_price[code] = price
+
+        time_module.sleep(120)  # 2分周期
+
+# --- メイン ---
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("mode", choices=["realtime", "yesterday"], 
-                       help="実行モード: realtime=リアルタイム監視, yesterday=昨日のデータ取得")
+    parser.add_argument("--dev", help="開発モード: 過去日 YYYYMMDD")
     args = parser.parse_args()
 
-    if args.mode == "yesterday":
-        yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-        print(f"昨日({yesterday})のデータを取得します...")
-        # 昨日のデータを取得して保存
-        watcher = StockWatcher(db_config={"path": "db/stock.db"})
-        watcher.fetch_historical_data(target_date=yesterday)
+    if args.dev:
+        run_dev_mode(args.dev)
     else:
-        # 既存のリアルタイム監視処理
-        watcher = StockWatcher()
-        watcher.start()
-
-if __name__ == "__main__":
-    # 監視する銘柄リスト（例）
-    watch_codes = ["7203.T", "6758.T", "9984.T"]  # トヨタ、ソニー、ソフトバンク
-    
-    # 日足監視（推奨）
-    watch_stocks(watch_codes, "daily")
-    
-    # 分足監視（長時間実行）
-    # watch_stocks(watch_codes, "intraday")
+        run_realtime_mode()

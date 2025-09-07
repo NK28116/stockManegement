@@ -55,9 +55,9 @@ class StockChartVisualizer:
     def load_portfolio_stocks(self, portfolio_file: str) -> List[Dict]:
         """ポートフォリオファイルから株式リストを読み込み"""
         try:
-            # 実際の運用用のcodes.csvを使用
-            if portfolio_file == "codes.csv":
-                portfolio_path = "../data/codes.csv"
+            # 実際の運用用のmy_stock.csvを使用
+            if portfolio_file == "my_stock.csv":
+                portfolio_path = "../data/my_stock.csv"
             else:
                 portfolio_path = f"../data/practice/{portfolio_file}"
             
@@ -318,7 +318,7 @@ def main():
     
     # Available portfolios
     portfolios = [
-        "codes.csv",  # 実際の運用用
+        "my_stock.csv",  # 実際の運用用
         "portfolio_practice.csv",  # 練習用
         "portfolio_beginner.csv", 
         "portfolio_diversified.csv",
@@ -329,7 +329,7 @@ def main():
     print("=== 株価チャート可視化ツール ===")
     print("利用可能なポートフォリオ:")
     for i, portfolio in enumerate(portfolios, 1):
-        if portfolio == "codes.csv":
+        if portfolio == "my_stock.csv":
             print(f"{i}. {portfolio} (実際の運用用)")
         else:
             print(f"{i}. {portfolio} (練習用)")

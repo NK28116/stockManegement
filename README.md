@@ -6,7 +6,7 @@
 
 ## 📊 **現在の保有株式**
 
-`data/codes.csv`に記載
+`data/my_stock.csv`に記載
 
 ## **セットアップ**
 
@@ -28,7 +28,7 @@ pip install -r requirements.txt
 ```bash
 stockManegement/
 ├── data/                          # データ保存用
-│   ├── codes.csv                 # 保有銘柄リスト
+│   ├── my_stock.csv                 # 保有銘柄リスト
 │   ├── quarterly_analysis.csv    # 保有銘柄リスト
 │   ├── report                    # ポートフォリオテンプレート
 │   ｜     ├── summary/           # 分析レポート
@@ -77,10 +77,10 @@ stockManegement/
 cd python
 
 # 保有株式の売買タイミングを分析
-python3 every_stock_BuySell_timing.py ../data/codes.csv
+python3 every_stock_BuySell_timing.py ../data/my_stock.csv
 
 # 分析期間を指定（例：6ヶ月）
-python3 every_stock_BuySell_timing.py ../data/codes.csv --period 6mo
+python3 every_stock_BuySell_timing.py ../data/my_stock.csv --period 6mo
 ```
 
 ### **2. チャートの作成・確認**
@@ -147,112 +147,127 @@ python3 watch.py
 
 ## 🔧 **カスタマイズ方法**
 
-### **1. 保有株式の追加・変更**
+### **保有株式管理**
 
-`data/codes.csv`を編集して保有株式を管理：
+保有株は CSV で管理します。
+
+`data/my_stock.csv`
 
 ```csv
 code,name,quantity,purchase_price,purchase_date,sector
 7974.T,任天堂,30,8000,2024-06-01,ゲーム
 1878.T,大東建託,50,2000,2024-06-01,不動産
-# 新しい銘柄を追加
 7203.T,トヨタ自動車,100,2500,2024-06-01,自動車
 ```
 
-### **2. リスク管理パラメータの調整**
+- 銘柄追加・数量変更・購入価格変更はこの CSV を編集
+- CSV を読み込んで分析・監視が自動で行われます
 
-`python/config.py`で設定を変更：
+⸻
 
-```python
-# ストップロス幅（デフォルト: 5%）
-self.max_loss_percent = 3.0
+### **リスク管理パラメータ（`config.py`）**
 
-# 利確幅（デフォルト: 10%）
-self.take_profit_percent = 8.0
+- ストップロス幅（%）
+  - self.max_loss_percent = 3.0
 
-# 暴落アラート閾値（デフォルト: -5%）
-self.crash_threshold = -3.0
+- 利確幅（%）
+  - self.take_profit_percent = 8.0
+
+- 暴落アラート閾値（%）
+  - self.crash_threshold = -3.0
+
+---
+
+## **リアルタイム監視・分析フロー**
+
+```mermaid
+flowchart TD
+    A[CSV 読み込み: my_stock.csv] --> B[株価取得: 2分周期]
+    B --> C{価格変動確認}
+    C -->|下落 >= 3%| D[アラート出力 (ログ / Slack / LINE)]
+    C -->|正常| E[データ保存 (SQLite)]
+    E --> F[MACD / ボリンジャー計算]
+    F --> G[ポートフォリオ指標計算]
+    G --> H[レポート生成 & 保存]
+    H --> I[テクニカル指標グラフ生成 & 保存]
 ```
 
-### **3. 分析期間の調整**
+- 2分ごとに株価を取得して SQLite に保存
+- 下落が閾値以上ならアラート
+- ポートフォリオ分析・テクニカル指標計算も自動実行
 
-```bash
-# 短期分析（1ヶ月）
-python3 every_stock_BuySell_timing.py ../data/codes.csv --period 1mo
+---
 
-# 中期分析（3ヶ月）
-python3 every_stock_BuySell_timing.py ../data/codes.csv --period 3mo
+## **アラート条件表**
 
-# 長期分析（1年）
-python3 every_stock_BuySell_timing.py ../data/codes.csv --period 1y
-```
+|条件|内容|出力形式|
+|--|--|--|
+|価格下落 ≥ -3%	|暴落アラート|	ログ / Slack / LINE|
+|連続2本下落	|ダマシ回避|	ログ|
+|ストップロス達成（-max_loss%）	|強制売却候補|	ログ / レポート|
+|利確達成（+take_profit%）|	利益確定候補|	ログ / レポート|
 
-## 📱 **日常的な使用方法**
+---
 
-### **朝のチェック（5分）**
+## **閾値一覧表（`config.py` 設定例）**
 
-```bash
-# 保有株式の状況確認
-python3 every_stock_BuySell_timing.py ../data/codes.csv
+パラメータ	値	説明
+max_loss_percent	3.0	許容損失の最大割合
+take_profit_percent	8.0	利確の目標割合
+crash_threshold	-3.0	暴落アラート発生割合
+risk_free_rate	0.1%	シャープレシオ計算用無リスク金利
 
-# 重要なシグナルの確認
-python3 watch.py
-```
+---
 
-### **週次分析（30分）**
+## **実行コマンド例**
 
-```bash
-# 全銘柄の売買タイミング分析
-python3 every_stock_BuySell_timing.py ../data/codes.csv
+### 日常チェック（5分）
 
-# 分析結果の確認
-cat ../data/report/summary/summary_report_*.txt
-```
+- 保有株状況確認
+`python3 trading/every_stock_BuySell_timing.py ../data/my_stock.csv`
 
-### **月次評価（1時間）**
+- 重要シグナル確認
+`python3 watch/watch.py`
 
-```bash
-# 長期パフォーマンス分析
-python3 every_stock_BuySell_timing.py ../data/codes.csv --period 6mo
+### 週次分析（30分）
 
-# ポートフォリオの再構築検討
-# 分析結果を基に銘柄の入れ替えを検討
-```
+- 売買タイミング分析
+`python3 trading/every_stock_BuySell_timing.py ../data/my_stock.csv`
 
-## **学習の進め方**
+-分析結果確認
+`cat ../data/report/summary/summary_report_*.txt`
 
-### **レベル1: 基本操作（1週間）**
+### 月次評価（1時間）
 
-- 基本的な分析実行
-- 結果の読み方理解
-- 保有株式の設定
+- 長期パフォーマンス分析
+`python3 trading/every_stock_BuySell_timing.py ../data/my_stock.csv --period 6mo`
 
-### **レベル2: 応用分析（2週間）**
+- ポートフォリオ再構築検討
+- 分析結果を基に銘柄入れ替え検討
 
-- 売買ルールのカスタマイズ
-- リスク管理の調整
-- 複数期間での分析
+### ポートフォリオ総合分析・グラフ生成
 
-### **レベル3: 実践運用（1ヶ月）**
+`python3 analysis/portfolio_analyzer.py`
 
-- リアルタイム監視
-- 売買タイミングの実践
-- パフォーマンスの改善
+- レポート生成: ../data/my_portfolio_analysis.txt
+- MACD・ボリンジャーバンドグラフ: ../data/plots/*.png
 
+---
 
-## **次のステップ**
+### **分析フローまとめ**
 
-### **今すぐできること**
+1. CSV 読み込み → 保有株一覧取得
+2. 株価取得（Yahoo Finance / 2分周期）
+3. リアルタイム監視（暴落・ダマシ回避）
+4. 売買タイミング分析（ストップロス / 利確 / MACD・ボリンジャー）
+5. ポートフォリオ指標計算（リターン・ボラティリティ・シャープレシオ・ドローダウン・VaR）
+6. レポート生成 & 保存
+7. テクニカル指標グラフ生成 & 保存
 
-1. **保有株式の分析**: `python3 every_stock_BuySell_timing.py ../data/codes.csv`
-2. **チャート作成**: `python3 stock_chart_visualizer.py`
-3. **ポートフォリオ分析**: `python3 portfolio_analyzer.py`
-4. **売買ルールの検証**: `python3 trading_rules.py`
+---
 
-### **今後の発展のための追加機能**
+### memo
 
-1. **リアルタイム監視**: `python3 watch.py`:暴落アラートや分析の強化
-2. **アラートの追加**: `python/utils/alert.py`:slackやLINEで通知 
 3. **より高度な分析指標の追加**
 
 #### **実装までのロードマップ**
@@ -367,36 +382,3 @@ if signal == "buy" and not position:
         trades.append(f"{date}: {price}円 - エントリー")
 ```
 
-#### **実作業**
-
-1. `watch/`
-   - [ ] 2分ごとに株価取得
-   - [ ] SQLite保存
-   - [ ] 3%以上下落でログ出力(`log_alert()`)
-   - [ ] 標準偏差(σ)を計算して一定以上なら「ボラティリティ警告」(乱高下対応)
-   - [ ] 連続2本の下落を検知(ダマシ回避)
-2. `utils/alert.py`
-   - [ ] `watch.py`の`log_alert()`をSlack/LINE通知に置換
-   - [ ] Slack通知
-3. `utils/indicator.py`
-   - [ ] MACD計算
-   - [ ] ボリンジャーバンド計算
-   - [ ] `portfolio_analyzer.py`で利用
-
----
-
-##  **初心者へのアドバイス**
-
-1. **小さく始める**: まずは保有株式で練習
-2. **記録を取る**: 全ての取引を記録
-3. **感情をコントロール**: ルールに従う
-4. **継続的に学習**: 市場の動きを観察
-5. **リスクを理解**: 損失の可能性を常に意識
-
-## 📞 **サポート**
-
-問題が発生した場合や質問がある場合は、ログファイル（`python/logs/`）を確認してください。詳細なエラー情報が記録されています。
-
----
-
-**注意**: 実際の投資判断は自己責任で行ってください。
