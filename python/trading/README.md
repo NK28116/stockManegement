@@ -22,29 +22,29 @@ trading/
 ```bash
 python3 buy_and_sell_stock.py buy 7203.T 1000  # トヨタ自動車を1000株購入
 ```
-これにより,`data/codes.csv`に保有株式として追加します
+これにより,`data/my_stock.csv`に保有株式として追加します
 
 ```bash
 python3 buy_and_sell_stock.py sell 7203.T 500   # トヨタ自動車を500株売却
 ```
-これにより,`data/codes.csv`から売却株式としてステータスを更新します
+これにより,`data/my_stock.csv`から売却株式としてステータスを更新します
 
 ```bash
 python3 buy_and_sell_stock.py prebuy 7203.T 1000          # 保有株式の一覧表示
 ```
-これにより,`data/codes.csv`に監視株式として追加されます
+これにより,`data/my_stock.csv`に監視株式として追加されます
 
 ### 2.売買処理を行うタイミングを分析
 
 ```bash
-python3 every_stock_BuySell_timing.py ../data/codes.csv 
+python3 every_stock_BuySell_timing.py ../data/my_stock.csv 
 ```
 これにより,保有株式の売買タイミングを分析します
 TODO:ステータスごとに記述を分ける
 #### 具体例
 ```
-python3 every_stock_BuySell_timing.py ../data/codes.csv
-分析開始: ../data/codes.csv
+python3 every_stock_BuySell_timing.py ../data/my_stock.csv
+分析開始: ../data/my_stock.csv
 分析期間: 3mo
 ============================================================
 2025-09-04 09:56:53,809 - __main__ - INFO - 銘柄コード読み込み完了: 14銘柄

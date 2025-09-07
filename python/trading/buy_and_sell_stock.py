@@ -15,8 +15,8 @@ except Exception:
 # プロジェクトのルートディレクトリを取得
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 
-# codes.csvへのパスを設定
-CODES_PATH = os.path.join(PROJECT_ROOT, "data", "codes.csv")
+# my_stock.csvへのパスを設定
+CODES_PATH = os.path.join(PROJECT_ROOT, "data", "my_stock.csv")
 
 def load_codes(path: str) -> pd.DataFrame:
     if not os.path.exists(path):
@@ -102,7 +102,7 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
 def sell(df: pd.DataFrame, code: str, qty: int) -> pd.DataFrame:
     idx = df.index[df["code"] == code]
     if len(idx) == 0:
-        print(f"エラー: {code} はcodes.csvに存在しません")
+        print(f"エラー: {code} はmy_stock.csvに存在しません")
         return df
     i = idx[0]
     cur_q = int(df.at[i, "quantity"])
@@ -215,7 +215,7 @@ def pre_buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.Da
     return df
 
 def main():
-    parser = argparse.ArgumentParser(description="codes.csvの売買操作ツール")
+    parser = argparse.ArgumentParser(description="my_stock.csvの売買操作ツール")
     sub = parser.add_subparsers(dest="action", required=True)
 
     p_buy = sub.add_parser("buy")

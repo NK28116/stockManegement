@@ -17,9 +17,9 @@ class Config:
         self.root_dir = Path(__file__).resolve().parent.parent
 
         # ファイル・ディレクトリパス
-        self.codes_path = os.getenv("CODES_PATH", str(self.root_dir / "data" / "codes.csv"))
+        self.codes_path = os.getenv("CODES_PATH", str(self.root_dir / "data" / "my_stock.csv"))
         self.output_dir = os.getenv("OUTPUT_DIR", str(self.root_dir / "data"))
-        self.db_path = os.getenv("DB_PATH", str(self.root_dir / "db" / "stock.db"))
+        self.db_path = os.getenv("DB_PATH", str(self.root_dir /"python"/"db" / "stock.db"))
         self.log_dir = os.getenv("LOG_DIR", str(self.root_dir / "logs"))
         self.trading_rules = os.getenv("TRADING_RULES", str(self.root_dir /"trading" /"trading_rules.py"))
 

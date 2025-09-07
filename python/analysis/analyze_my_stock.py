@@ -6,12 +6,17 @@ from datetime import datetime
 from typing import List, Dict, Optional
 import pandas as pd
 
+# Ensure logs directory exists
+log_dir = 'python/logs'
+if not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+
 # ログ設定
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('python/logs/stock_management.log', encoding='utf-8'),
+        logging.FileHandler(os.path.join(log_dir, 'stock_management.log'), encoding='utf-8'),
         logging.StreamHandler()
     ]
 )

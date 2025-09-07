@@ -18,8 +18,8 @@ def main():
     # Create visualizer
     visualizer = StockChartVisualizer(period="3mo")
     
-    # Generate charts for actual portfolio (codes.csv)
-    portfolio_file = "codes.csv"
+    # Generate charts for actual portfolio (my_stock.csv)
+    portfolio_file = "my_stock.csv"
     
     print(f"対象ポートフォリオ: {portfolio_file} (実際の運用用)")
     print("期間: 3ヶ月")

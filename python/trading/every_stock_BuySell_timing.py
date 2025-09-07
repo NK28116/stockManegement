@@ -119,6 +119,7 @@ class EveryStockAnalyzer:
             result = {
                 'code': code,
                 'status': 'success',
+                'name': self.get_stock_name(code),  # Add stock name
                 'data': df,  # データフレームを追加
                 'data_period': f"{df.index[0].strftime('%Y-%m-%d')} ～ {df.index[-1].strftime('%Y-%m-%d')}",
                 'data_count': len(df),
@@ -183,7 +184,7 @@ class EveryStockAnalyzer:
             target = datetime.now() - timedelta(days=1)
             for r in successful_results:
                 line = self._get_status_for_date(r, target)
-                report.append(f"{r['code']}: {line}")
+                report.append(f"{r['code']}-{r['name']}: {line}")
             report.append("")
 
         return "\n".join(report)
@@ -254,9 +255,9 @@ class EveryStockAnalyzer:
     
             for result in successful_results:
                 # 基本情報
-                report.append(f"資産名: {result['code']}-{result.get('name', '')}")
+                report.append(f"資産名: {result['code']}-{result['name']}")
         
-                # 購入情報（codes.csvから取得）
+                # 購入情報（my_stock.csvから取得）
                 purchase_info = self.get_purchase_info(result['code'])
                 if purchase_info:
                     purchase_date = purchase_info.get('purchase_date', 'N/A')
@@ -333,9 +334,9 @@ class EveryStockAnalyzer:
             logger.error(f"レポート保存エラー: {e}")
 
     def get_purchase_info(self, code: str) -> Dict:
-        """codes.csvから購入情報を取得"""
+        """my_stock.csvから購入情報を取得"""
         try:
-            codes_file = "../data/codes.csv"
+            codes_file = "../data/my_stock.csv"
             if os.path.exists(codes_file):
                 df = pd.read_csv(codes_file)
                 stock_info = df[df['code'] == code]
@@ -344,6 +345,11 @@ class EveryStockAnalyzer:
         except Exception as e:
             logger.error(f"購入情報取得エラー: {e}")
         return {}
+
+    def get_stock_name(self, code: str) -> str:
+        """銘柄コードから銘柄名を取得"""
+        purchase_info = self.get_purchase_info(code)
+        return purchase_info.get('name', code) # デフォルトでコードを返す
     
     def calculate_monthly_returns(self, result: Dict[str, Any]) -> Dict[str, float]:
         """月次リターンを計算（各月の終値/始値 - 1）"""
