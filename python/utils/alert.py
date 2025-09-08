@@ -1,7 +1,7 @@
 import requests
 import logging
 from typing import Optional
-from ..config import config
+from config import config
 
 logger = logging.getLogger(__name__)
 
