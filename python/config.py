@@ -22,6 +22,7 @@ class Config:
         self.db_path = os.getenv("DB_PATH", str(self.root_dir /"python"/"db" / "stock.db"))
         self.log_dir = os.getenv("LOG_DIR", str(self.root_dir / "logs"))
         self.trading_rules = os.getenv("TRADING_RULES", str(self.root_dir /"trading" /"trading_rules.py"))
+        self.archive_dir = os.getenv("ARCHIVE_DIR", str(self.root_dir / "data" / "archive"))
 
         # DB接続設定 (SQLite)
         self.db_options = {
