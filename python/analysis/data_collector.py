@@ -132,11 +132,70 @@ class StockDataCollector:
         except Exception as e:
             print(f"エラー: パフォーマンス分析に失敗しました - {e}")
             return {}
+import sqlite3
+
+def get_stock_list_from_db() -> list:
+    """stocks テーブルから銘柄コードリストを取得"""
+    conn = sqlite3.connect(config.db_path)
+    cur = conn.cursor()
+    cur.execute("SELECT code FROM stocks")
+    codes = [row[0] for row in cur.fetchall()]
+    conn.close()
+    return codes
+
+def fetch_and_store_stock_prices_quarter(code: str, start_date: str, end_date: str):
+    """四半期データを取得してDBに保存"""
+    try:
+        df = yf.download(code, start=start_date, end=end_date)
+        if df.empty:
+            print(f"データなし: {code}")
+            return
+
+        conn = sqlite3.connect(config.db_path)
+        cur = conn.cursor()
+        for date, row in df.iterrows():
+            cur.execute("""
+                INSERT OR IGNORE INTO stock_prices
+                (code, date, open, high, low, close, volume, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                code,
+                date.strftime("%Y-%m-%d"),
+                row['Open'],
+                row['High'],
+                row['Low'],
+                row['Close'],
+                int(row['Volume']),
+                datetime.now()
+            ))
+        conn.commit()
+        conn.close()
+        print(f"データ取得・保存完了: {code} ({len(df)}件)")
+    except Exception as e:
+        print(f"エラー: {code} - {e}")     
 def main():
     """メイン処理"""
     collector = StockDataCollector()
     results = []
-    
+ # DBから銘柄コードを取得
+    codes = get_stock_list_from_db()
+    print(f"DBから取得した銘柄数: {len(codes)}")
+
+    for code in codes:
+        fetch_and_store_stock_prices_quarter(code, collector.start_date, collector.end_date)
+        analysis = collector.collect_stock_data(code)
+        if analysis:
+            analysis['コード'] = code
+            results.append(analysis)
+
+    # CSVに保存
+    if results:
+        output_path = os.path.join(config.output_dir, "quarterly_analysis.csv")
+        os.makedirs(config.output_dir, exist_ok=True)
+        pd.DataFrame(results).to_csv(output_path, index=False, encoding='utf-8')
+        print(f"\n分析結果を保存しました: {output_path}")
+    else:
+        print("分析可能な銘柄データがありませんでした")
     # 銘柄一覧の読み込み
     if not os.path.exists(config.codes_path):
         print(f"エラー: 銘柄一覧ファイルが存在しません: {config.codes_path}")

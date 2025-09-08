@@ -1,154 +1,123 @@
-"""
-データベース初期化スクリプト
-重複を解消し、統一されたデータベース構造を作成
-"""
-
 import sqlite3
 import os
 import shutil
 from datetime import datetime
 
 def init_database():
-    """データベースを初期化"""
+    """データベース初期化（新スキーマ対応）"""
     
-    # メインのデータベースパス
-    main_db_path = os.path.join(os.path.dirname(__file__), "db/stock.db")
+    db_path = os.path.join(os.path.dirname(__file__), "db/stock.db")
     
-    # 重複ディレクトリの確認と削除
+    # 重複ディレクトリ削除
     duplicate_path = os.path.join(os.path.dirname(__file__), "python/db")
     if os.path.exists(duplicate_path):
         print(f"重複ディレクトリを削除中: {duplicate_path}")
         shutil.rmtree(duplicate_path)
     
-    # メインのDBディレクトリを作成
-    db_dir = os.path.dirname(main_db_path)
-    os.makedirs(db_dir, exist_ok=True)
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
     
-    # データベース接続とテーブル作成
-    conn = sqlite3.connect(main_db_path)
+    conn = sqlite3.connect(db_path)
     cur = conn.cursor()
     
-# 基本テーブルの作成
-    # 基本テーブルの作成
+    # 外部キー有効化
+    cur.execute("PRAGMA foreign_keys = ON;")
+    
+    # テーブル作成
     tables = [
+        # 株式基本情報
         """
-        CREATE TABLE IF NOT EXISTS intraday (
-            code TEXT,
-            timestamp DATETIME,
-            price REAL,
-            volume INTEGER,
-            PRIMARY KEY (code, timestamp)
-        )
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS daily (
-            code TEXT,
-            date DATE,
+        CREATE TABLE IF NOT EXISTS stocks (
+            code TEXT PRIMARY KEY,
             name TEXT,
-            quantity INTEGER,
-            purchase_price REAL,
-            purchase_date DATE,
             sector TEXT,
-            status TEXT DEFAULT '保有中',
-            PRIMARY KEY (code, date)
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """,
+        # 株価データ
         """
-        CREATE TABLE IF NOT EXISTS sample_daily (
+        CREATE TABLE IF NOT EXISTS stock_prices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             code TEXT,
-            date DATE,
-            name TEXT,
-            quantity INTEGER,
-            target_price REAL,
-            planned_date DATE,
-            sector TEXT,
-            status TEXT DEFAULT '購入予定',
-            PRIMARY KEY (code, date)
-        )
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS portfolio (
-            code TEXT,
-            name TEXT,
-            quantity INTEGER,
-            purchase_price REAL,
-            purchase_date DATE,
-            sector TEXT,
-            weight REAL DEFAULT 0.0,
-            PRIMARY KEY (code)
-        )
-        """,
-        """
-        CREATE TABLE IF NOT EXISTS stock_data (
             date DATE,
             open REAL,
             high REAL,
             low REAL,
             close REAL,
-            PRIMARY KEY (date)
+            volume INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(code) REFERENCES stocks(code)
+        )
+        """,
+        # ポートフォリオ保有情報
+        """
+        CREATE TABLE IF NOT EXISTS portfolio_holdings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT,
+            quantity INTEGER,
+            purchase_price REAL,
+            purchase_date DATE,
+            portfolio_name TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(code) REFERENCES stocks(code)
+        )
+        """,
+        # 売買シグナル
+        """
+        CREATE TABLE IF NOT EXISTS trading_signals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT,
+            signal_date DATE,
+            signal_type TEXT,
+            price REAL,
+            reason TEXT,
+            confidence REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(code) REFERENCES stocks(code)
         )
         """
     ]
-        
-    for table_sql in tables:
-        cur.execute(table_sql)
-        
-    # インデックスの作成
+    
+    for sql in tables:
+        cur.execute(sql)
+    
+    # インデックス作成
     indexes = [
-        "CREATE INDEX IF NOT EXISTS idx_intraday_code_date ON intraday(code, DATE(timestamp))",
-        "CREATE INDEX IF NOT EXISTS idx_daily_code_date ON daily(code, date)",
-        "CREATE INDEX IF NOT EXISTS idx_sample_daily_code_date ON sample_daily(code, date)"
+        "CREATE INDEX IF NOT EXISTS idx_stock_prices_code_date ON stock_prices(code, date)",
+        "CREATE INDEX IF NOT EXISTS idx_portfolio_code_name ON portfolio_holdings(code, portfolio_name)",
+        "CREATE INDEX IF NOT EXISTS idx_signals_code_date ON trading_signals(code, signal_date)"
     ]
-        
-    for index_sql in indexes:
-        cur.execute(index_sql)
-        
+    
+    for idx in indexes:
+        cur.execute(idx)
+    
     conn.commit()
     conn.close()
-        
-    print(f"データベース初期化完了: {main_db_path}")
-    print("作成されたテーブル:")
-    print("- intraday (分足データ)")
-    print("- daily (保有中の銘柄データ)")
-    print("- sample_daily (購入予定の銘柄データ)")
-    print("- portfolio (ポートフォリオ情報)")
+    
+    print(f"✅ データベース初期化完了: {db_path}")
 
 def check_database_status():
-    """データベースの状態を確認"""
+    """データベース状態確認"""
+    db_path = os.path.join(os.path.dirname(__file__), "db/stock.db")
     
-    main_db_path = os.path.join(os.path.dirname(__file__), "db/stock.db")
-    
-    if not os.path.exists(main_db_path):
-        print("❌ メインデータベースが見つかりません")
+    if not os.path.exists(db_path):
+        print("❌ データベースが存在しません")
         return False
     
-    # 重複ディレクトリの確認
-    duplicate_path = os.path.join(os.path.dirname(__file__), "python/db")
-    if os.path.exists(duplicate_path):
-        print("❌ 重複ディレクトリが残っています")
-        return False
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
     
-    # データベースの内容確認
-    try:
-        conn = sqlite3.connect(main_db_path)
-        cur = conn.cursor()
-        
-        # テーブル一覧を取得
-        cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = [row[0] for row in cur.fetchall()]
-        
-        print("✅ データベース構造:")
-        for table in tables:
-            cur.execute(f"SELECT COUNT(*) FROM {table}")
-            count = cur.fetchone()[0]
-            print(f"  - {table}: {count}件")
-        
-        conn.close()
-        return True
-        
-    except Exception as e:
-        print(f"❌ データベース確認エラー: {e}")
-        return False
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+    tables = [row[0] for row in cur.fetchall()]
+    
+    print("✅ データベース構造:")
+    for table in tables:
+        cur.execute(f"SELECT COUNT(*) FROM {table}")
+        count = cur.fetchone()[0]
+        print(f"  - {table}: {count}件")
+    
+    conn.close()
+    return True
 
 if __name__ == "__main__":
     print("データベース初期化開始...")
