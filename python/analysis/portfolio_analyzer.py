@@ -3,7 +3,6 @@
 ポートフォリオ分析モジュール
 リスク・リターン分析、テクニカル指標、分散投資評価
 """
-
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -11,18 +10,17 @@ import sqlite3
 import logging
 import os
 import sys
+
+
 from datetime import datetime, timedelta
 from typing import Dict, List
+# --- パス修正 ---
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
+from utils.indicators import calculate_macd, calculate_bollinger_bands
 from visualization.plot_indicators import plot_macd_bollinger
-
-
-import matplotlib.pyplot as plt
-# import seaborn as sns
-
-# --- utils パス追加 ---
-sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from config import config
-from utils.indicator import calculate_macd, calculate_bollinger_bands
+import matplotlib.pyplot as plt
 
 # --- ログ設定 ---
 log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
@@ -37,6 +35,13 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+# --- ta library import ---
+try:
+    from ta import volatility
+except ImportError:
+    volatility = None
+    logger.warning("ta library not found. Some technical indicators may not be available.")
 
 class PortfolioAnalyzer:
     """ポートフォリオ分析クラス"""
@@ -167,12 +172,31 @@ class PortfolioAnalyzer:
             if df.empty or 'Close' not in df.columns:
                 continue
             close = df['Close']
-            macd_df = calculate_macd(close)
-            bb_df = calculate_bollinger_bands(close)
-            indicators[code] = {
-                'MACD': macd_df,
-                'Bollinger': bb_df
-            }
+            try:
+                # MACD計算
+                macd_df = calculate_macd(close)
+                
+                # ボリンジャーバンド計算
+                if volatility is not None:
+                    bb = volatility.BollingerBands(close=close, window=20, window_dev=2)
+                    bb_df = pd.DataFrame({
+                        'Upper': bb.bollinger_hband(),
+                        'Middle': bb.bollinger_mavg(),
+                        'Lower': bb.bollinger_lband()
+                    })
+                else:
+                    # ta library が利用できない場合は、utils.indicators の関数を使用
+                    bb_raw = calculate_bollinger_bands(close)
+                    # 列名を標準化（'MA' -> 'Middle'）
+                    bb_df = bb_raw.rename(columns={'MA': 'Middle'})
+                    
+                indicators[code] = {
+                    'MACD': macd_df,
+                    'Bollinger': bb_df
+                }
+            except Exception as e:
+                logger.error(f"テクニカル指標計算エラー ({code}): {e}")
+                continue
         return indicators
     
     # --- レポート生成 ---
@@ -291,7 +315,7 @@ def analyze_portfolio():
     # 10. ログ出力
     logger.info("ポートフォリオ分析が完了しました。")
     print("テクニカル指標グラフを生成中...")
-    plot_macd_bollinger(data, indicators)
+    plot_macd_bollinger(price_data, indicators)
 
 if __name__ == "__main__":
     analyze_portfolio()
