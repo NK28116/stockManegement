@@ -2,7 +2,9 @@ import sqlite3
 import logging
 
 # ログ出力の設定
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+from utils.logger import get_logger
+
+logger = get_logger("dailyAggregator", category="watch")
 
 def save_data_to_db(data):
     try:
