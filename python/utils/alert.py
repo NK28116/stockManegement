@@ -3,7 +3,9 @@ import logging
 from typing import Optional
 from config import config
 
-logger = logging.getLogger(__name__)
+from utils.logger import get_logger
+
+logger = get_logger("alert", category="watch")
 
 class AlertManager:
     """アラート管理クラス"""

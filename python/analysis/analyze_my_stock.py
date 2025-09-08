@@ -5,25 +5,21 @@ import logging
 from datetime import datetime
 from typing import List, Dict, Optional
 import pandas as pd
-
-# Ensure logs directory exists
-log_dir = 'python/logs'
-if not os.path.exists(log_dir):
-    os.makedirs(log_dir)
+import sys
+from pathlib import Path
+# プロジェクトのルートディレクトリをパスに追加
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ログ設定
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(os.path.join(log_dir, 'stock_management.log'), encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
-logger = logging.getLogger(__name__)
 
-# 出力先をdata/analysis_result.txtに
-OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "../data/analysis_result.txt")
+from utils.logger import get_logger
+
+logger = get_logger("analyze_my_stock", category="analysis")
+# 出力先をroot/data/result_my_stock_analysis.txtに変更
+
+# プロジェクトルートを基準に保存先を決定
+BASE_DIR = Path(__file__).resolve().parent.parent.parent  # python ディレクトリの1つ上（= プロジェクトルート想定）
+OUTPUT_FILE = BASE_DIR / "data" / "analyze_my_stock" / "result_my_stock_analysis.txt"
 
 def fetch_stock_data(ticker: str, period="1mo") -> Optional[pd.DataFrame]:
     """

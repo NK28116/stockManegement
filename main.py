@@ -18,23 +18,24 @@ from visualization.plot_indicators import plot_macd_bollinger
 from trading import every_stock_BuySell_timing, buy_and_sell_stock
 from db import dump_csv  # 年次タスク用に追加
 
-# --- ログ設定 ---
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
-logger = logging.getLogger(__name__)
 
+from utils.logger import get_logger
+
+loggerDaily = get_logger("Daily", category="task")
+loggerWeekly = get_logger("Weekly", category="task")
+loggerMonthly = get_logger("Monthly", category="task")
+loggerYearly = get_logger("Yearly", category="task")
+loggerError = get_logger("Error", category="task")
 
 def run_daily_task():
-    logger.info("=== 日次タスク開始 ===")
+    loggerDaily.info("=== 日次タスク開始 ===")
     analyze_portfolio()
     every_stock_BuySell_timing.run()
-    logger.info("=== 日次タスク完了 ===")
+    loggerDaily.info("=== 日次タスク完了 ===")
 
 
 def run_weekly_task():
-    logger.info("=== 週次タスク開始 ===")
+    loggerWeekly.info("=== 週次タスク開始 ===")
     run_daily_task()
 
     analyzer = PortfolioAnalyzer()
@@ -56,11 +57,11 @@ def run_weekly_task():
         plot_macd_bollinger(price_data, indicators)
 
     buy_and_sell_stock.evaluate_weekly_trades()
-    logger.info("=== 週次タスク完了 ===")
+    loggerWeekly.info("=== 週次タスク完了 ===")
 
 
 def run_monthly_task():
-    logger.info("=== 月次タスク開始 ===")
+    loggerMonthly.info("=== 月次タスク開始 ===")
     run_weekly_task()
 
     buy_and_sell_stock.run_backtest()
@@ -83,11 +84,11 @@ def run_monthly_task():
         analyzer.save_analysis_result(report, filename="monthly_portfolio_report.txt")
         plot_macd_bollinger(price_data, indicators)
 
-    logger.info("=== 月次タスク完了 ===")
+    loggerMonthly.info("=== 月次タスク完了 ===")
 
 
 def run_yearly_task():
-    logger.info("=== 年次タスク開始 ===")
+    loggerYearly.info("=== 年次タスク開始 ===")
 
     # 1. 月次タスクまで実行
     run_monthly_task()
@@ -103,12 +104,12 @@ def run_yearly_task():
     except Exception as e:
         logger.error(f"年次ダンプ処理でエラー: {e}")
 
-    logger.info("=== 年次タスク完了 ===")
+    loggerYearly.info("=== 年次タスク完了 ===")
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        logger.error("実行モードを指定してください: daily / weekly / monthly / yearly")
+        loggerError.error("実行モードを指定してください: daily / weekly / monthly / yearly")
         sys.exit(1)
 
     mode = sys.argv[1].lower()
@@ -121,5 +122,5 @@ if __name__ == "__main__":
     elif mode == "yearly":
         run_yearly_task()
     else:
-        logger.error("不明なモードです: daily / weekly / monthly / yearly を指定してください")
+        loggerError.error("不明なモードです: daily / weekly / monthly / yearly を指定してください")
         sys.exit(1)

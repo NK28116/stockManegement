@@ -1,8 +1,10 @@
 import sqlite3
 import logging
 
+from utils.logger import get_logger
+
+logger = get_logger("analyze", category="watch")
 # ログ出力の設定
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def analyze_stock_data():
     try:
