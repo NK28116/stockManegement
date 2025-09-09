@@ -1,3 +1,5 @@
+#TODO: 分足から日足への自動集計機能が未実装です。日足データをDBに保存する関数はありますが、集計ロジックがありません。
+
 import sqlite3
 import logging
 
