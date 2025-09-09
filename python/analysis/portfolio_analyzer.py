@@ -7,6 +7,9 @@ from datetime import datetime
 import os
 import yfinance as yf
 from typing import List, Dict, Optional
+import sys
+# プロジェクトのルートディレクトリをパスに追加
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from utils.logger import get_logger
 logger = get_logger("PortfolioAnalyzer", category="analysis")
@@ -22,7 +25,7 @@ class PortfolioAnalyzer:
         self.result_dir = result_dir
         os.makedirs(self.result_dir, exist_ok=True)
 
-    def get_portfolio(self, portfolio_name='my_stock', csv_path=None):
+    def get_portfolio(self, portfolio_name='stock', csv_path=None):
         """保有株式情報を取得（DB優先、CSVがあれば読み込む）"""
         if csv_path and os.path.exists(csv_path):
             df = pd.read_csv(csv_path)
