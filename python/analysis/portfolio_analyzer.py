@@ -1,4 +1,4 @@
-# stock.db から保有株式情報を取得し、株価データを取得する
+# my_stock.db から保有株式情報を取得し、株価データを取得する
 import sqlite3
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -14,7 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from utils.logger import get_logger
 logger = get_logger("PortfolioAnalyzer", category="analysis")
 
-DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "db/stock.db")
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "db/my_stock.db")
 DEFAULT_RESULT_DIR = os.path.join(os.path.dirname(__file__), "../data")
 os.makedirs(DEFAULT_RESULT_DIR, exist_ok=True)
 
