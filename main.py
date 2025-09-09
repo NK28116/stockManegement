@@ -5,6 +5,7 @@
 
 import sys
 from pathlib import Path
+import os
 
 # プロジェクトルートを追加（インポートの前に必要）
 ROOT_DIR = Path(__file__).resolve().parent
@@ -13,13 +14,14 @@ sys.path.append(str(ROOT_DIR / "python"))
 import logging
 from datetime import datetime, timedelta
 
-from analysis.portfolio_analyzer import PortfolioAnalyzer, analyze_portfolio
-from visualization.plot_indicators import plot_macd_bollinger
-from trading import every_stock_BuySell_timing, buy_and_sell_stock
-from db import dump_csv  # 年次タスク用に追加
+from python.analysis.portfolio_analyzer import PortfolioAnalyzer
+#from python.analysis.analyze_my_stock import fetch_stock_data
+from python.visualization.plot_indicators import plot_macd_bollinger
+from python.trading import every_stock_BuySell_timing, buy_and_sell_stock
+from python.db import dump_csv  # 年次タスク用に追加
 
 
-from utils.logger import get_logger
+from python.utils.logger import get_logger
 
 loggerDaily = get_logger("Daily", category="task")
 loggerWeekly = get_logger("Weekly", category="task")
@@ -27,9 +29,11 @@ loggerMonthly = get_logger("Monthly", category="task")
 loggerYearly = get_logger("Yearly", category="task")
 loggerError = get_logger("Error", category="task")
 
+analyzer = PortfolioAnalyzer()
+
 def run_daily_task():
     loggerDaily.info("=== 日次タスク開始 ===")
-    analyze_portfolio()
+    analyzer.analyze_portfolio()
     every_stock_BuySell_timing.run()
     loggerDaily.info("=== 日次タスク完了 ===")
 
@@ -38,23 +42,29 @@ def run_weekly_task():
     loggerWeekly.info("=== 週次タスク開始 ===")
     run_daily_task()
 
-    analyzer = PortfolioAnalyzer()
-    portfolio_file = "../data/my_stock.csv"
-    portfolio = analyzer.load_portfolio_from_file(portfolio_file)
-    if portfolio:
+    portfolio_file = os.path.join(os.path.dirname(__file__), "data/my_stock.csv")
+    portfolio = analyzer.get_portfolio(csv_path=portfolio_file)
+
+    if not portfolio.empty:
         end_date = datetime.today().strftime("%Y-%m-%d")
         start_date = (datetime.today() - timedelta(days=365)).strftime("%Y-%m-%d")
-        codes = list(portfolio.keys())
-        price_data = analyzer.fetch_historical_data(codes, start_date, end_date)
+        codes = list(portfolio['code'])
+        #tickerをperiod日分取得
+        price_data = analyzer.fetch_stock_data(codes, period=7)
+
         returns = analyzer.calculate_returns(price_data)
         metrics = analyzer.calculate_portfolio_metrics(portfolio, returns)
         correlation_matrix = analyzer.calculate_correlation_matrix(returns)
+
         indicators = analyzer.calculate_technical_indicators(price_data)
+        # 
         report = analyzer.generate_portfolio_report(
             portfolio, metrics, correlation_matrix, indicators
         )
-        analyzer.save_analysis_result(report, filename="weekly_portfolio_report.txt")
+        analyzer.save_analysis(report, filename="weekly_portfolio_report.txt")
         plot_macd_bollinger(price_data, indicators)
+    else:
+        loggerWeekly.warning(f"ポートフォリオデータが空です: {portfolio_file}")
 
     buy_and_sell_stock.evaluate_weekly_trades()
     loggerWeekly.info("=== 週次タスク完了 ===")
@@ -100,9 +110,9 @@ def run_yearly_task():
 
     try:
         dump_csv.dump_and_cleanup(db_path, output_dir, year)
-        logger.info(f"{year} 年のデータをCSVにダンプし、DBから削除しました。")
+        loggerYearly.info(f"{year} 年のデータをCSVにダンプし、DBから削除しました。")
     except Exception as e:
-        logger.error(f"年次ダンプ処理でエラー: {e}")
+        loggerYearly.error(f"年次ダンプ処理でエラー: {e}")
 
     loggerYearly.info("=== 年次タスク完了 ===")
 
