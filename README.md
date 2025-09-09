@@ -386,7 +386,7 @@ if signal == "buy" and not position:
 ---
 
 ```
-stockManegement//
+stockManegement
 ├── data
 │   ├── .DS_Store
 │   ├── archive
@@ -394,16 +394,7 @@ stockManegement//
 │   │   ├── 1878_T_大東建託.png
 │   │   ├── 2579_T_COCA-COLA BOTTLERS JAPAN HLDGS .png
 │   │   ├── 2730_T_EDION CORP.png
-│   │   ├── 3003_T_HULIC CO LTD.png
-│   │   ├── 3543_T_KOMEDA HOLDINGS CO LTD.png
-│   │   ├── 3778_T_SAKURA INTERNET INC.png
-│   │   ├── 7803_T_BUSHIROAD INC.png
-│   │   ├── 7974_T_任天堂.png
-│   │   ├── 8035_T_東京エレクトロン.png
-│   │   ├── 9082_T_DAIWA MOTOR TRANSPORTATION CO.png
-│   │   ├── 9202_T_ANA HOLDINGS INC.png
-│   │   ├── 9347_T_NIPPON KANZAI HOLDINGS CO LTD.png
-│   │   ├── 9434_T_SOFTBANK CORP..png
+
 │   │   ├── 9697_T_CAPCOM CO LTD.png
 │   │   ├── trading_summary_codes.txt
 │   │   └── trading_summary_my_stock.txt
@@ -412,12 +403,7 @@ stockManegement//
 │   ├── plots
 │   │   ├── 2579.T_indicators.png
 │   │   ├── 2730.T_indicators.png
-│   │   ├── 3003.T_indicators.png
-│   │   ├── 3543.T_indicators.png
-│   │   ├── 3778.T_indicators.png
-│   │   ├── 7803.T_indicators.png
-│   │   ├── 7974.T_indicators.png
-│   │   ├── 8035.T_indicators.png
+
 │   │   ├── 9202.T_indicators.png
 │   │   ├── 9347.T_indicators.png
 │   │   ├── 9434.T_indicators.png
@@ -427,26 +413,7 @@ stockManegement//
 │   ├── portfolio_analysis_20250908_103207.txt
 │   ├── portfolio_analysis_20250908_103232.txt
 │   ├── practice
-│   │   ├── charts
-│   │   │   ├── 4503_T_アステラス製薬.png
-│   │   │   ├── 6367_T_ダイキン工業.png
-│   │   │   ├── 6752_T_パナソニック.png
-│   │   │   ├── 6758_T_ソニーグループ.png
-│   │   │   ├── 6861_T_キーエンス.png
-│   │   │   ├── 7203_T_トヨタ自動車.png
-│   │   │   ├── 7974_T_任天堂.png
-│   │   │   ├── 8306_T_三菱UFJフィナンシャル・グループ.png
-│   │   │   ├── 9433_T_KDDI.png
-│   │   │   ├── 9984_T_ソフトバンクグループ.png
-│   │   │   ├── demo_7203_T_トヨタ自動車.png
-│   │   │   └── trading_summary_portfolio_practice.txt
-│   │   ├── portfolio_beginner.csv
-│   │   ├── portfolio_diversified.csv
-│   │   ├── portfolio_growth.csv
-│   │   ├── portfolio_practice.csv
-│   │   ├── portfolio_stable.csv
-│   │   ├── portfolio_template.csv
-│   │   └── portfolio_with_notes.csv
+
 │   ├── quarterly_analysis.csv
 │   ├── README.md
 │   └── report
@@ -515,7 +482,7 @@ stockManegement//
 ```
 
 [ ]:analysis
-  [ ]: analyze_my_stock.py
+  [x]: analyze_my_stock.py
   [x]: data_collecter.py
   [ ]:portfolio_analyzer.py
 
