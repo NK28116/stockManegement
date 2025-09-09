@@ -1,6 +1,0 @@
-=== Portfolio Holdings ===
-Empty DataFrame
-Columns: [id, code, name, sector, quantity, purchase_price, purchase_date]
-Index: []
-
-=== Technical Indicators ===

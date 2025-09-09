@@ -1,4 +1,5 @@
 # python/utils/indicator.py
+# MACD, Bollinger Bands を計算する
 import pandas as pd
 from typing import Tuple
 

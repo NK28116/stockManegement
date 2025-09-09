@@ -31,6 +31,9 @@ import logging
 matplotlib_logger = logging.getLogger('matplotlib.font_manager')
 matplotlib_logger.setLevel(logging.ERROR)
 
+# 銘柄ごとにMACDとボリンジャーバンドをグラフ化して保存
+from visualization.plot_indicators import plot_macd_bollinger
+
 class StockChartVisualizer:
     """株価チャート可視化クラス"""
     
@@ -38,6 +41,7 @@ class StockChartVisualizer:
         self.period = period
         self.trading_rules = ImprovedTradingRules()
         self.output_dir = "../data/chartImg"  # 出力先を変更
+        self.plot_image_dir = "../data/plots" # 銘柄ごとのMACDとボリンジャーバンドグラフ
         os.makedirs(self.output_dir, exist_ok=True)
 
     def clean_output_dir(self):
@@ -193,6 +197,70 @@ class StockChartVisualizer:
         plt.tight_layout()
         return fig
     
+    def create_MACD_and_Bollinger_Band_chart(self, portfolio_file: str):
+        """保持銘柄すべてのMACDとボリンジャーバンドグラフを作成・保存"""
+        print(f"=== MACD & ボリンジャーバンドチャート作成開始 ===")
+        print(f"対象ポートフォリオ: {portfolio_file}")
+
+        # --- 出力ディレクトリ作成 ---
+        os.makedirs(self.plot_image_dir, exist_ok=True)
+
+        # --- ポートフォリオ読み込み ---
+        stocks = self.load_portfolio_stocks(portfolio_file)
+        if not stocks:
+            print("ポートフォリオが読み込めませんでした")
+            return
+
+        # --- データ格納用 ---
+        price_data = {}
+        indicators = {}
+        stock_names = {}
+
+        for i, stock_info in enumerate(stocks, 1):
+            try:
+                print(f"\n[{i}/{len(stocks)}] 処理中: {stock_info['name']} ({stock_info['code']})")
+
+                # 株価データ取得
+                df = self.fetch_stock_data(stock_info['code'])
+                if df is None or df.empty:
+                    continue
+
+                price_data[stock_info['code']] = df
+                stock_names[stock_info['code']] = stock_info['name']
+
+                # --- ボリンジャーバンド ---
+                bb_window = 20
+                bb_df = pd.DataFrame(index=df.index)
+                bb_df['Middle'] = df['Close'].rolling(bb_window).mean()
+                bb_df['Std'] = df['Close'].rolling(bb_window).std()
+                bb_df['Upper'] = bb_df['Middle'] + 2 * bb_df['Std']
+                bb_df['Lower'] = bb_df['Middle'] - 2 * bb_df['Std']
+
+                # --- MACD ---
+                macd_df = pd.DataFrame(index=df.index)
+                short_ema = df['Close'].ewm(span=12, adjust=False).mean()
+                long_ema = df['Close'].ewm(span=26, adjust=False).mean()
+                macd_df['MACD'] = short_ema - long_ema
+                macd_df['Signal'] = macd_df['MACD'].ewm(span=9, adjust=False).mean()
+                macd_df['Histogram'] = macd_df['MACD'] - macd_df['Signal']
+
+                indicators[stock_info['code']] = {
+                    'Bollinger': bb_df,
+                    'MACD': macd_df
+                }
+
+            except Exception as e:
+                print(f"  エラー: {stock_info['code']} - {e}")
+                continue
+
+        # --- プロット呼び出し ---
+        if price_data and indicators:
+            plot_macd_bollinger(price_data,stock_names, indicators, self.plot_image_dir)
+            print(f"\n=== 全銘柄のMACD & ボリンジャーバンドチャート作成完了 ===")
+            print(f"保存先: {os.path.abspath(self.plot_image_dir)}")
+        else:
+            print("チャート作成対象データがありませんでした")
+
     def generate_trading_summary(self, stock_info: Dict, trades: List[Dict], metrics: Dict) -> str:
         """取引サマリーを生成"""
         
@@ -266,13 +334,13 @@ class StockChartVisualizer:
                 metrics = self.trading_rules.calculate_performance_metrics(trades)
                 
                 # Create chart
-                fig = self.create_chart_with_signals(stock_info, df, trades)
+                figSignal = self.create_chart_with_signals(stock_info, df, trades)
                 
                 # Save chart
                 chart_filename = f"{stock_info['code'].replace('.', '_')}_{stock_info['name']}.png"
                 chart_path = os.path.join(self.output_dir, chart_filename)
-                fig.savefig(chart_path, dpi=150, bbox_inches='tight')
-                plt.close(fig)
+                figSignal.savefig(chart_path, dpi=150, bbox_inches='tight')
+                plt.close(figSignal)
                 
                 print(f"  チャート保存: {chart_path}")
                 
@@ -288,6 +356,7 @@ class StockChartVisualizer:
         
         # Save summary report
         self.save_summary_report(summary_report, portfolio_file)
+        self.create_MACD_and_Bollinger_Band_chart(portfolio_file)
         
         print(f"\n=== 処理完了 ===")
         print(f"成功: {successful_charts}/{len(stocks)} 銘柄")

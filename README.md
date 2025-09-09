@@ -211,11 +211,12 @@ flowchart TD
 
 ## **閾値一覧表（`config.py` 設定例）**
 
-パラメータ	値	説明
-max_loss_percent	3.0	許容損失の最大割合
-take_profit_percent	8.0	利確の目標割合
-crash_threshold	-3.0	暴落アラート発生割合
-risk_free_rate	0.1%	シャープレシオ計算用無リスク金利
+|パラメータ|値|説明|
+|---|---|---|
+|max_loss_percent|3.0|許容損失の最大割合|
+|take_profit_percent|8.0|利確の目標割合|
+|crash_threshold|-3.0|暴落アラート発生割合 |
+|risk_free_rate|0.1%|シャープレシオ計算用無リスク金利 |
 
 ---
 
@@ -382,3 +383,157 @@ if signal == "buy" and not position:
         trades.append(f"{date}: {price}円 - エントリー")
 ```
 
+---
+
+```
+stockManegement//
+├── data
+│   ├── .DS_Store
+│   ├── archive
+│   ├── chartImg
+│   │   ├── 1878_T_大東建託.png
+│   │   ├── 2579_T_COCA-COLA BOTTLERS JAPAN HLDGS .png
+│   │   ├── 2730_T_EDION CORP.png
+│   │   ├── 3003_T_HULIC CO LTD.png
+│   │   ├── 3543_T_KOMEDA HOLDINGS CO LTD.png
+│   │   ├── 3778_T_SAKURA INTERNET INC.png
+│   │   ├── 7803_T_BUSHIROAD INC.png
+│   │   ├── 7974_T_任天堂.png
+│   │   ├── 8035_T_東京エレクトロン.png
+│   │   ├── 9082_T_DAIWA MOTOR TRANSPORTATION CO.png
+│   │   ├── 9202_T_ANA HOLDINGS INC.png
+│   │   ├── 9347_T_NIPPON KANZAI HOLDINGS CO LTD.png
+│   │   ├── 9434_T_SOFTBANK CORP..png
+│   │   ├── 9697_T_CAPCOM CO LTD.png
+│   │   ├── trading_summary_codes.txt
+│   │   └── trading_summary_my_stock.txt
+│   ├── my_portfolio_analysis.txt
+│   ├── my_stock.csv
+│   ├── plots
+│   │   ├── 2579.T_indicators.png
+│   │   ├── 2730.T_indicators.png
+│   │   ├── 3003.T_indicators.png
+│   │   ├── 3543.T_indicators.png
+│   │   ├── 3778.T_indicators.png
+│   │   ├── 7803.T_indicators.png
+│   │   ├── 7974.T_indicators.png
+│   │   ├── 8035.T_indicators.png
+│   │   ├── 9202.T_indicators.png
+│   │   ├── 9347.T_indicators.png
+│   │   ├── 9434.T_indicators.png
+│   │   └── 9697.T_indicators.png
+│   ├── portfolio_analysis_20250908_101811.txt
+│   ├── portfolio_analysis_20250908_103046.txt
+│   ├── portfolio_analysis_20250908_103207.txt
+│   ├── portfolio_analysis_20250908_103232.txt
+│   ├── practice
+│   │   ├── charts
+│   │   │   ├── 4503_T_アステラス製薬.png
+│   │   │   ├── 6367_T_ダイキン工業.png
+│   │   │   ├── 6752_T_パナソニック.png
+│   │   │   ├── 6758_T_ソニーグループ.png
+│   │   │   ├── 6861_T_キーエンス.png
+│   │   │   ├── 7203_T_トヨタ自動車.png
+│   │   │   ├── 7974_T_任天堂.png
+│   │   │   ├── 8306_T_三菱UFJフィナンシャル・グループ.png
+│   │   │   ├── 9433_T_KDDI.png
+│   │   │   ├── 9984_T_ソフトバンクグループ.png
+│   │   │   ├── demo_7203_T_トヨタ自動車.png
+│   │   │   └── trading_summary_portfolio_practice.txt
+│   │   ├── portfolio_beginner.csv
+│   │   ├── portfolio_diversified.csv
+│   │   ├── portfolio_growth.csv
+│   │   ├── portfolio_practice.csv
+│   │   ├── portfolio_stable.csv
+│   │   ├── portfolio_template.csv
+│   │   └── portfolio_with_notes.csv
+│   ├── quarterly_analysis.csv
+│   ├── README.md
+│   └── report
+│       ├── detailed
+│       │   ├── detailed_report_20250903_131214.txt
+
+│       └── summary
+│           ├── summary_report_20250903_131214.txt
+
+│           └── summary_report_20250908_155859.txt
+├── log
+│   ├── analysis
+│   ├── db
+│   ├── README.md
+│   ├── trading
+│   ├── utils
+│   ├── visualization
+│   └── watch
+├── main.py
+├── makefile
+├── python
+│   ├── __init__.py
+│   ├── analysis
+│   │   ├── __init__.py
+│   │   ├── analyze_my_stock.py
+│   │   ├── data_collector.py
+│   │   ├── portfolio_analyzer.py
+│   │   └── README.md
+│   ├── config.py
+│   ├── data
+│   │   ├── analysis_result.txt
+│   │   └── portfolio_analysis_20250908_122913.txt
+│   ├── db
+│   │   ├── dump_csv.py
+│   │   ├── README.md
+│   │   └── stock.db
+│   ├── init_database.py
+│   ├── python
+│   ├── trading
+│   │   ├── __init__.py
+│   │   ├── buy_and_sell_stock.py
+│   │   ├── every_stock_BuySell_timing.py
+│   │   ├── README.md
+│   │   └── trading_rules.py
+│   ├── utils
+│   │   ├── __init__.py
+│   │   ├── alert.py
+│   │   ├── indicators.py
+│   │   └── README.md
+│   ├── visualization
+│   │   ├── __init__.py
+│   │   ├── generate_all_charts.py
+│   │   ├── plot_indicators.py
+│   │   ├── README.md
+│   │   ├── stock_chart_visualizer.py
+│   │   └── view_charts.py
+│   └── watch
+│       ├── __init__.py
+│       ├── analyze.py
+│       ├── dailyAggregator.py
+│       ├── README.md
+│       └── watch.py
+├── README.md
+└── requirements.txt
+
+```
+
+[ ]:analysis
+  [ ]: analyze_my_stock.py
+  [x]: data_collecter.py
+  [ ]:portfolio_analyzer.py
+
+[x]:trading
+  [x]:buy_and_sell_stock.py
+  [x]:every_stock_BuySell_timing.py
+
+[x]:visualization
+  [x]:generate_all_charts.py
+  [x]:plot_indicators.py
+  [x]:stock_chart_visualizer.py
+  [ ]:view_charts.py
+
+[ ]:utils
+  [ ]:alert.py
+  [ ]:indicators.py
+
+[ ]:watch
+  [ ]:analyze.py
+  [ ]: dailyAggregator.py
+  [ ]:watch.py

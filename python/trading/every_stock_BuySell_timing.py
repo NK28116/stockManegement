@@ -456,7 +456,16 @@ class EveryStockAnalyzer:
             loggerBuySellTiming.error(f"ストップ値計算エラー: {e}")
             return None
 
-# 追加: 前日ステータス取得ヘルパ
+
+def run():
+    from pathlib import Path
+    csv_file = Path(__file__).parent.parent / "data" / "my_stock.csv"
+
+    from every_stock_BuySell_timing import EveryStockAnalyzer
+
+    analyzer = EveryStockAnalyzer(csv_file)
+    results = analyzer.analyze_all_stocks(period="3mo")
+    analyzer.save_reports(results)
 
 def main():
     """メイン実行関数"""

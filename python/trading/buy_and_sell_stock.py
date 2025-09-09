@@ -97,8 +97,6 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
     sign = "+" if qty > 0 else ""
     print(f"{action}: {code} {sign}{qty}株 @¥{price if price else 'N/A'}")
     return df
-    print(f"{action}: {code} {sign}{qty}株 @¥{price if price else 'N/A'}")
-    return df
 def sell(df: pd.DataFrame, code: str, qty: int) -> pd.DataFrame:
     idx = df.index[df["code"] == code]
     if len(idx) == 0:
@@ -145,8 +143,6 @@ def refresh_prices(df: pd.DataFrame, target_code: str | None = None) -> pd.DataF
             updated.at[i,"profit_loss_percent"] = f"{((cur-pp)/pp*100):+.2f}%" if pp > 0 else "0.00%"
         if "last_updated" in updated.columns:
             updated.at[i,"last_updated"] = now_str
-        if "status" in updated.columns:
-            updated.at[i,"status"] = "保有中" if qty > 0 else "売却済"
     return updated
 
 # 追加
