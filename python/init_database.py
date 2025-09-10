@@ -3,10 +3,10 @@
 重複を解消し、統一されたデータベース構造を作成
 """
 
-import sqlite3
 import os
 import shutil
-from datetime import datetime
+import sqlite3
+
 
 def init_database():
     """データベースを初期化"""
@@ -28,7 +28,7 @@ def init_database():
     conn = sqlite3.connect(main_db_path)
     cur = conn.cursor()
 
-# 基本テーブルの作成
+    # 基本テーブルの作成
     # 基本テーブルの作成
     tables = [
         """
@@ -105,27 +105,27 @@ def init_database():
             purchase_date DATE,
             FOREIGN KEY (code) REFERENCES stocks(code)
         )
-        """
+        """,
     ]
-        
+
     for table_sql in tables:
         cur.execute(table_sql)
-        
+
     # インデックスの作成
     indexes = [
         "CREATE INDEX IF NOT EXISTS idx_intraday_code_date ON intraday(code, DATE(timestamp))",
         "CREATE INDEX IF NOT EXISTS idx_daily_code_date ON daily(code, date)",
         "CREATE INDEX IF NOT EXISTS idx_sample_daily_code_date ON pre_buy_daily(code, date)",
         "CREATE INDEX IF NOT EXISTS idx_portfolio_holdings_portfolio_name ON portfolio_holdings(portfolio_name)",
-        "CREATE INDEX IF NOT EXISTS idx_portfolio_holdings_code ON portfolio_holdings(code)"
+        "CREATE INDEX IF NOT EXISTS idx_portfolio_holdings_code ON portfolio_holdings(code)",
     ]
-        
+
     for index_sql in indexes:
         cur.execute(index_sql)
-        
+
     conn.commit()
     conn.close()
-        
+
     print(f"データベース初期化完了: {main_db_path}")
     print("作成されたテーブル:")
     print("- intraday (分足データ)")
@@ -134,6 +134,7 @@ def init_database():
     print("- portfolio (ポートフォリオ情報)")
     print("- stocks (銘柄情報)")
     print("- portfolio_holdings (ポートフォリオ保有銘柄)")
+
 
 def check_database_status():
     """データベースの状態を確認"""
@@ -171,6 +172,7 @@ def check_database_status():
     except Exception as e:
         print(f"❌ データベース確認エラー: {e}")
         return False
+
 
 if __name__ == "__main__":
     print("データベース初期化開始...")
