@@ -1,6 +1,6 @@
 import requests
-from python.config import config
 
+from python.config import config
 from python.utils.logger import get_logger
 
 logger = get_logger("alert", category="watch")
@@ -47,7 +47,7 @@ class AlertManager:
         """Slackに通知を送信"""
         try:
             payload = {
-                "text": f"[{level}] {message}",
+                "text": "[{level}] {message}",
                 "username": "Stock Management Bot",
             }
 
@@ -57,17 +57,17 @@ class AlertManager:
                 logger.info("Slack通知送信成功")
                 return True
             else:
-                logger.error(f"Slack通知送信失敗: {response.status_code}")
+                logger.error("Slack通知送信失敗: {response.status_code}")
                 return False
 
         except Exception as e:
-            logger.error(f"Slack通知エラー: {e}")
+            logger.error("Slack通知エラー: {e}")
             return False
 
     def _send_line(self, message: str) -> bool:
         """LINEに通知を送信"""
         try:
-            headers = {"Authorization": f"Bearer {self.alert_config['line_token']}"}
+            headers = {"Authorization": "Bearer {self.alert_config['line_token']}"}
             data = {"message": message}
 
             response = requests.post(
@@ -81,11 +81,11 @@ class AlertManager:
                 logger.info("LINE通知送信成功")
                 return True
             else:
-                logger.error(f"LINE通知送信失敗: {response.status_code}")
+                logger.error("LINE通知送信失敗: {response.status_code}")
                 return False
 
         except Exception as e:
-            logger.error(f"LINE通知エラー: {e}")
+            logger.error("LINE通知エラー: {e}")
             return False
 
 

@@ -1,12 +1,8 @@
 # python/watch/watch.py
 import argparse
 import logging
-
 import random
 import sqlite3
-
-# 設定読み込み
-
 import time as time_module
 from datetime import datetime, timedelta
 
@@ -14,6 +10,9 @@ import pandas as pd
 
 from python.config import config
 from python.utils.logger import get_logger
+
+# 設定読み込み
+
 
 logger = get_logger("watch", category="watch")
 
@@ -48,7 +47,7 @@ def save_data_to_db(code, timestamp, price, volume):
             (code, timestamp_str, price, volume),
         )
     except Exception as e:
-        logging.error(f"DB保存エラー: {e}")
+        logging.error("DB保存エラー: {e}")
     conn.commit()
     conn.close()
 
@@ -88,20 +87,20 @@ def run_dev_mode(dev_date):
 
             # --- 連続下落検知 ---
             if len(history) >= 3 and history[-1] < history[-2] < history[-3]:
-                logging.warning(f"{code} 連続下落検出: {history[-3]:.1f} -> {history[-2]:.1f} -> {history[-1]:.1f}")
+                logging.warning("{code} 連続下落検出: {history[-3]:.1f} -> {history[-2]:.1f} -> {history[-1]:.1f}")
 
             # --- ボラティリティ警告(直近5本) ---
             recent_prices = history[-5:]
             vol = calc_volatility(recent_prices)
             if vol > config.volatility_threshold:
-                logging.warning(f"{code} ボラティリティ警告: {vol:.2f}%")
+                logging.warning("{code} ボラティリティ警告: {vol:.2f}%")
 
             # --- 前回比 -3%以上下落 ---
             if len(history) >= 2:
                 drop_pct = (history[-1] - history[-2]) / history[-2] * 100
                 if drop_pct <= -3.0:
                     logging.warning(
-                        f"{code} 前回比 -3%以上下落: {history[-2]:.1f} -> {history[-1]:.1f} ({drop_pct:.2f}%)"
+                        "{code} 前回比 -3%以上下落: {history[-2]:.1f} -> {history[-1]:.1f} ({drop_pct:.2f}%)"
                     )
                     # 将来 Slack/LINE 通知は alert.py の send_alert() を呼ぶ
 
@@ -129,7 +128,7 @@ def run_realtime_mode():
             prev = last_price[code]
             drop_pct = (price - prev) / prev * 100
             if drop_pct <= -3.0:
-                logging.warning(f"{code} 前回比 -3%以上下落: {prev:.1f} -> {price:.1f} ({drop_pct:.2f}%)")
+                logging.warning("{code} 前回比 -3%以上下落: {prev:.1f} -> {price:.1f} ({drop_pct:.2f}%)")
 
             # --- 連続下落・ボラティリティ ---
             # 過去5本の履歴を取得する場合は DB から SELECT するなどで対応可能

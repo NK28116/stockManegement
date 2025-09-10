@@ -20,7 +20,7 @@ def main():
     # Generate charts for actual portfolio (my_stock.csv)
     portfolio_file = "my_stock.csv"
 
-    print(f"対象ポートフォリオ: {portfolio_file} (実際の運用用)")
+    print("対象ポートフォリオ: {portfolio_file} (実際の運用用)")
     print("期間: 3ヶ月")
 
     # Generate all charts
