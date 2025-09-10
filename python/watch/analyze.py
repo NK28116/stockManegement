@@ -1,18 +1,19 @@
-# TODO:現在、日足データに対する単純な急落検知（前日比-3%）のみで、リアルタイム監視の「数分で-3%」のような急落検知は `watch.py` の方が担当しています。`analyze.py` はリアルタイム監視の目標に対しては**未実装**です。
+# TODO:現在、日足データに対する単純な急落検知（前日比-3%）のみで、リアルタイム監視の「数分で-3%」のような急落検知は `watch.py` の方が担当しています。
+# `analyze.py` はリアルタイム監視の目標に対しては**未実装**です。
 
-import sqlite3
 import logging
+import sqlite3
 
-from utils.logger import get_logger
+from python.utils.logger import get_logger
 
 logger = get_logger("analyze", category="watch")
-# ログ出力の設定
+
 
 def analyze_stock_data():
     try:
-        conn = sqlite3.connect('stock_data.db')
+        conn = sqlite3.connect("stock_data.db")
         c = conn.cursor()
-        c.execute('SELECT close FROM stock_data ORDER BY date DESC LIMIT 2')
+        c.execute("SELECT close FROM stock_data ORDER BY date DESC LIMIT 2")
         rows = c.fetchall()
         if len(rows) == 2:
             prev_close = rows[1][0]

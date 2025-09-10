@@ -1,35 +1,37 @@
 # python/watch/watch.py
 import argparse
 import logging
-import sqlite3
-from datetime import datetime, timedelta
-import pandas as pd
-import os
-import time as time_module
+
 import random
+import sqlite3
 
 # 設定読み込み
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import config
 
-from utils.logger import get_logger
+import time as time_module
+from datetime import datetime, timedelta
+
+import pandas as pd
+
+from python.config import config
+from python.utils.logger import get_logger
 
 logger = get_logger("watch", category="watch")
 
 DB_PATH = config.db_path
+
 
 # --- データ保存 ---
 def save_data_to_db(code, timestamp, price, volume):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     try:
-        if hasattr(timestamp, 'strftime'):
-            timestamp_str = timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        if hasattr(timestamp, "strftime"):
+            timestamp_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
         else:
             timestamp_str = str(timestamp)
 
-        c.execute("""
+        c.execute(
+            """
             CREATE TABLE IF NOT EXISTS intraday (
                 code TEXT,
                 timestamp DATETIME,
@@ -37,15 +39,17 @@ def save_data_to_db(code, timestamp, price, volume):
                 volume INTEGER,
                 PRIMARY KEY (code, timestamp)
             )
-        """)
+        """
+        )
         c.execute(
             "INSERT OR REPLACE INTO intraday VALUES (?, ?, ?, ?)",
-            (code, timestamp_str, price, volume)
+            (code, timestamp_str, price, volume),
         )
     except Exception as e:
         logging.error(f"DB保存エラー: {e}")
     conn.commit()
     conn.close()
+
 
 # --- ボラティリティ計算 ---
 def calc_volatility(prices):
@@ -53,12 +57,13 @@ def calc_volatility(prices):
         return 0
     return pd.Series(prices).pct_change().std() * 100
 
+
 # --- 擬似リアルタイム監視(devモード用) ---
 def run_dev_mode(dev_date):
     logging.info("=== 開発モード: 過去日の擬似リアルタイム監視 ===")
 
     stock_df = pd.read_csv(config.codes_path)
-    codes = stock_df['code'].tolist()
+    codes = stock_df["code"].tolist()
 
     start_dt = datetime.strptime(dev_date, "%Y%m%d").replace(hour=10, minute=0)
     end_dt = start_dt + timedelta(minutes=10)
@@ -93,17 +98,20 @@ def run_dev_mode(dev_date):
             if len(history) >= 2:
                 drop_pct = (history[-1] - history[-2]) / history[-2] * 100
                 if drop_pct <= -3.0:
-                    logging.warning(f"{code} 前回比 -3%以上下落: {history[-2]:.1f} -> {history[-1]:.1f} ({drop_pct:.2f}%)")
+                    logging.warning(
+                        f"{code} 前回比 -3%以上下落: {history[-2]:.1f} -> {history[-1]:.1f} ({drop_pct:.2f}%)"
+                    )
                     # 将来 Slack/LINE 通知は alert.py の send_alert() を呼ぶ
 
         current_dt += timedelta(minutes=1)
         time_module.sleep(0.5)
 
+
 # --- 本番リアルタイム監視（2分周期） ---
 def run_realtime_mode():
     logging.info("=== リアルタイム監視開始 ===")
     stock_df = pd.read_csv(config.codes_path)
-    codes = stock_df['code'].tolist()
+    codes = stock_df["code"].tolist()
     last_price = {code: random.uniform(1000, 2000) for code in codes}  # 仮の前回価格
 
     while True:
@@ -126,6 +134,7 @@ def run_realtime_mode():
             last_price[code] = price
 
         time_module.sleep(120)  # 2分周期
+
 
 # --- メイン ---
 if __name__ == "__main__":

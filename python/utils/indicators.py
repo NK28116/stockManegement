@@ -1,9 +1,16 @@
 # python/utils/indicator.py
 # MACD, Bollinger Bands を計算する
-import pandas as pd
 from typing import Tuple
 
-def calculate_macd(prices: pd.Series, short_period: int = 12, long_period: int = 26, signal_period: int = 9) -> pd.DataFrame:
+import pandas as pd
+
+
+def calculate_macd(
+    prices: pd.Series,
+    short_period: int = 12,
+    long_period: int = 26,
+    signal_period: int = 9,
+) -> pd.DataFrame:
     """
     MACD を計算する
     Args:
@@ -19,14 +26,13 @@ def calculate_macd(prices: pd.Series, short_period: int = 12, long_period: int =
     macd = ema_short - ema_long
     signal = macd.ewm(span=signal_period, adjust=False).mean()
     histogram = macd - signal
-    df = pd.DataFrame({
-        "MACD": macd,
-        "Signal": signal,
-        "Histogram": histogram
-    })
+    df = pd.DataFrame({"MACD": macd, "Signal": signal, "Histogram": histogram})
     return df
 
-def calculate_bollinger_bands(prices: pd.Series, period: int = 20, num_std: float = 2.0) -> pd.DataFrame:
+
+def calculate_bollinger_bands(
+    prices: pd.Series, period: int = 20, num_std: float = 2.0
+) -> pd.DataFrame:
     """
     ボリンジャーバンドを計算する
     Args:
@@ -40,24 +46,22 @@ def calculate_bollinger_bands(prices: pd.Series, period: int = 20, num_std: floa
     std = prices.rolling(window=period).std()
     upper = ma + (std * num_std)
     lower = ma - (std * num_std)
-    df = pd.DataFrame({
-        "MA": ma,
-        "Upper": upper,
-        "Lower": lower
-    })
+    df = pd.DataFrame({"MA": ma, "Upper": upper, "Lower": lower})
     return df
+
 
 # --- テスト用 ---
 if __name__ == "__main__":
     import numpy as np
+
     # ダミー終値データ
     np.random.seed(0)
     prices = pd.Series(100 + np.random.randn(50).cumsum())
-    
+
     macd_df = calculate_macd(prices)
     print("=== MACD ===")
     print(macd_df.tail())
-    
+
     bb_df = calculate_bollinger_bands(prices)
     print("\n=== Bollinger Bands ===")
     print(bb_df.tail())

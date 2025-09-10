@@ -1,34 +1,34 @@
-# ひょっとして使われていない？
-import yfinance as yf
+#
+"""
+my_stock.db から保有株式情報を取得し、株価データを取得する
+"""
 import os
-import logging
 from datetime import datetime
-from typing import List, Dict, Optional
+from typing import List, Optional
+
 import pandas as pd
-import sys
-from pathlib import Path
-# プロジェクトのルートディレクトリをパスに追加
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+import yfinance as yf
+
+from python.utils.logger import get_logger
+from python.config import config
 
 # ログ設定
 
-from utils.logger import get_logger
-
 logger = get_logger("analyze_my_stock", category="analysis")
-# 出力先をroot/data/result_my_stock_analysis.txtに変更
 
 # プロジェクトルートを基準に保存先を決定
-BASE_DIR = Path(__file__).resolve().parent.parent.parent  # python ディレクトリの1つ上（= プロジェクトルート想定）
-OUTPUT_FILE = BASE_DIR / "data" / "analyze_my_stock" / "result_my_stock_analysis.txt"
+# python ディレクトリの1つ上（= プロジェクトルート想定）
+OUTPUT_FILE = config.root_dir / "data" / "analyze_my_stock" / "result_my_stock_analysis.txt"
+
 
 def fetch_stock_data(ticker: str, period="1mo") -> Optional[pd.DataFrame]:
     """
     株価データを取得する
-    
+
     Args:
         ticker: ティッカーシンボル
         period: 取得期間
-        
+
     Returns:
         DataFrame: 株価データ、エラーの場合はNone
     """
@@ -36,25 +36,26 @@ def fetch_stock_data(ticker: str, period="1mo") -> Optional[pd.DataFrame]:
         logger.info(f"株価データ取得開始: {ticker}")
         stock = yf.Ticker(ticker)
         df = stock.history(period=period)
-        
+
         if df.empty:
             logger.error(f"データが取得できませんでした: {ticker}")
             return None
-            
+
         logger.info(f"株価データ取得完了: {ticker} - {len(df)}件")
         return df
-        
+
     except Exception as e:
         logger.error(f"株価データ取得エラー: {ticker} - {e}")
         return None
 
+
 def analyze_stock(df: pd.DataFrame) -> List[str]:
     """
     株価データを分析する
-    
+
     Args:
         df: 株価データ
-        
+
     Returns:
         List[str]: 分析結果
     """
@@ -62,30 +63,29 @@ def analyze_stock(df: pd.DataFrame) -> List[str]:
         if df is None or df.empty:
             logger.error("分析対象のデータがありません")
             return ["エラー: 分析対象のデータがありません"]
-        
+
         closes = df["Close"].tolist()
         signals = []
-        
+
         for i in range(1, len(closes)):
-            change = "+" if closes[i] > closes[i-1] else "-"
+            change = "+" if closes[i] > closes[i - 1] else "-"
             signals.append(change)
-        
+
         results = []
         buy_price = None  # 買値を記録
-        buy_date = None   # 買いの日付
 
         for i in range(1, len(signals)):
-            pattern = signals[i-1] + signals[i]
+            pattern = signals[i - 1] + signals[i]
             # Off-by-one 修正: パターンは signals[i] を含むため、date/price も i+1 を参照
-            date = df.index[i+1].strftime("%Y-%m-%d")
-            price = closes[i+1]
+            date = df.index[i + 1].strftime("%Y-%m-%d")
+            price = closes[i + 1]
 
             if pattern == "++" and buy_price is None:
                 # 買いエントリー
                 buy_price = price
-                buy_date = date
+
                 results.append(f"{date} {price:.2f}円: ++ → 買いエントリー")
-            
+
             elif pattern == "+-":
                 results.append(f"{date} {price:.2f}円: +- → 次に++または--が出たら売却")
 
@@ -94,7 +94,6 @@ def analyze_stock(df: pd.DataFrame) -> List[str]:
                 diff = price - buy_price
                 results.append(f"{date} {price:.2f}円: -- → 売却（買値 {buy_price:.2f}円 → 損益 {diff:.2f}円）")
                 buy_price = None  # リセット
-                buy_date = None
 
             elif pattern == "++" and buy_price is not None:
                 results.append(f"{date} {price:.2f}円: ++ → 継続保持中")
@@ -107,36 +106,38 @@ def analyze_stock(df: pd.DataFrame) -> List[str]:
 
         logger.info(f"分析完了: {len(results)}件の結果")
         return results
-        
+
     except Exception as e:
         logger.error(f"分析エラー: {e}")
         return [f"エラー: 分析中に問題が発生しました - {e}"]
 
+
 def save_results(results: List[str]) -> bool:
     """
     分析結果を保存する
-    
+
     Args:
         results: 分析結果のリスト
-        
+
     Returns:
         bool: 保存が成功したかどうか
     """
     try:
         os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
-        
+
         with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
             f.write(f"# 分析結果 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write("=" * 50 + "\n\n")
             for line in results:
                 f.write(line + "\n")
-        
+
         logger.info(f"結果を {OUTPUT_FILE} に保存しました")
         return True
-        
+
     except Exception as e:
         logger.error(f"結果保存エラー: {e}")
         return False
+
 
 if __name__ == "__main__":
     try:

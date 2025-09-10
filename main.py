@@ -3,25 +3,18 @@
 日次 / 週次 / 月次 / 年次タスクをコマンドで実行
 """
 
-import sys
-from pathlib import Path
 import os
+import sys
 
-# プロジェクトルートを追加（インポートの前に必要）
-ROOT_DIR = Path(__file__).resolve().parent
-sys.path.append(str(ROOT_DIR / "python"))
-
-import logging
 from datetime import datetime, timedelta
 
 from python.analysis.portfolio_analyzer import PortfolioAnalyzer
-#from python.analysis.analyze_my_stock import fetch_stock_data
-from python.visualization.plot_indicators import plot_macd_bollinger
-from python.trading import every_stock_BuySell_timing, buy_and_sell_stock
 from python.db import dump_csv  # 年次タスク用に追加
-
-
+from python.trading import buy_and_sell_stock, every_stock_BuySell_timing
 from python.utils.logger import get_logger
+
+# from python.analysis.analyze_my_stock import fetch_stock_data
+from python.visualization.plot_indicators import plot_macd_bollinger
 
 loggerDaily = get_logger("Daily", category="task")
 loggerWeekly = get_logger("Weekly", category="task")
@@ -30,6 +23,7 @@ loggerYearly = get_logger("Yearly", category="task")
 loggerError = get_logger("Error", category="task")
 
 analyzer = PortfolioAnalyzer()
+
 
 def run_daily_task():
     loggerDaily.info("=== 日次タスク開始 ===")
@@ -48,8 +42,8 @@ def run_weekly_task():
     if not portfolio.empty:
         end_date = datetime.today().strftime("%Y-%m-%d")
         start_date = (datetime.today() - timedelta(days=365)).strftime("%Y-%m-%d")
-        codes = list(portfolio['code'])
-        #tickerをperiod日分取得
+        codes = list(portfolio["code"])
+        # tickerをperiod日分取得
         price_data = analyzer.fetch_stock_data(codes, period=7)
 
         returns = analyzer.calculate_returns(price_data)
@@ -57,10 +51,8 @@ def run_weekly_task():
         correlation_matrix = analyzer.calculate_correlation_matrix(returns)
 
         indicators = analyzer.calculate_technical_indicators(price_data)
-        # 
-        report = analyzer.generate_portfolio_report(
-            portfolio, metrics, correlation_matrix, indicators
-        )
+        #
+        report = analyzer.generate_portfolio_report(portfolio, metrics, correlation_matrix, indicators)
         analyzer.save_analysis(report, filename="weekly_portfolio_report.txt")
         plot_macd_bollinger(price_data, indicators)
     else:
@@ -88,9 +80,7 @@ def run_monthly_task():
         metrics = analyzer.calculate_portfolio_metrics(portfolio, returns)
         correlation_matrix = analyzer.calculate_correlation_matrix(returns)
         indicators = analyzer.calculate_technical_indicators(price_data)
-        report = analyzer.generate_portfolio_report(
-            portfolio, metrics, correlation_matrix, indicators
-        )
+        report = analyzer.generate_portfolio_report(portfolio, metrics, correlation_matrix, indicators)
         analyzer.save_analysis_result(report, filename="monthly_portfolio_report.txt")
         plot_macd_bollinger(price_data, indicators)
 
