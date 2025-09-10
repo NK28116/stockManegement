@@ -6,6 +6,8 @@
 
 from python.visualization.stock_chart_visualizer import StockChartVisualizer
 
+__all__ = ["main"]
+
 
 def main():
     """全銘柄のチャートを一括生成"""

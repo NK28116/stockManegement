@@ -8,6 +8,8 @@ from python.utils.logger import get_logger
 
 logger = get_logger("dailyAggregator", category="watch")
 
+__all__ = ["save_data_to_db"]
+
 
 def save_data_to_db(data):
     try:

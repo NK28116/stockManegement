@@ -30,9 +30,10 @@ def calculate_macd(
     return df
 
 
-def calculate_bollinger_bands(
-    prices: pd.Series, period: int = 20, num_std: float = 2.0
-) -> pd.DataFrame:
+__all__ = ["calculate_bollinger_bands"]
+
+
+def calculate_bollinger_bands(prices: pd.Series, period: int = 20, num_std: float = 2.0) -> pd.DataFrame:
     """
     ボリンジャーバンドを計算する
     Args:

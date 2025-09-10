@@ -3,6 +3,8 @@ import logging
 from datetime import datetime
 from python.config import config
 
+__all__ = ["get_logger"]
+
 
 def get_logger(module_name: str, category: str = "general") -> logging.Logger:
     """
