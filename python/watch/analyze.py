@@ -8,6 +8,8 @@ from python.utils.logger import get_logger
 
 logger = get_logger("analyze", category="watch")
 
+__all__ = ["analyze_stock_data"]
+
 
 def analyze_stock_data():
     try:

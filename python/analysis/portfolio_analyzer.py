@@ -19,6 +19,8 @@ DB_PATH = config.db_path
 DEFAULT_RESULT_DIR = config.root_dir / "data" / "analyze_my_stock_db"
 os.makedirs(DEFAULT_RESULT_DIR, exist_ok=True)
 
+__all__ = ["PortfolioAnalyzer"]
+
 
 class PortfolioAnalyzer:
     def __init__(self, db_path=DB_PATH, result_dir=DEFAULT_RESULT_DIR):

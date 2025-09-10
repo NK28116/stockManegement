@@ -19,6 +19,8 @@ from python.utils.logger import get_logger
 loggerBuySellTiming = get_logger("every_stock_BuySell_timing", category="trading")
 loggerEveryStockAnalysis = get_logger("every_stock_analysis", category="analysis")
 
+__all__ = ["main", "run", "EveryStockAnalyzer"]
+
 
 class EveryStockAnalyzer:
     """全銘柄分析クラス"""
@@ -162,7 +164,7 @@ class EveryStockAnalyzer:
 
         return "\n".join(report)
 
-    def _get_status_for_date(self, result: Dict, target_date: datetime) -> str:
+    def get_status_for_date(self, result: Dict, target_date: datetime) -> str:
         """指定日のステータスを 'YYYY-MM-DD: STATUS - 理由 (ストップ: XXX円)' 形式で返す"""
         try:
             df = result.get("data")

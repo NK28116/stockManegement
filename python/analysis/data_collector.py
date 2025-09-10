@@ -11,6 +11,8 @@ import pandas as pd
 import yfinance as yf
 from python.config import config  #
 
+__al__ = ["main", "StockDataCollector", "get_stock_list_from_db", "fetch_and_store_stock_prices_quarter"]
+
 
 class StockDataCollector:
     def __init__(self):
