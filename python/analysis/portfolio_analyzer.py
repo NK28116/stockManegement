@@ -1,7 +1,6 @@
 # my_stock.db から保有株式情報を取得し、株価データを取得する
 import os
 import sqlite3
-from datetime import datetime
 from typing import List, Optional
 
 import matplotlib.pyplot as plt
