@@ -5,7 +5,6 @@
 
 import glob
 import os
-
 import sys
 
 __all__ = ["main", "print_summary", "select_csv_file", "open_charts_folder"]
@@ -17,13 +16,13 @@ def select_csv_file():
     csv_files = glob.glob(os.path.join(practice_dir, "*.csv"))
 
     if not csv_files:
-        print(f"CSVファイルが {practice_dir} に見つかりません。")
+        print("CSVファイルが {practice_dir} に見つかりません。")
         return None
 
     print("\n=== 利用可能なCSVファイル ===")
     for i, file in enumerate(sorted(csv_files), 1):
         filename = os.path.basename(file)
-        print(f"  {i}. {filename}")
+        print("  {i}. {filename}")
 
     while True:
         try:
@@ -48,11 +47,11 @@ def open_charts_folder(dev_mode=False):
     abs_path = os.path.abspath(charts_dir)
 
     if not os.path.exists(abs_path):
-        print(f"チャートフォルダが存在しません: {abs_path}")
+        print("チャートフォルダが存在しません: {abs_path}")
         print("まず generate_all_charts.py を実行してください。")
         return
 
-    print(f"\nチャート保存先: {abs_path}")
+    print("\nチャート保存先: {abs_path}")
 
     # List available charts
     png_files = [f for f in os.listdir(abs_path) if f.endswith(".png")]
@@ -62,23 +61,23 @@ def open_charts_folder(dev_mode=False):
         print("まず generate_all_charts.py を実行してください。")
         return
 
-    print(f"\n利用可能なチャート: {len(png_files)}件")
+    print("\n利用可能なチャート: {len(png_files)}件")
     for i, file in enumerate(sorted(png_files), 1):
         if file.startswith("demo_"):
             stock_name = file.replace("demo_", "").replace(".png", "").replace("_T_", " - ")
-            print(f"  {i}. {stock_name} [デモ]")
+            print("  {i}. {stock_name} [デモ]")
         else:
             stock_name = file.replace(".png", "").replace("_T_", " - ")
-            print(f"  {i}. {stock_name}")
+            print("  {i}. {stock_name}")
 
     if not dev_mode:
-        print(f"\n詳細レポート: trading_summary_portfolio_practice.txt")
+        print("\n詳細レポート: trading_summary_portfolio_practice.txt")
 
     # try:
     #     subprocess.run(['open', abs_path], check=True)
-    #     print(f"\nFinderでフォルダを開きました: {abs_path}")
+    #     print("\nFinderでフォルダを開きました: {abs_path}")
     # except (subprocess.CalledProcessError, FileNotFoundError):
-    #     print(f"\n手動でフォルダを確認してください: {abs_path}")
+    #     print("\n手動でフォルダを確認してください: {abs_path}")
 
 
 def print_summary(dev_mode=False):
@@ -105,8 +104,8 @@ def print_summary(dev_mode=False):
             print(line)
 
         if len(lines) > 50:
-            print(f"\n... (残り {len(lines) - 50} 行)\n")
-            print(f"完全版は {summary_file} を確認してください。")
+            print("\n... (残り {len(lines) - 50} 行)\n")
+            print("完全版は {summary_file} を確認してください。")
     else:
         print("サマリーファイルが見つかりません。")
         print("まず generate_all_charts.py を実行してください。")

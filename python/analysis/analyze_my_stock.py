@@ -9,8 +9,8 @@ from typing import List, Optional
 import pandas as pd
 import yfinance as yf
 
-from python.utils.logger import get_logger
 from python.config import config
+from python.utils.logger import get_logger
 
 # ログ設定
 
@@ -39,19 +39,19 @@ def fetch_stock_data(ticker: str, period="1mo") -> Optional[pd.DataFrame]:
         DataFrame: 株価データ、エラーの場合はNone
     """
     try:
-        logger.info(f"株価データ取得開始: {ticker}")
+        logger.info("株価データ取得開始: {ticker}")
         stock = yf.Ticker(ticker)
         df = stock.history(period=period)
 
         if df.empty:
-            logger.error(f"データが取得できませんでした: {ticker}")
+            logger.error("データが取得できませんでした: {ticker}")
             return None
 
-        logger.info(f"株価データ取得完了: {ticker} - {len(df)}件")
+        logger.info("株価データ取得完了: {ticker} - {len(df)}件")
         return df
 
     except Exception as e:
-        logger.error(f"株価データ取得エラー: {ticker} - {e}")
+        logger.error("株価データ取得エラー: {ticker} - {e}")
         return None
 
 
@@ -90,32 +90,32 @@ def analyze_stock(df: pd.DataFrame) -> List[str]:
                 # 買いエントリー
                 buy_price = price
 
-                results.append(f"{date} {price:.2f}円: ++ → 買いエントリー")
+                results.append("{date} {price:.2f}円: ++ → 買いエントリー")
 
             elif pattern == "+-":
-                results.append(f"{date} {price:.2f}円: +- → 次に++または--が出たら売却")
+                results.append("{date} {price:.2f}円: +- → 次に++または--が出たら売却")
 
             elif pattern == "--" and buy_price is not None:
                 # 売却
                 diff = price - buy_price
-                results.append(f"{date} {price:.2f}円: -- → 売却（買値 {buy_price:.2f}円 → 損益 {diff:.2f}円）")
+                results.append("{date} {price:.2f}円: -- → 売却（買値 {buy_price:.2f}円 → 損益 {diff:.2f}円）")
                 buy_price = None  # リセット
 
             elif pattern == "++" and buy_price is not None:
-                results.append(f"{date} {price:.2f}円: ++ → 継続保持中")
+                results.append("{date} {price:.2f}円: ++ → 継続保持中")
 
             elif pattern == "+-" and buy_price is not None:
-                results.append(f"{date} {price:.2f}円: +- → 継続保持中")
+                results.append("{date} {price:.2f}円: +- → 継続保持中")
 
             else:
-                results.append(f"{date} {price:.2f}円: 継続 ({pattern})")
+                results.append("{date} {price:.2f}円: 継続 ({pattern})")
 
-        logger.info(f"分析完了: {len(results)}件の結果")
+        logger.info("分析完了: {len(results)}件の結果")
         return results
 
     except Exception as e:
-        logger.error(f"分析エラー: {e}")
-        return [f"エラー: 分析中に問題が発生しました - {e}"]
+        logger.error("分析エラー: {e}")
+        return ["エラー: 分析中に問題が発生しました - {e}"]
 
 
 def save_results(results: List[str]) -> bool:
@@ -132,16 +132,16 @@ def save_results(results: List[str]) -> bool:
         os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
 
         with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
-            f.write(f"# 分析結果 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write("# 分析結果 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write("=" * 50 + "\n\n")
             for line in results:
                 f.write(line + "\n")
 
-        logger.info(f"結果を {OUTPUT_FILE} に保存しました")
+        logger.info("結果を {OUTPUT_FILE} に保存しました")
         return True
 
     except Exception as e:
-        logger.error(f"結果保存エラー: {e}")
+        logger.error("結果保存エラー: {e}")
         return False
 
 
@@ -158,5 +158,5 @@ if __name__ == "__main__":
         else:
             print("データ取得に失敗しました")
     except Exception as e:
-        logger.error(f"メイン処理エラー: {e}")
-        print(f"エラーが発生しました: {e}")
+        logger.error("メイン処理エラー: {e}")
+        print("エラーが発生しました: {e}")

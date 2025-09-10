@@ -93,7 +93,7 @@ class ImprovedTradingRules:
                             "price": price,
                             "action": "SELL",
                             "pattern": pattern,
-                            "reason": f"ストップロス（-{self.stop_loss_percent:.1%}）",
+                            "reason": "ストップロス（-{self.stop_loss_percent:.1%}）",
                             "entry_price": position["entry_price"],
                             "profit_loss": price - position["entry_price"],
                             "profit_loss_percent": (price - position["entry_price"]) / position["entry_price"],
@@ -109,7 +109,7 @@ class ImprovedTradingRules:
                             "price": price,
                             "action": "SELL",
                             "pattern": pattern,
-                            "reason": f"利確（+{self.take_profit_percent:.1%}）",
+                            "reason": "利確（+{self.take_profit_percent:.1%}）",
                             "entry_price": position["entry_price"],
                             "profit_loss": price - position["entry_price"],
                             "profit_loss_percent": (price - position["entry_price"]) / position["entry_price"],
@@ -172,7 +172,7 @@ class ImprovedTradingRules:
             "profit_factor": (
                 sum([p for p in profits if p > 0]) / abs(sum([p for p in profits if p < 0]))
                 if profits and any(p < 0 for p in profits)
-                else float("inf")
+                else float("in")
             ),
         }
 
@@ -185,20 +185,20 @@ def generate_trading_report(comparison: Dict) -> str:
     report.append("=" * 60)
     report.append("売買ルール比較レポート")
     report.append("=" * 60)
-    report.append(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report.append("分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     report.append("")
 
     # 新ルール
     report.append("【新ルール（改善版）】")
     new_metrics = comparison["new_rules"]["metrics"]
-    report.append(f"総取引数: {new_metrics.get('total_trades', 0)}")
-    report.append(f"完了取引数: {new_metrics.get('completed_trades', 0)}")
-    report.append(f"勝率: {new_metrics.get('win_rate', 0):.2%}")
-    report.append(f"平均損益: {new_metrics.get('average_profit', 0):.2%}")
-    report.append(f"総リターン: {new_metrics.get('total_return', 0):.2%}")
-    report.append(f"最大利益: {new_metrics.get('max_profit', 0):.2%}")
-    report.append(f"最大損失: {new_metrics.get('max_loss', 0):.2%}")
-    report.append(f"プロフィットファクター: {new_metrics.get('profit_factor', 0):.2f}")
+    report.append("総取引数: {new_metrics.get('total_trades', 0)}")
+    report.append("完了取引数: {new_metrics.get('completed_trades', 0)}")
+    report.append("勝率: {new_metrics.get('win_rate', 0):.2%}")
+    report.append("平均損益: {new_metrics.get('average_profit', 0):.2%}")
+    report.append("総リターン: {new_metrics.get('total_return', 0):.2%}")
+    report.append("最大利益: {new_metrics.get('max_profit', 0):.2%}")
+    report.append("最大損失: {new_metrics.get('max_loss', 0):.2%}")
+    report.append("プロフィットファクター: {new_metrics.get('profit_factor', 0):.2f}")
     report.append("")
 
     # 改善点

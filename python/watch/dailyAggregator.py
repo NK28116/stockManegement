@@ -29,4 +29,4 @@ def save_data_to_db(data):
         conn.commit()
         conn.close()
     except Exception as e:
-        logging.error(f"SQLite データベースへの接続とデータ保存に失敗しました: {e}")
+        logging.error("SQLite データベースへの接続とデータ保存に失敗しました: {e}")

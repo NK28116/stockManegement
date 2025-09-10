@@ -9,7 +9,8 @@ from typing import Dict, Optional, Tuple
 
 import pandas as pd
 import yfinance as yf
-from python.config import config  #
+
+from python.config import config
 
 __al__ = ["main", "StockDataCollector", "get_stock_list_from_db", "fetch_and_store_stock_prices_quarter"]
 
@@ -37,26 +38,26 @@ class StockDataCollector:
         try:
             # 入力検証
             if not code or code.strip() == "":
-                print(f"警告: 無効な銘柄コード: {code}")
+                print("警告: 無効な銘柄コード: {code}")
                 return None
 
             # .Tが既に含まれているかチェック
             symbol = code.strip()
             if not symbol.endswith(".T"):
-                symbol = f"{symbol}.T"
+                symbol = "{symbol}.T"
 
-            print(f"データ取得中: {symbol} ({self.start_date} - {self.end_date})")
+            print("データ取得中: {symbol} ({self.start_date} - {self.end_date})")
             ticker = yf.Ticker(symbol)
             df = ticker.history(start=self.start_date, end=self.end_date)
 
             if df.empty:
-                print(f"警告: {code}のデータが取得できませんでした（上場廃止または銘柄コードが無効の可能性）")
+                print("警告: {code}のデータが取得できませんでした（上場廃止または銘柄コードが無効の可能性）")
                 return None
 
             # 最低限のデータが存在するかチェック
             required_columns = ["Open", "High", "Low", "Close", "Volume"]
             if not all(col in df.columns for col in required_columns):
-                print(f"警告: {code}の必要な価格データが不足しています")
+                print("警告: {code}の必要な価格データが不足しています")
                 return None
 
             # テクニカル指標を計算してからパフォーマンス分析
@@ -70,11 +71,11 @@ class StockDataCollector:
             # より詳細なエラーハンドリング
             error_msg = str(e)
             if "404" in error_msg or "not found" in error_msg.lower():
-                print(f"エラー: {code}の銘柄が見つかりません（上場廃止の可能性）")
+                print("エラー: {code}の銘柄が見つかりません（上場廃止の可能性）")
             elif "timeout" in error_msg.lower():
-                print(f"エラー: {code}のデータ取得がタイムアウトしました")
+                print("エラー: {code}のデータ取得がタイムアウトしました")
             else:
-                print(f"エラー: {code}のデータ取得失敗 - {e}")
+                print("エラー: {code}のデータ取得失敗 - {e}")
             return None
 
     def _calculate_indicators(self, df: pd.DataFrame) -> Optional[pd.DataFrame]:
@@ -89,7 +90,7 @@ class StockDataCollector:
             df["Volatility"] = df["Daily_Return"].rolling(window=20).std()
             return df
         except Exception as e:
-            print(f"エラー: テクニカル指標の計算に失敗しました - {e}")
+            print("エラー: テクニカル指標の計算に失敗しました - {e}")
             return None
 
     def _analyze_performance(self, df: pd.DataFrame) -> Dict:
@@ -132,7 +133,7 @@ class StockDataCollector:
                 "データポイント数": len(df),
             }
         except Exception as e:
-            print(f"エラー: パフォーマンス分析に失敗しました - {e}")
+            print("エラー: パフォーマンス分析に失敗しました - {e}")
             return {}
 
 
@@ -151,7 +152,7 @@ def fetch_and_store_stock_prices_quarter(code: str, start_date: str, end_date: s
     try:
         df = yf.download(code, start=start_date, end=end_date)
         if df.empty:
-            print(f"データなし: {code}")
+            print("データなし: {code}")
             return
 
         conn = sqlite3.connect(config.db_path)
@@ -176,9 +177,9 @@ def fetch_and_store_stock_prices_quarter(code: str, start_date: str, end_date: s
             )
         conn.commit()
         conn.close()
-        print(f"データ取得・保存完了: {code} ({len(df)}件)")
+        print("データ取得・保存完了: {code} ({len(df)}件)")
     except Exception as e:
-        print(f"エラー: {code} - {e}")
+        print("エラー: {code} - {e}")
 
 
 def main():
@@ -187,7 +188,7 @@ def main():
     results = []
     # DBから銘柄コードを取得
     codes = get_stock_list_from_db()
-    print(f"DBから取得した銘柄数: {len(codes)}")
+    print("DBから取得した銘柄数: {len(codes)}")
 
     for code in codes:
         fetch_and_store_stock_prices_quarter(code, collector.start_date, collector.end_date)
@@ -201,25 +202,25 @@ def main():
         output_path = os.path.join(config.output_dir, "quarterly_analysis.csv")
         os.makedirs(config.output_dir, exist_ok=True)
         pd.DataFrame(results).to_csv(output_path, index=False, encoding="utf-8")
-        print(f"\n分析結果を保存しました: {output_path}")
+        print("\n分析結果を保存しました: {output_path}")
     else:
         print("分析可能な銘柄データがありませんでした")
     # 銘柄一覧の読み込み
     if not os.path.exists(config.codes_path):
-        print(f"エラー: 銘柄一覧ファイルが存在しません: {config.codes_path}")
+        print("エラー: 銘柄一覧ファイルが存在しません: {config.codes_path}")
         return
 
     try:
         codes_df = pd.read_csv(config.codes_path)
-        print(f"銘柄一覧を読み込みました: {len(codes_df)}銘柄")
+        print("銘柄一覧を読み込みました: {len(codes_df)}銘柄")
     except Exception as e:
-        print(f"エラー: 銘柄一覧ファイルの読み込みに失敗しました: {e}")
+        print("エラー: 銘柄一覧ファイルの読み込みに失敗しました: {e}")
         return
 
     # 各銘柄のデータを処理
     successful_count = 0
     for i, row in codes_df.iterrows():
-        print(f"処理中 ({i+1}/{len(codes_df)}): {row['code']} - {row.get('name', '')}")
+        print("処理中 ({i+1}/{len(codes_df)}): {row['code']} - {row.get('name', '')}")
 
         stock_data = collector.collect_stock_data(row["code"])
         if stock_data is None:
@@ -236,8 +237,8 @@ def main():
         output_path = os.path.join(config.output_dir, "quarterly_analysis.csv")
         os.makedirs(config.output_dir, exist_ok=True)
         pd.DataFrame(results).to_csv(output_path, index=False, encoding="utf-8")
-        print(f"\n分析結果を保存しました: {output_path}")
-        print(f"成功: {successful_count}/{len(codes_df)} 銘柄")
+        print("\n分析結果を保存しました: {output_path}")
+        print("成功: {successful_count}/{len(codes_df)} 銘柄")
     else:
         print("\n警告: 分析できる銘柄データがありませんでした")
 

@@ -21,7 +21,7 @@ def analyze_stock_data():
             prev_close = rows[1][0]
             current_close = rows[0][0]
             if current_close < prev_close * 0.97:
-                logging.warning(f"株価が -3% 以上下落しました: {current_close}")
+                logging.warning("株価が -3% 以上下落しました: {current_close}")
         conn.close()
     except Exception as e:
-        logging.error(f"SQLite データベースへの接続に失敗しました: {e}")
+        logging.error("SQLite データベースへの接続に失敗しました: {e}")

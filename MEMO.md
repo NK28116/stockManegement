@@ -329,7 +329,7 @@ if signal == "buy" and not position:
     if next_day_signal == "buy" and price_change > 0.01:
         position = True
         buy_price = price
-        trades.append(f"{date}: {price}円 - エントリー")
+        trades.append("{date}: {price}円 - エントリー")
 ```
 
 ---

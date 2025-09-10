@@ -5,7 +5,6 @@
 
 import os
 import sys
-
 from datetime import datetime, timedelta
 
 from python.analysis.portfolio_analyzer import PortfolioAnalyzer
@@ -56,7 +55,7 @@ def run_weekly_task():
         analyzer.save_analysis(report, filename="weekly_portfolio_report.txt")
         plot_macd_bollinger(price_data, indicators)
     else:
-        loggerWeekly.warning(f"ポートフォリオデータが空です: {portfolio_file}")
+        loggerWeekly.warning("ポートフォリオデータが空です: {portfolio_file}")
 
     buy_and_sell_stock.evaluate_weekly_trades()
     loggerWeekly.info("=== 週次タスク完了 ===")
@@ -100,9 +99,9 @@ def run_yearly_task():
 
     try:
         dump_csv.dump_and_cleanup(db_path, output_dir, year)
-        loggerYearly.info(f"{year} 年のデータをCSVにダンプし、DBから削除しました。")
+        loggerYearly.info("{year} 年のデータをCSVにダンプし、DBから削除しました。")
     except Exception as e:
-        loggerYearly.error(f"年次ダンプ処理でエラー: {e}")
+        loggerYearly.error("年次ダンプ処理でエラー: {e}")
 
     loggerYearly.info("=== 年次タスク完了 ===")
 

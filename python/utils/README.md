@@ -179,12 +179,12 @@ def analyze_portfolio_with_alerts(portfolio_data):
         # 価格アラート
         price_alert = PriceAlert(stock['code'], stock['stop_loss'])
         if price_alert.check_condition(stock['current_price']):
-            alerts.append(f"価格アラート: {stock['code']}")
+            alerts.append("価格アラート: {stock['code']}")
         
         # RSIアラート
         rsi = calculate_rsi(stock['prices'])
         if rsi[-1] > 70:
-            alerts.append(f"RSI過買い: {stock['code']}")
+            alerts.append("RSI過買い: {stock['code']}")
     
     return analysis_result, alerts
 ```
