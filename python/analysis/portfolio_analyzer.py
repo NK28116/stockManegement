@@ -1,38 +1,36 @@
-# my_stock.db から保有株式情報を取得し、株価データを取得する
+# python/analysis/portfolio_analyzer.py
 import os
 import sqlite3
-from typing import List, Optional
+from datetime import datetime
+from tkinter import N
+from typing import Dict, List
 
 import matplotlib.pyplot as plt
 import pandas as pd
-import ta
 import yfinance as yf
 
+from python.analysis.formula_for_analyzer import calculate_technical_indicators
 from python.config import config
 from python.utils.logger import get_logger
 
 logger = get_logger("PortfolioAnalyzer", category="analysis")
 
 DB_PATH = config.db_path
-DEFAULT_RESULT_DIR = config.root_dir / "data" / "analyze_my_stock_db"
-os.makedirs(DEFAULT_RESULT_DIR, exist_ok=True)
+RESULT_DIR = config.root_dir / "data"
+PLOT_DIR = RESULT_DIR / "plots"
+os.makedirs(PLOT_DIR, exist_ok=True)
 
 __all__ = ["PortfolioAnalyzer"]
 
 
 class PortfolioAnalyzer:
-    def __init__(self, db_path=DB_PATH, result_dir=DEFAULT_RESULT_DIR):
+    def __init__(self, db_path=DB_PATH, result_dir=RESULT_DIR):
         self.db_path = db_path
         self.result_dir = result_dir
         os.makedirs(self.result_dir, exist_ok=True)
 
-    def get_portfolio(self, portfolio_name="stock", csv_path=None):
-        """保有株式情報を取得（DB優先、CSVがあれば読み込む）"""
-        if csv_path and os.path.exists(csv_path):
-            df = pd.read_csv(csv_path)
-            logger.info("CSVポートフォリオ読み込み: {csv_path} ({len(df)}件)")
-            return df
-
+    def get_portfolio(self, portfolio_name="my_stock") -> pd.DataFrame:
+        """DBから保有株式情報を全取得"""
         query = """
         SELECT ph.id, ph.code, s.name, s.sector, ph.quantity, ph.purchase_price, ph.purchase_date
         FROM portfolio_holdings ph
@@ -41,229 +39,76 @@ class PortfolioAnalyzer:
         """
         with sqlite3.connect(self.db_path) as conn:
             df = pd.read_sql_query(query, conn, params=(portfolio_name,))
-        logger.info("DBポートフォリオ取得: {portfolio_name} ({len(df)}件)")
+        logger.info(f"DBポートフォリオ取得: {portfolio_name} ({len(df)}件)")
         return df
 
-    def get_stock_prices(self, code):
-        """特定銘柄の株価取得"""
-        query = """
-        SELECT date, open, high, low, close, volume
-        FROM stock_prices
-        WHERE code = ?
-        ORDER BY date
-        """
-        with sqlite3.connect(self.db_path) as conn:
-            df = pd.read_sql_query(query, conn, params=(code,))
-        if df.empty:
-            logger.warning("株価データが見つかりません: {code}")
-            return df
-        df["date"] = pd.to_datetime(df["date"])
-        df.set_index("date", inplace=True)
-        return df
-
-    def fetch_stock_data(self, ticker: str, period: int) -> Optional[pd.DataFrame]:
-        """
-        株価データを取得する
-
-        Args:
-            ticker: ティッカーシンボル
-            period: 取得期間
-
-        Returns:
-            DataFrame: 株価データ、エラーの場合はNone
-        """
+    def fetch_stock_data(self, ticker: str, period="1y") -> pd.DataFrame:
+        """Yahoo Finance から株価データを取得"""
         try:
-            logger.info("株価データ取得開始: {ticker}")
+            logger.info(f"株価データ取得開始: {ticker}")
             stock = yf.Ticker(ticker)
             df = stock.history(period=period)
-
             if df.empty:
-                logger.error("データが取得できませんでした: {ticker}")
-                return None
-
-            logger.info("株価データ取得完了: {ticker} - {len(df)}件")
+                logger.warning(f"データが取得できませんでした: {ticker}")
             return df
-
         except Exception as e:
-            logger.error("株価データ取得エラー: {ticker} - {e}")
-            return None
-
-    def analyze_stock(self, df: pd.DataFrame) -> List[str]:
-        """
-        株価データを分析する
-
-        Args:
-            df: 株価データ
-
-        Returns:
-            List[str]: 分析結果
-        """
-        try:
-            if df is None or df.empty:
-                logger.error("分析対象のデータがありません")
-                return ["エラー: 分析対象のデータがありません"]
-
-            closes = df["Close"].tolist()
-            signals = []
-
-            for i in range(1, len(closes)):
-                change = "+" if closes[i] > closes[i - 1] else "-"
-                signals.append(change)
-
-            results = []
-            buy_price = None  # 買値を記録
-
-            for i in range(1, len(signals)):
-                pattern = signals[i - 1] + signals[i]
-                # Off-by-one 修正: パターンは signals[i] を含むため、date/price も i+1 を参照
-                date = df.index[i + 1].strftime("%Y-%m-%d")
-                price = closes[i + 1]
-
-                if pattern == "++" and buy_price is None:
-                    # 買いエントリー
-                    buy_price = price
-
-                    results.append("{date} {price:.2f}円: ++ → 買いエントリー")
-
-                elif pattern == "+-":
-                    results.append("{date} {price:.2f}円: +- → 次に++または--が出たら売却")
-
-                elif pattern == "--" and buy_price is not None:
-                    # 売却
-                    diff = price - buy_price
-                    results.append("{date} {price:.2f}円: -- → 売却（買値 {buy_price:.2f}円 → 損益 {diff:.2f}円）")
-                    buy_price = None  # リセット
-
-                elif pattern == "++" and buy_price is not None:
-                    results.append("{date} {price:.2f}円: ++ → 継続保持中")
-
-                elif pattern == "+-" and buy_price is not None:
-                    results.append("{date} {price:.2f}円: +- → 継続保持中")
-
-                else:
-                    results.append("{date} {price:.2f}円: 継続 ({pattern})")
-
-            logger.info("分析完了: {len(results)}件の結果")
-            return results
-
-        except Exception as e:
-            logger.error("分析エラー: {e}")
-            return ["エラー: 分析中に問題が発生しました - {e}"]
-
-    def save_results(self, results: List[str], filename="result_my_stock_analysis.txt") -> bool:
-        """
-        分析結果を保存する
-
-        Args:
-            results: 分析結果のリスト
-
-        Returns:
-            bool: 保存が成功したかどうか
-        """
-        output_file = os.path.join(self.result_dir, "analyze_my_stock", filename)
-        try:
-            os.makedirs(os.path.dirname(output_file), exist_ok=True)
-
-            with open(output_file, "w", encoding="utf-8") as f:
-                f.write("# 分析結果 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write("=" * 50 + "\n\n")
-                for line in results:
-                    f.write(line + "\n")
-
-            logger.info("結果を {output_file} に保存しました")
-            return True
-
-        except Exception as e:
-            logger.error("結果保存エラー: {e}")
-            return False
-
-    def calculate_technical_indicators(self, price_df):
-        """テクニカル指標を計算"""
-        if price_df.empty:
+            logger.error(f"株価データ取得エラー: {ticker} - {e}")
             return pd.DataFrame()
-        indicators = pd.DataFrame(index=price_df.index)
-        indicators["Close"] = price_df["close"]
 
-        bb = ta.volatility.BollingerBands(close=price_df["close"], window=20, window_dev=2)
-        indicators["bb_middle"] = bb.bollinger_mavg()
-        indicators["bb_upper"] = bb.bollinger_hband()
-        indicators["bb_lower"] = bb.bollinger_lband()
-
-        macd = ta.trend.MACD(close=price_df["close"])
-        indicators["macd"] = macd.macd()
-        indicators["macd_signal"] = macd.macd_signal()
-        indicators["macd_dif"] = macd.macd_diff()
-
-        return indicators
-
-    def save_analysis(self, portfolio_df, indicators_dict, filename=None):
-        """分析結果をテキスト保存"""
-        if filename is None:
-            filename = "portfolio_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-        filepath = os.path.join(self.result_dir, filename)
-        try:
-            with open(filepath, "w", encoding="utf-8") as f:
-                f.write("=== Portfolio Holdings ===\n")
-                f.write(portfolio_df.to_string(index=False))
-                f.write("\n\n=== Technical Indicators ===\n")
-                for code, ind in indicators_dict.items():
-                    f.write("\n--- {code} ---\n")
-                    f.write(ind.tail(5).to_string())
-            logger.info("分析結果を保存: {filepath}")
-        except Exception as e:
-            logger.error("分析結果の保存に失敗しました: {e}")
-
-    def plot_indicators(self, price_df, indicators, code, show=True):
+    def plot_indicators(self, price_df: pd.DataFrame, indicators: pd.DataFrame, code: str, name: str):
         """株価 + テクニカル指標グラフ描画"""
         if price_df.empty or indicators.empty:
-            logger.warning("{code} の描画対象データが空です")
+            logger.warning(f"{code}-{name} の描画対象データが空です")
             return
 
         fig, ax = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
 
-        ax[0].plot(price_df.index, price_df["close"], label="Close")
-        ax[0].plot(
-            indicators.index,
-            indicators["bb_middle"],
-            label="BB Middle",
-            linestyle="--",
-            color="orange",
-        )
-        ax[0].plot(
-            indicators.index,
-            indicators["bb_upper"],
-            label="BB Upper",
-            linestyle="--",
-            color="green",
-        )
-        ax[0].plot(
-            indicators.index,
-            indicators["bb_lower"],
-            label="BB Lower",
-            linestyle="--",
-            color="red",
-        )
-        ax[0].set_title("{code} Price + Bollinger Bands")
+        # 価格 + Bollinger Bands
+        ax[0].plot(price_df.index, price_df["Close"], label="Close")
+        ax[0].plot(indicators.index, indicators["bb_middle"], label="BB Middle", linestyle="--", color="orange")
+        ax[0].plot(indicators.index, indicators["bb_upper"], label="BB Upper", linestyle="--", color="green")
+        ax[0].plot(indicators.index, indicators["bb_lower"], label="BB Lower", linestyle="--", color="red")
+        ax[0].set_title(f"{code}-{name} Price + Bollinger Bands")
         ax[0].legend()
 
+        # MACD
         ax[1].plot(indicators.index, indicators["macd"], label="MACD", color="blue")
         ax[1].plot(indicators.index, indicators["macd_signal"], label="Signal", color="red")
         ax[1].bar(indicators.index, indicators["macd_dif"], label="MACD Dif", color="gray")
-        ax[1].set_title("{code} MACD")
+        ax[1].set_title(f"{code}-{name} MACD")
         ax[1].legend()
 
         plt.tight_layout()
-        if show:
-            plt.show()
-        else:
-            plot_file = os.path.join(self.result_dir, "{code}_plot.png")
-            fig.savefig(plot_file)
-            logger.info("{code} のプロットを保存: {plot_file}")
+        plot_file = PLOT_DIR / f"{code}-{name}_plot.png"
+        fig.savefig(plot_file)
+        logger.info(f"{code}-{name} のプロットを保存: {plot_file}")
         plt.close(fig)
 
-    def analyze_portfolio(self, portfolio_name="my_stock", csv_path=None, plot=True):
+    def save_analysis(self, portfolio_df: pd.DataFrame, indicators_dict: Dict[str, pd.DataFrame]):
+        """ポートフォリオ分析結果を保存"""
+        output_file = self.result_dir / "my_portfolio_analysis.txt"
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write("=" * 60 + "\n")
+            f.write("ポートフォリオ分析レポート\n")
+            f.write("=" * 60 + "\n")
+            f.write(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"対象銘柄数: {len(portfolio_df)}\n\n")
+            f.write("【ポートフォリオ概要】\n")
+            total_investment = (portfolio_df["quantity"] * portfolio_df["purchase_price"]).sum()
+            f.write(f"総投資額: {int(total_investment)}円\n\n")
+            f.write("【銘柄別詳細】\n")
+            for _, row in portfolio_df.iterrows():
+                f.write(f"{row['code']} ({row['name']})\n")
+                f.write(f"  数量: {row['quantity']}株\n")
+                f.write(f"  購入価格: {row['purchase_price']}円\n")
+                f.write(f"  投資額: {row['quantity']*row['purchase_price']}円\n")
+                weight = row["quantity"] * row["purchase_price"] / total_investment * 100
+                f.write(f"  ウェイト: {weight:.2f}%\n\n")
+        logger.info(f"ポートフォリオ分析結果を保存: {output_file}")
+
+    def analyze_portfolio(self, portfolio_name="my_stock"):
         """ポートフォリオ全体を分析"""
-        portfolio_df = self.get_portfolio(portfolio_name=portfolio_name, csv_path=csv_path)
+        portfolio_df = self.get_portfolio(portfolio_name)
         if portfolio_df.empty:
             logger.warning("分析対象のポートフォリオがありません")
             return
@@ -271,12 +116,13 @@ class PortfolioAnalyzer:
         indicators_dict = {}
         for _, row in portfolio_df.iterrows():
             code = row["code"]
-            price_df = self.get_stock_prices(code)
+            name = row["name"]
+            price_df = self.fetch_stock_data(code)
             if price_df.empty:
                 continue
-            indicators = self.calculate_technical_indicators(price_df)
+            indicators = calculate_technical_indicators(price_df)
             indicators_dict[code] = indicators
-            self.plot_indicators(price_df, indicators, code, show=plot)
+            self.plot_indicators(price_df, indicators, code, name)
 
         self.save_analysis(portfolio_df, indicators_dict)
         logger.info("✅ ポートフォリオ分析完了")
@@ -284,4 +130,4 @@ class PortfolioAnalyzer:
 
 if __name__ == "__main__":
     analyzer = PortfolioAnalyzer()
-    analyzer.analyze_portfolio(config.codes_path)
+    analyzer.analyze_portfolio()
