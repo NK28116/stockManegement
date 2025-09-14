@@ -7,12 +7,14 @@ import os
 import shutil
 import sqlite3
 
+from python.config import config
+
 
 def init_database():
     """データベースを初期化"""
 
     # メインのデータベースパス
-    main_db_path = os.path.join(os.path.dirname(__file__), "db/my_stock.db")
+    main_db_path = config.db_path
 
     # 重複ディレクトリの確認と削除
     duplicate_path = os.path.join(os.path.dirname(__file__), "python/db")
@@ -29,8 +31,8 @@ def init_database():
     cur = conn.cursor()
 
     # 基本テーブルの作成
-    # 基本テーブルの作成
     tables = [
+        # 分足
         """
         CREATE TABLE IF NOT EXISTS intraday (
             code TEXT,
@@ -40,16 +42,19 @@ def init_database():
             PRIMARY KEY (code, timestamp)
         )
         """,
+        # 日足
+        # 日次評価・損益記録
         """
         CREATE TABLE IF NOT EXISTS daily (
             code TEXT,
             date DATE,
-            name TEXT,
-            quantity INTEGER,
-            purchase_price REAL,
-            purchase_date DATE,
-            sector TEXT,
-            status TEXT DEFAULT '保有中',
+            price REAL,                  -- 当日の株価
+            market_value REAL,           -- 評価額
+            unrealized_pl REAL,          -- 含み損益
+            realized_pl REAL DEFAULT 0,  -- 実現損益（売却があった場合のみ）
+            action TEXT DEFAULT 'HOLD',  -- その日のアクション ('BUY','SELL','HOLD')
+            trade_quantity REAL DEFAULT 0, -- 売買数量
+            trade_price REAL,            -- 売買価格
             PRIMARY KEY (code, date)
         )
         """,
@@ -66,6 +71,7 @@ def init_database():
             PRIMARY KEY (code, date)
         )
         """,
+        # 収支
         """
         CREATE TABLE IF NOT EXISTS portfolio (
             code TEXT,
@@ -78,14 +84,18 @@ def init_database():
             PRIMARY KEY (code)
         )
         """,
+        # 保持株式
         """
         CREATE TABLE IF NOT EXISTS stock_data (
+            code TEXT,
             date DATE,
             open REAL,
             high REAL,
             low REAL,
             close REAL,
-            PRIMARY KEY (date)
+            volume INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (code,date)
         )
         """,
         """
@@ -95,6 +105,7 @@ def init_database():
             sector TEXT
         )
         """,
+        # 保有株式の全期間の変異
         """
         CREATE TABLE IF NOT EXISTS portfolio_holdings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,6 +117,16 @@ def init_database():
             FOREIGN KEY (code) REFERENCES stocks(code)
         )
         """,
+        """
+CREATE TABLE IF NOT EXISTS trading_signals (
+    code TEXT,
+    signal_date DATE,
+    signal_type TEXT, -- 'BUY', 'SELL', 'HOLD' など
+    price REAL,
+    reason TEXT,
+    PRIMARY KEY (code, signal_date)
+)
+""",
     ]
 
     for table_sql in tables:
