@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import yfinance as yf
 
+from python.config import config
 from python.trading.trading_rules import ImprovedTradingRules
 from python.visualization.plot_indicators import plot_macd_bollinger
 
@@ -61,16 +62,16 @@ class StockChartVisualizer:
                     removed += 1
                 except Exception:
                     pass
-        print("既存PNGを削除: {removed}件")
+        print(f"既存PNGを削除: {removed}件")
 
     def load_portfolio_stocks(self, portfolio_file: str) -> List[Dict]:
         """ポートフォリオファイルから株式リストを読み込み"""
         try:
             # 実際の運用用のmy_stock.csvを使用
             if portfolio_file == "my_stock.csv":
-                portfolio_path = "../data/my_stock.csv"
+                portfolio_path = config.codes_path
             else:
-                portfolio_path = f"../data/practice/{portfolio_file}"
+                portfolio_path = config.output_dir + "/practice/{portfolio_file}"
 
             df = pd.read_csv(portfolio_path)
 
@@ -85,11 +86,11 @@ class StockChartVisualizer:
                         }
                     )
 
-            print("ポートフォリオ読み込み完了: {len(stocks)}銘柄")
+            print(f"ポートフォリオ読み込み完了: {len(stocks)}銘柄")
             return stocks
 
         except Exception as e:
-            print("ポートフォリオ読み込みエラー: {e}")
+            print(f"ポートフォリオ読み込みエラー: {e}")
             return []
 
     def fetch_stock_data(self, ticker: str) -> Optional[pd.DataFrame]:
@@ -99,14 +100,14 @@ class StockChartVisualizer:
             df = stock.history(period=self.period)
 
             if df.empty:
-                print("データが取得できません: {ticker}")
+                print(f"データが取得できません: {ticker}")
                 return None
 
-            print("データ取得完了: {ticker} - {len(df)}件")
+            print(f"データ取得完了: {ticker} - {len(df)}件")
             return df
 
         except Exception as e:
-            print("データ取得エラー: {ticker} - {e}")
+            print(f"データ取得エラー: {ticker} - {e}")
             return None
 
     def create_chart_with_signals(self, stock_info: Dict, df: pd.DataFrame, trades: List[Dict]) -> plt.Figure:
@@ -235,7 +236,7 @@ class StockChartVisualizer:
     def create_MACD_and_Bollinger_Band_chart(self, portfolio_file: str):
         """保持銘柄すべてのMACDとボリンジャーバンドグラフを作成・保存"""
         print("=== MACD & ボリンジャーバンドチャート作成開始 ===")
-        print("対象ポートフォリオ: {portfolio_file}")
+        print(f"対象ポートフォリオ: {portfolio_file}")
 
         # --- 出力ディレクトリ作成 ---
         os.makedirs(self.plot_image_dir, exist_ok=True)
@@ -253,7 +254,7 @@ class StockChartVisualizer:
 
         for i, stock_info in enumerate(stocks, 1):
             try:
-                print("\n[{i}/{len(stocks)}] 処理中: {stock_info['name']} ({stock_info['code']})")
+                print(f"\n[{i}/{len(stocks)}] 処理中: {stock_info['name']} ({stock_info['code']})")
 
                 # 株価データ取得
                 df = self.fetch_stock_data(stock_info["code"])
@@ -282,14 +283,14 @@ class StockChartVisualizer:
                 indicators[stock_info["code"]] = {"Bollinger": bb_df, "MACD": macd_df}
 
             except Exception as e:
-                print("  エラー: {stock_info['code']} - {e}")
+                print(f"  エラー: {stock_info['code']} - {e}")
                 continue
 
         # --- プロット呼び出し ---
         if price_data and indicators:
             plot_macd_bollinger(price_data, stock_names, indicators, self.plot_image_dir)
             print("\n=== 全銘柄のMACD & ボリンジャーバンドチャート作成完了 ===")
-            print("保存先: {os.path.abspath(self.plot_image_dir)}")
+            print(f"保存先: {os.path.abspath(self.plot_image_dir)}")
         else:
             print("チャート作成対象データがありませんでした")
 
@@ -303,16 +304,16 @@ class StockChartVisualizer:
             return "\n".join(summary)
 
         # Basic metrics
-        summary.append("総取引数: {metrics.get('total_trades', 0)}")
-        summary.append("完了取引数: {metrics.get('completed_trades', 0)}")
-        summary.append("勝率: {metrics.get('win_rate', 0):.1%}")
-        summary.append("平均損益: {metrics.get('average_profit', 0):.2%}")
-        summary.append("総リターン: {metrics.get('total_return', 0):.2%}")
+        summary.append(f"総取引数: {metrics.get('total_trades', 0)}")
+        summary.append(f"完了取引数: {metrics.get('completed_trades', 0)}")
+        summary.append(f"勝率: {metrics.get('win_rate', 0):.1%}")
+        summary.append(f"平均損益: {metrics.get('average_profit', 0):.2%}")
+        summary.append(f"総リターン: {metrics.get('total_return', 0):.2%}")
 
         if metrics.get("max_profit", 0) != 0:
-            summary.append("最大利益: {metrics.get('max_profit', 0):.2%}")
+            summary.append(f"最大利益: {metrics.get('max_profit', 0):.2%}")
         if metrics.get("max_loss", 0) != 0:
-            summary.append("最大損失: {metrics.get('max_loss', 0):.2%}")
+            summary.append(f"最大損失: {metrics.get('max_loss', 0):.2%}")
 
         # Trade details
         buy_trades = [t for t in trades if t["action"] == "BUY"]
@@ -322,7 +323,7 @@ class StockChartVisualizer:
             summary.append("\n【買いシグナル】")
             for trade in buy_trades:
                 reason = trade.get("reason", "")
-                summary.append("  {trade['date']}: ¥{trade['price']:.2f} - {reason}")
+                summary.append(f"  {trade['date']}: ¥{trade['price']:.2f} - {reason}")
 
         if sell_trades:
             summary.append("\n【売りシグナル】")
@@ -331,7 +332,7 @@ class StockChartVisualizer:
                 if "profit_loss_percent" in trade:
                     profit_info = f" (損益: {trade['profit_loss_percent']:.2%})"
                 reason = trade.get("reason", "")
-                summary.append("  {trade['date']}: ¥{trade['price']:.2f} - {reason}{profit_info}")
+                summary.append(f"  {trade['date']}: ¥{trade['price']:.2f} - {reason}{profit_info}")
 
         return "\n".join(summary)
 
@@ -339,7 +340,7 @@ class StockChartVisualizer:
         """全銘柄のチャートを作成"""
 
         print("=== 全銘柄チャート作成開始 ===")
-        print("対象ポートフォリオ: {portfolio_file}")
+        print(f"対象ポートフォリオ: {portfolio_file}")
 
         # Load portfolio
         stocks = self.load_portfolio_stocks(portfolio_file)
@@ -353,7 +354,7 @@ class StockChartVisualizer:
 
         for i, stock_info in enumerate(stocks, 1):
             try:
-                print("\n[{i}/{len(stocks)}] 処理中: {stock_info['name']} ({stock_info['code']})")
+                print(f"\n[{i}/{len(stocks)}] 処理中: {stock_info['name']} ({stock_info['code']})")
 
                 # Fetch data
                 df = self.fetch_stock_data(stock_info["code"])
@@ -373,7 +374,7 @@ class StockChartVisualizer:
                 figSignal.savefig(chart_path, dpi=150, bbox_inches="tight")
                 plt.close(figSignal)
 
-                print("  チャート保存: {chart_path}")
+                print(f"  チャート保存: {chart_path}")
 
                 # Generate summary
                 summary = self.generate_trading_summary(stock_info, trades, metrics)
@@ -382,7 +383,7 @@ class StockChartVisualizer:
                 successful_charts += 1
 
             except Exception as e:
-                print("  エラー: {stock_info['code']} - {e}")
+                print(f"  エラー: {stock_info['code']} - {e}")
                 continue
 
         # Save summary report
@@ -390,8 +391,8 @@ class StockChartVisualizer:
         self.create_MACD_and_Bollinger_Band_chart(portfolio_file)
 
         print("\n=== 処理完了 ===")
-        print("成功: {successful_charts}/{len(stocks)} 銘柄")
-        print("チャート保存先: {os.path.abspath(self.output_dir)}")
+        print(f"成功: {successful_charts}/{len(stocks)} 銘柄")
+        print(f"チャート保存先: {os.path.abspath(self.output_dir)}")
 
     def save_summary_report(self, summaries: List[str], portfolio_file: str):
         """サマリーレポートを保存"""
@@ -401,17 +402,17 @@ class StockChartVisualizer:
 
             with open(report_path, "w", encoding="utf-8") as f:
                 f.write("=== 全銘柄売買タイミング分析レポート ===\n")
-                f.write("作成日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write("対象ポートフォリオ: {portfolio_file}\n")
+                f.write(f"作成日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"対象ポートフォリオ: {portfolio_file}\n")
                 f.write("=" * 60 + "\n")
 
                 for summary in summaries:
                     f.write(summary + "\n\n")
 
-            print("サマリーレポート保存: {report_path}")
+            print(f"サマリーレポート保存: {report_path}")
 
         except Exception as e:
-            print("レポート保存エラー: {e}")
+            print(f"レポート保存エラー: {e}")
 
 
 def main():
@@ -431,9 +432,9 @@ def main():
     print("利用可能なポートフォリオ:")
     for i, portfolio in enumerate(portfolios, 1):
         if portfolio == "my_stock.csv":
-            print("{i}. {portfolio} (実際の運用用)")
+            print(f"{i}. {portfolio} (実際の運用用)")
         else:
-            print("{i}. {portfolio} (練習用)")
+            print(f"{i}. {portfolio} (練習用)")
 
     # User selection
     try:

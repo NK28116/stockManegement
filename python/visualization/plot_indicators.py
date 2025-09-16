@@ -28,7 +28,7 @@ def plot_macd_bollinger(
     銘柄ごとにMACDとボリンジャーバンドをグラフ化して保存
     """
     os.makedirs(save_dir, exist_ok=True)
-    logging.info("保存先ディレクトリ: {save_dir}")
+    logging.info(f"保存先ディレクトリ: {save_dir}")
 
     for code, df in price_data.items():
         if df.empty or code not in indicators:
@@ -51,7 +51,7 @@ def plot_macd_bollinger(
             linestyle="-.",
             color="orange",
         )
-        ax[0].set_title("{code}-{stock_name} の株価とボリンジャーバンド")
+        ax[0].set_title(f"{code}-{stock_name} の株価とボリンジャーバンド")
         ax[0].legend()
         ax[0].grid(True)
 
@@ -65,13 +65,13 @@ def plot_macd_bollinger(
             color="gray",
             alpha=0.5,
         )
-        ax[1].set_title("{code}-{stock_name} のMACD")
+        ax[1].set_title(f"{code}-{stock_name} のMACD")
         ax[1].legend()
         ax[1].grid(True)
-        logging.info("グラフ作成完了: {code}")
+        logging.info(f"グラフ作成完了: {code}")
 
         plt.tight_layout()
-        filepath = os.path.join(save_dir, "{code}_{stock_name}_indicators.png")
+        filepath = os.path.join(save_dir, f"{code}_{stock_name}_indicators.png")
         plt.savefig(filepath)
         plt.close()
-        logging.info("グラフ保存完了: {filepath}")
+        logging.info(f"グラフ保存完了: {filepath}")

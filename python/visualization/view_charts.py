@@ -16,13 +16,13 @@ def select_csv_file():
     csv_files = glob.glob(os.path.join(practice_dir, "*.csv"))
 
     if not csv_files:
-        print("CSVファイルが {practice_dir} に見つかりません。")
+        print(f"CSVファイルが {practice_dir} に見つかりません。")
         return None
 
-    print("\n=== 利用可能なCSVファイル ===")
+    print(f"\n=== 利用可能なCSVファイル ===")
     for i, file in enumerate(sorted(csv_files), 1):
         filename = os.path.basename(file)
-        print("  {i}. {filename}")
+        print(f"  {i}. {filename}")
 
     while True:
         try:
@@ -30,9 +30,9 @@ def select_csv_file():
             idx = int(choice) - 1
             if 0 <= idx < len(csv_files):
                 return csv_files[idx]
-            print("無効な番号です。")
+            print(f"無効な番号です。")
         except ValueError:
-            print("数字を入力してください。")
+            print(f"数字を入力してください。")
 
 
 def open_charts_folder(dev_mode=False):
@@ -47,37 +47,37 @@ def open_charts_folder(dev_mode=False):
     abs_path = os.path.abspath(charts_dir)
 
     if not os.path.exists(abs_path):
-        print("チャートフォルダが存在しません: {abs_path}")
-        print("まず generate_all_charts.py を実行してください。")
+        print(f"チャートフォルダが存在しません: {abs_path}")
+        print(f"まず generate_all_charts.py を実行してください。")
         return
 
-    print("\nチャート保存先: {abs_path}")
+    print(f"\nチャート保存先: {abs_path}")
 
     # List available charts
     png_files = [f for f in os.listdir(abs_path) if f.endswith(".png")]
 
     if not png_files:
-        print("チャートファイルが見つかりません。")
-        print("まず generate_all_charts.py を実行してください。")
+        print(f"チャートファイルが見つかりません。")
+        print(f"まず generate_all_charts.py を実行してください。")
         return
 
-    print("\n利用可能なチャート: {len(png_files)}件")
+    print(f"\n利用可能なチャート: {len(png_files)}件")
     for i, file in enumerate(sorted(png_files), 1):
         if file.startswith("demo_"):
             stock_name = file.replace("demo_", "").replace(".png", "").replace("_T_", " - ")
-            print("  {i}. {stock_name} [デモ]")
+            print(f"  {i}. {stock_name} [デモ]")
         else:
             stock_name = file.replace(".png", "").replace("_T_", " - ")
-            print("  {i}. {stock_name}")
+            print(f"  {i}. {stock_name}")
 
     if not dev_mode:
-        print("\n詳細レポート: trading_summary_portfolio_practice.txt")
+        print(f"\n詳細レポート: trading_summary_portfolio_practice.txt")
 
     # try:
     #     subprocess.run(['open', abs_path], check=True)
-    #     print("\nFinderでフォルダを開きました: {abs_path}")
+    #     print(f"\nFinderでフォルダを開きました: {abs_path}")
     # except (subprocess.CalledProcessError, FileNotFoundError):
-    #     print("\n手動でフォルダを確認してください: {abs_path}")
+    #     print(f"\n手動でフォルダを確認してください: {abs_path}")
 
 
 def print_summary(dev_mode=False):
@@ -93,7 +93,7 @@ def print_summary(dev_mode=False):
     summary_file = os.path.join(charts_dir, "trading_summary_portfolio_practice.txt")
 
     if os.path.exists(summary_file):
-        print("=== トレーディングサマリー ===")
+        print(f"=== トレーディングサマリー ===")
         with open(summary_file, "r", encoding="utf-8") as f:
             content = f.read()
 
@@ -101,23 +101,23 @@ def print_summary(dev_mode=False):
         preview_lines = lines[:50]
 
         for line in preview_lines:
-            print(line)
+            print(fline)
 
         if len(lines) > 50:
-            print("\n... (残り {len(lines) - 50} 行)\n")
-            print("完全版は {summary_file} を確認してください。")
+            print(f"\n... (残り {len(lines) - 50} 行)\n")
+            print(f"完全版は {summary_file} を確認してください。")
     else:
-        print("サマリーファイルが見つかりません。")
-        print("まず generate_all_charts.py を実行してください。")
+        print(f"サマリーファイルが見つかりません。")
+        print(f"まず generate_all_charts.py を実行してください。")
 
 
 def main():
     """メイン関数"""
-    print("=== チャート表示ヘルパー ===")
+    print(f"=== チャート表示ヘルパー ===")
 
     dev_mode = len(sys.argv) > 1 and sys.argv[1] == "dev-mode"
     if dev_mode:
-        print("[開発モード] practiceフォルダ内のCSVファイルを使用します")
+        print(f"[開発モード] practiceフォルダ内のCSVファイルを使用します")
 
     if len(sys.argv) > 1 and sys.argv[-1] == "--summary":
         print_summary(dev_mode)
