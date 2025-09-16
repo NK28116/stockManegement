@@ -1,6 +1,5 @@
 import logging
 
-
 from python.config import config
 
 __all__ = ["get_logger"]
