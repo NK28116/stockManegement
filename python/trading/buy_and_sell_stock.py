@@ -28,7 +28,7 @@ __all__ = [
 
 def load_codes(path: str) -> pd.DataFrame:
     if not os.path.exists(path):
-        raise FileNotFoundError("ファイルがありません: {path}")
+        raise FileNotFoundError(f"ファイルがありません: {path}")
     df = pd.read_csv(path)
     expected = [
         "code",
@@ -56,7 +56,7 @@ def load_codes(path: str) -> pd.DataFrame:
 
 def save_codes(df: pd.DataFrame, path: str):
     df.to_csv(path, index=False, encoding="utf-8")
-    print("更新完了: {os.path.relpath(path, os.path.dirname(__file__))}")
+    print(f"更新完了: {os.path.relpath(path, os.path.dirname(__file__))}")
 
 
 def get_price(code: str) -> float:
@@ -114,19 +114,19 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
         # 購入日は初回のまま残す（必要なら更新: df.at[i,"purchase_date"]=today）
     action = "買い" if qty > 0 else "売り"
     sign = "+" if qty > 0 else ""
-    print("{action}: {code} {sign}{qty}株 @¥{price if price else 'N/A'}")
+    print(f"{action}: {code} {sign}{qty}株 @¥{price if price else 'N/A'}")
     return df
 
 
 def sell(df: pd.DataFrame, code: str, qty: int) -> pd.DataFrame:
     idx = df.index[df["code"] == code]
     if len(idx) == 0:
-        print("エラー: {code} はmy_stock.csvに存在しません")
+        print(f"エラー: {code} はmy_stock.csvに存在しません")
         return df
     i = idx[0]
     cur_q = int(df.at[i, "quantity"])
     if qty > cur_q:
-        print("エラー: 売却数量が保有数を超えています (保有 {cur_q}株)")
+        print(f"エラー: 売却数量が保有数を超えています (保有 {cur_q}株)")
         return df
     new_q = cur_q - qty
     df.at[i, "quantity"] = new_q
@@ -137,7 +137,7 @@ def sell(df: pd.DataFrame, code: str, qty: int) -> pd.DataFrame:
     else:
         if "status" in df.columns:
             df.at[i, "status"] = "保有中"
-    print("売り: {code} -{qty}株（残 {new_q}株）")
+    print(f"売り: {code} -{qty}株（残 {new_q}株）")
     return df
 
 
@@ -233,7 +233,7 @@ def pre_buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.Da
                 "sector": df.at[i, "sector"],
                 "status": "購入予定",
             }
-    print("購入予定: {code} {qty}株 @¥{price if price else 'N/A'}")
+    print(f"購入予定: {code} {qty}株 @¥{price if price else 'N/A'}")
     return df
 
 
