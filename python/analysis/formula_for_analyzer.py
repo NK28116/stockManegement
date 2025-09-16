@@ -114,32 +114,6 @@ def check_sell_signal(df: pd.DataFrame, buy_price: float) -> List[Dict]:
     return signals
 
 
-def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    株価データに対してテクニカル指標を追加
-    - SMA20
-    - Bollinger Bands
-    - MACD
-    """
-    df = df.copy()
-    df["sma20"] = df["Close"].rolling(window=20).mean()
-
-    # Bollinger Bands
-    df["bb_std"] = df["Close"].rolling(window=20).std()
-    df["bb_upper"] = df["sma20"] + 2 * df["bb_std"]
-    df["bb_lower"] = df["sma20"] - 2 * df["bb_std"]
-    df["bb_middle"] = df["sma20"]
-
-    # MACD
-    exp12 = df["Close"].ewm(span=12, adjust=False).mean()
-    exp26 = df["Close"].ewm(span=26, adjust=False).mean()
-    df["macd"] = exp12 - exp26
-    df["macd_signal"] = df["macd"].ewm(span=9, adjust=False).mean()
-    df["macd_dif"] = df["macd"] - df["macd_signal"]
-
-    return df
-
-
 def generate_buy_sell_signals(df: pd.DataFrame) -> pd.DataFrame:
     """
     テクニカル指標から売買シグナルを生成

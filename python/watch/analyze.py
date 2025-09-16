@@ -20,7 +20,10 @@ __all__ = ["analyze_daily_data"]
 def get_daily_price_data(code, limit=config.volatility_period + 20):  # MACD/BB計算用に多めに取得
     """DBから指定銘柄の日足データを取得する"""
     conn = sqlite3.connect(DB_PATH)
-    query = f"SELECT date, open, high, low, close, volume FROM stock_data WHERE code = '{code}' ORDER BY date ASC LIMIT {limit}"
+    query = f"SELECT date, open, high, low, close, volume \
+            FROM stock_data \
+            WHERE code = '{code}' \
+            ORDER BY date ASC LIMIT {limit}"
     df = pd.read_sql_query(query, conn, index_col="date", parse_dates=["date"])
     conn.close()
     return df

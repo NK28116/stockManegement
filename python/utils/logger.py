@@ -17,7 +17,7 @@ def get_logger(module_name: str, category: str = "general") -> logging.Logger:
     # ログファイル名（1日ごとにローテーション）
     log_file = log_dir / "{datetime.now().strftime('%Y-%m-%d')}.log"
 
-    logger = logging.getLogger("{category}.{module_name}")
+    logger = logging.getLogger(f"{category}.{module_name}")
     logger.setLevel(logging.INFO)
 
     # 既存ハンドラをクリア（重複防止）
