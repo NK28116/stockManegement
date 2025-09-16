@@ -3,27 +3,19 @@
 リスク管理と利益確定を重視
 """
 
-from datetime import datetime
+from datetime import datetime  # datetime を追加
 from typing import Dict, List
 
 import numpy as np
 import pandas as pd
+
+from python.config import config
 
 __all__ = ["ImprovedTradingRules", "generate_trading_report"]
 
 
 class ImprovedTradingRules:
     """改善された売買ルールクラス"""
-
-    def __init__(
-        self,
-        stop_loss_percent: float = 0.05,  # 5%ストップロス
-        take_profit_percent: float = 0.10,  # 10%利確
-        trailing_stop_percent: float = 0.03,
-    ):  # 3%トレーリングストップ
-        self.stop_loss_percent = stop_loss_percent
-        self.take_profit_percent = take_profit_percent
-        self.trailing_stop_percent = trailing_stop_percent
 
     def analyze_with_improved_rules(self, df: pd.DataFrame) -> List[Dict]:
         """
@@ -62,8 +54,8 @@ class ImprovedTradingRules:
                         "entry_price": price,
                         "entry_pattern": pattern,
                         "highest_price": price,  # 最高値追跡
-                        "stop_loss_price": price * (1 - self.stop_loss_percent),
-                        "take_profit_price": price * (1 + self.take_profit_percent),
+                        "stop_loss_price": price * (1 - config.stop_loss_percent),
+                        "take_profit_price": price * (1 + config.take_profit_percent),
                     }
                     trades.append(
                         {
@@ -81,7 +73,7 @@ class ImprovedTradingRules:
                 if price > position["highest_price"]:
                     position["highest_price"] = price
                     # トレーリングストップ更新
-                    new_stop = price * (1 - self.trailing_stop_percent)
+                    new_stop = price * (1 - config.trailing_stop_percent)
                     if new_stop > position["stop_loss_price"]:
                         position["stop_loss_price"] = new_stop
 
@@ -93,7 +85,7 @@ class ImprovedTradingRules:
                             "price": price,
                             "action": "SELL",
                             "pattern": pattern,
-                            "reason": "ストップロス（-{self.stop_loss_percent:.1%}）",
+                            "reason": f"ストップロス（-{config.stop_loss_percent:.1%}）",
                             "entry_price": position["entry_price"],
                             "profit_loss": price - position["entry_price"],
                             "profit_loss_percent": (price - position["entry_price"]) / position["entry_price"],
@@ -109,7 +101,7 @@ class ImprovedTradingRules:
                             "price": price,
                             "action": "SELL",
                             "pattern": pattern,
-                            "reason": "利確（+{self.take_profit_percent:.1%}）",
+                            "reason": f"利確（+{config.take_profit_percent:.1%}）",
                             "entry_price": position["entry_price"],
                             "profit_loss": price - position["entry_price"],
                             "profit_loss_percent": (price - position["entry_price"]) / position["entry_price"],
@@ -172,7 +164,7 @@ class ImprovedTradingRules:
             "profit_factor": (
                 sum([p for p in profits if p > 0]) / abs(sum([p for p in profits if p < 0]))
                 if profits and any(p < 0 for p in profits)
-                else float("in")
+                else float("inf")  # "in" を "inf" に修正
             ),
         }
 
@@ -185,7 +177,7 @@ def generate_trading_report(comparison: Dict) -> str:
     report.append("=" * 60)
     report.append("売買ルール比較レポート")
     report.append("=" * 60)
-    report.append("分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report.append(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     report.append("")
 
     # 新ルール

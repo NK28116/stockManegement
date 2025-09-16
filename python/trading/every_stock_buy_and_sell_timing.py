@@ -158,7 +158,7 @@ class EveryStockAnalyzer:
             # 前日（カレンダー上の1日前。データ側の直近営業日に補正）
             target = datetime.now() - timedelta(days=1)
             for r in successful_results:
-                line = self._get_status_for_date(r, target)
+                line = self.get_status_for_date(r, target)
                 report.append("{r['code']}-{r['name']}: {line}")
             report.append("")
 
@@ -455,7 +455,7 @@ def run():
 
     csv_file = config.codes_path
 
-    from every_stock_BuySell_timing import EveryStockAnalyzer
+    from every_stock_buy_and_sell_timing import EveryStockAnalyzer
 
     analyzer = EveryStockAnalyzer(csv_file)
     results = analyzer.analyze_all_stocks(period="3mo")

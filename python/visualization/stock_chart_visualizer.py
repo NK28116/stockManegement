@@ -7,7 +7,6 @@ import logging
 import os
 import sys
 import warnings
-from datetime import datetime
 from typing import Dict, List, Optional
 
 import matplotlib
@@ -71,7 +70,7 @@ class StockChartVisualizer:
             if portfolio_file == "my_stock.csv":
                 portfolio_path = "../data/my_stock.csv"
             else:
-                portfolio_path = "../data/practice/{portfolio_file}"
+                portfolio_path = f"../data/practice/{portfolio_file}"
 
             df = pd.read_csv(portfolio_path)
 
@@ -116,7 +115,7 @@ class StockChartVisualizer:
         # Figure setup
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 10), height_ratios=[3, 1])
         fig.suptitle(
-            "{stock_info['name']} ({stock_info['code']}) - 売買タイミング分析",
+            f"{stock_info['name']} ({stock_info['code']}) - 売買タイミング分析",
             fontsize=16,
             fontweight="bold",
         )
@@ -153,14 +152,14 @@ class StockChartVisualizer:
                 color="green",
                 s=100,
                 marker="^",
-                label="買い ({len(buy_dates)}回)",
+                label=f"買い ({len(buy_dates)}回)",
                 zorder=5,
             )
 
             # Add annotations for buy signals
             for i, (date, price, reason) in enumerate(zip(buy_dates, buy_prices, buy_reasons)):
                 ax1.annotate(
-                    "買い\n¥{price:.0f}",
+                    f"買い\n¥{price:.0f}",
                     xy=(date, price),
                     xytext=(10, 30),
                     textcoords="offset points",
@@ -178,7 +177,7 @@ class StockChartVisualizer:
                 color="red",
                 s=100,
                 marker="v",
-                label="売り ({len(sell_dates)}回)",
+                label=f"売り ({len(sell_dates)}回)",
                 zorder=5,
             )
 
@@ -191,11 +190,11 @@ class StockChartVisualizer:
                         and trade.get("date") == date.strftime("%Y-%m-%d")
                         and "profit_loss_percent" in trade
                     ):
-                        profit_loss = "\n({trade['profit_loss_percent']:.1%})"
+                        profit_loss = f"\n({trade['profit_loss_percent']:.1%})"
                         break
 
                 ax1.annotate(
-                    "売り\n¥{price:.0f}{profit_loss}",
+                    f"売り\n¥{price:.0f}{profit_loss}",
                     xy=(date, price),
                     xytext=(10, -40),
                     textcoords="offset points",
@@ -297,7 +296,7 @@ class StockChartVisualizer:
     def generate_trading_summary(self, stock_info: Dict, trades: List[Dict], metrics: Dict) -> str:
         """取引サマリーを生成"""
 
-        summary = ["\n=== {stock_info['name']} ({stock_info['code']}) 取引サマリー ==="]
+        summary = [f"\n=== {stock_info['name']} ({stock_info['code']}) 取引サマリー ==="]
 
         if not metrics:
             summary.append("取引データがありません")
@@ -330,7 +329,7 @@ class StockChartVisualizer:
             for trade in sell_trades:
                 profit_info = ""
                 if "profit_loss_percent" in trade:
-                    profit_info = " (損益: {trade['profit_loss_percent']:.2%})"
+                    profit_info = f" (損益: {trade['profit_loss_percent']:.2%})"
                 reason = trade.get("reason", "")
                 summary.append("  {trade['date']}: ¥{trade['price']:.2f} - {reason}{profit_info}")
 
@@ -369,7 +368,7 @@ class StockChartVisualizer:
                 figSignal = self.create_chart_with_signals(stock_info, df, trades)
 
                 # Save chart
-                chart_filename = "{stock_info['code'].replace('.', '_')}_{stock_info['name']}.png"
+                chart_filename = f"{stock_info['code'].replace('.', '_')}_{stock_info['name']}.png"
                 chart_path = os.path.join(self.output_dir, chart_filename)
                 figSignal.savefig(chart_path, dpi=150, bbox_inches="tight")
                 plt.close(figSignal)
@@ -397,7 +396,7 @@ class StockChartVisualizer:
     def save_summary_report(self, summaries: List[str], portfolio_file: str):
         """サマリーレポートを保存"""
         try:
-            report_filename = "trading_summary_{portfolio_file.replace('.csv', '')}.txt"
+            report_filename = f"trading_summary_{portfolio_file.replace('.csv', '')}.txt"
             report_path = os.path.join(self.output_dir, report_filename)
 
             with open(report_path, "w", encoding="utf-8") as f:

@@ -142,7 +142,6 @@ def get_stock_list_from_db() -> list:
     return codes
 
 
-# get_stock_list_from_db()->collect_stock_data()->fetch_and_store_stock_prices_quarter+fetch_and_store_daily_prices
 def main():
     collector = StockDataCollector()
     results = []

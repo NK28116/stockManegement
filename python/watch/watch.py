@@ -18,7 +18,20 @@ logger = get_logger("watch", category="watch")
 
 DB_PATH = config.db_path
 
-__all__ = ["save_data_to_db", "calc_volatility", "run_realtime_mode", "run_dev_mode"]
+__all__ = ["save_data_to_db", "get_price_history", "calc_volatility", "run_realtime_mode", "run_dev_mode"]
+
+
+# --- データ取得 ---
+def get_price_history(code, limit=5):
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute(
+        "SELECT price FROM intraday WHERE code = ? ORDER BY timestamp DESC LIMIT ?",
+        (code, limit),
+    )
+    history = [row[0] for row in c.fetchall()][::-1]  # 古い順に並べ替え
+    conn.close()
+    return history
 
 
 # --- データ保存 ---
@@ -47,7 +60,7 @@ def save_data_to_db(code, timestamp, price, volume):
             (code, timestamp_str, price, volume),
         )
     except Exception as e:
-        logging.error("DB保存エラー: {e}")
+        logging.error(f"DB保存エラー: {e}")
     conn.commit()
     conn.close()
 
@@ -87,22 +100,23 @@ def run_dev_mode(dev_date):
 
             # --- 連続下落検知 ---
             if len(history) >= 3 and history[-1] < history[-2] < history[-3]:
-                logging.warning("{code} 連続下落検出: {history[-3]:.1f} -> {history[-2]:.1f} -> {history[-1]:.1f}")
+                logging.warning(f"{code} 連続下落検出: {history[-3]:.1f} -> {history[-2]:.1f} -> {history[-1]:.1f}")
 
             # --- ボラティリティ警告(直近5本) ---
             recent_prices = history[-5:]
             vol = calc_volatility(recent_prices)
             if vol > config.volatility_threshold:
-                logging.warning("{code} ボラティリティ警告: {vol:.2f}%")
+                logging.warning(f"{code} ボラティリティ警告: {vol:.2f}%")
 
             # --- 前回比 -3%以上下落 ---
             if len(history) >= 2:
                 drop_pct = (history[-1] - history[-2]) / history[-2] * 100
-                if drop_pct <= -3.0:
-                    logging.warning(
-                        "{code} 前回比 -3%以上下落: {history[-2]:.1f} -> {history[-1]:.1f} ({drop_pct:.2f}%)"
-                    )
-                    # 将来 Slack/LINE 通知は alert.py の send_alert() を呼ぶ
+                if drop_pct <= config.crash_threshold:
+                    message = f"{code} 前回比 {config.crash_threshold}%以上下落: {history[-2]:.1f} -> {history[-1]:.1f} ({drop_pct:.2f}%)"
+                    logging.warning(message)
+                    from python.utils.alert import send_alert
+
+                    send_alert(message, level="WARNING")
 
         current_dt += timedelta(minutes=1)
         time_module.sleep(0.5)
@@ -119,19 +133,37 @@ def run_realtime_mode():
         current_dt = datetime.now()
         for code in codes:
             # TODO: 証券会社APIなどでリアル株価取得
+            # 現状はランダムな価格を使用
             price = last_price[code] * (1 + random.uniform(-0.01, 0.01))
             volume = random.randint(100, 1000)
 
             save_data_to_db(code, current_dt, price, volume)
 
+            history = get_price_history(
+                code, limit=config.volatility_period + 2
+            )  # ボラティリティ計算に必要な期間+2本分
+            if not history:
+                history = [price]  # 履歴がない場合は現在の価格のみ
+
+            # --- 連続下落検知 ---
+            if len(history) >= 3 and history[-1] < history[-2] < history[-3]:
+                logging.warning(f"{code} 連続下落検出: {history[-3]:.1f} -> {history[-2]:.1f} -> {history[-1]:.1f}")
+
+            # --- ボラティリティ警告(直近N本) ---
+            recent_prices = history[-config.volatility_period :]
+            vol = calc_volatility(recent_prices)
+            if vol > config.volatility_threshold:
+                logging.warning(f"{code} ボラティリティ警告: {vol:.2f}%")
+
             # --- 前回比 -3%以上下落 ---
             prev = last_price[code]
             drop_pct = (price - prev) / prev * 100
-            if drop_pct <= -3.0:
-                logging.warning("{code} 前回比 -3%以上下落: {prev:.1f} -> {price:.1f} ({drop_pct:.2f}%)")
+            if drop_pct <= config.crash_threshold:  # config.crash_threshold を利用
+                logging.warning(
+                    f"{code} 前回比 {config.crash_threshold}%以上下落: {prev:.1f} -> {price:.1f} ({drop_pct:.2f}%)"
+                )
+                # 将来 Slack/LINE 通知は alert.py の send_alert() を呼ぶ
 
-            # --- 連続下落・ボラティリティ ---
-            # 過去5本の履歴を取得する場合は DB から SELECT するなどで対応可能
             last_price[code] = price
 
         time_module.sleep(120)  # 2分周期
