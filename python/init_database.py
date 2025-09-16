@@ -19,7 +19,7 @@ def init_database():
     # 重複ディレクトリの確認と削除
     duplicate_path = os.path.join(os.path.dirname(__file__), "python/db")
     if os.path.exists(duplicate_path):
-        print("重複ディレクトリを削除中: {duplicate_path}")
+        print(f"重複ディレクトリを削除中: {duplicate_path}")
         shutil.rmtree(duplicate_path)
 
     # メインのDBディレクトリを作成
@@ -147,7 +147,7 @@ CREATE TABLE IF NOT EXISTS trading_signals (
     conn.commit()
     conn.close()
 
-    print("データベース初期化完了: {main_db_path}")
+    print(f"データベース初期化完了: {main_db_path}")
     print("作成されたテーブル:")
     print("- intraday (分足データ)")
     print("- daily (保有中の銘柄データ)")
@@ -183,15 +183,15 @@ def check_database_status():
 
         print("✅ データベース構造:")
         for table in tables:
-            cur.execute("SELECT COUNT(*) FROM {table}")
+            cur.execute(f"SELECT COUNT(*) FROM {table}")
             count = cur.fetchone()[0]
-            print("  - {table}: {count}件")
+            print(f"  - {table}: {count}件")
 
         conn.close()
         return True
 
     except Exception as e:
-        print("❌ データベース確認エラー: {e}")
+        print(f"❌ データベース確認エラー: {e}")
         return False
 
 
