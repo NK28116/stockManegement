@@ -20,7 +20,7 @@ class Config:
         # 固定パス
         self.codes_path = self.root_dir / "data" / "my_stock.csv"
         self.output_dir = self.root_dir / "data"
-        self.db_path = self.root_dir / "db" / "my_stock.db"
+        self.db_path = self.root_dir / "python" / "db" / "my_stock.db"
         self.log_dir = self.root_dir / "log"
         self.archive_dir = self.root_dir / "data" / "archive"
 
