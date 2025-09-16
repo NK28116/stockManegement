@@ -1,28 +1,44 @@
 #!/usr/bin/env python3
 import argparse
 import os
-import sys
 from datetime import datetime
 
 import pandas as pd
+
+from python.config import config
 
 try:
     import yfinance as yf
 except Exception:
     yf = None
 
+__all__ = [
+    "load_codes",
+    "save_codes",
+    "get_price",
+    "buy",
+    "sell",
+    "refresh_prices",
+    "get_name",
+    "fix_names",
+    "pre_buy",
+    "main",
+]
 
-# プロジェクトのルートディレクトリを取得
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-
-# my_stock.csvへのパスを設定
-CODES_PATH = os.path.join(PROJECT_ROOT, "data", "my_stock.csv")
 
 def load_codes(path: str) -> pd.DataFrame:
     if not os.path.exists(path):
         raise FileNotFoundError(f"ファイルがありません: {path}")
     df = pd.read_csv(path)
-    expected = ["code", "name", "quantity", "purchase_price", "purchase_date", "sector", "status"]
+    expected = [
+        "code",
+        "name",
+        "quantity",
+        "purchase_price",
+        "purchase_date",
+        "sector",
+        "status",
+    ]
     # 余分な列は残しつつ、最低限の列がなければ補完
     for col in expected:
         if col not in df.columns:
@@ -37,9 +53,11 @@ def load_codes(path: str) -> pd.DataFrame:
     df["purchase_price"] = pd.to_numeric(df["purchase_price"], errors="coerce").fillna(0.0)
     return df
 
+
 def save_codes(df: pd.DataFrame, path: str):
     df.to_csv(path, index=False, encoding="utf-8")
     print(f"更新完了: {os.path.relpath(path, os.path.dirname(__file__))}")
+
 
 def get_price(code: str) -> float:
     if yf is None:
@@ -52,6 +70,7 @@ def get_price(code: str) -> float:
     except Exception:
         pass
     return 0.0
+
 
 def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFrame:
     today = datetime.now().strftime("%Y-%m-%d")
@@ -66,7 +85,7 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
             "quantity": qty,
             "purchase_price": float(price) if price else 0.0,
             "purchase_date": today,
-            "sector": ""
+            "sector": "",
         }
         if "status" in df.columns:
             df.loc[len(df) - 1, "status"] = "保有中"
@@ -97,6 +116,8 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
     sign = "+" if qty > 0 else ""
     print(f"{action}: {code} {sign}{qty}株 @¥{price if price else 'N/A'}")
     return df
+
+
 def sell(df: pd.DataFrame, code: str, qty: int) -> pd.DataFrame:
     idx = df.index[df["code"] == code]
     if len(idx) == 0:
@@ -119,31 +140,34 @@ def sell(df: pd.DataFrame, code: str, qty: int) -> pd.DataFrame:
     print(f"売り: {code} -{qty}株（残 {new_q}株）")
     return df
 
+
 # 価格更新用: yfinanceで現在値と損益を更新
 def refresh_prices(df: pd.DataFrame, target_code: str | None = None) -> pd.DataFrame:
-    if not {"purchase_price","quantity"}.issubset(df.columns):
+    if not {"purchase_price", "quantity"}.issubset(df.columns):
         return df
     from datetime import datetime
+
     updated = df.copy()
     now_str = datetime.now().strftime("%Y-%m-%d")
     for i, row in updated.iterrows():
-        code = str(row.get("code","")).strip()
+        code = str(row.get("code", "")).strip()
         if not code:
             continue
         if target_code and code != target_code:
             continue
         cur = get_price(code)
         if "current_price" in updated.columns:
-            updated.at[i,"current_price"] = round(cur, 2)
-        qty = int(row.get("quantity",0) or 0)
-        pp  = float(row.get("purchase_price",0.0) or 0.0)
+            updated.at[i, "current_price"] = round(cur, 2)
+        qty = int(row.get("quantity", 0) or 0)
+        pp = float(row.get("purchase_price", 0.0) or 0.0)
         if "profit_loss" in updated.columns:
-            updated.at[i,"profit_loss"] = round((cur - pp) * qty, 2)
+            updated.at[i, "profit_loss"] = round((cur - pp) * qty, 2)
         if "profit_loss_percent" in updated.columns:
-            updated.at[i,"profit_loss_percent"] = f"{((cur-pp)/pp*100):+.2f}%" if pp > 0 else "0.00%"
+            updated.at[i, "profit_loss_percent"] = "{((cur-pp)/pp*100):+.2f}%" if pp > 0 else "0.00%"
         if "last_updated" in updated.columns:
-            updated.at[i,"last_updated"] = now_str
+            updated.at[i, "last_updated"] = now_str
     return updated
+
 
 # 追加
 def get_name(code: str) -> str:
@@ -161,17 +185,19 @@ def get_name(code: str) -> str:
     except Exception:
         return code
 
+
 # 追加: 既存レコードのnameを補完
 def fix_names(df: pd.DataFrame) -> pd.DataFrame:
     updated = df.copy()
     for i, row in updated.iterrows():
-        code = str(row.get("code","")).strip()
-        name = str(row.get("name","")).strip()
+        code = str(row.get("code", "")).strip()
+        name = str(row.get("name", "")).strip()
         if not code:
             continue
         if (not name) or (name == code):
             updated.at[i, "name"] = get_name(code)
     return updated
+
 
 def pre_buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFrame:
     today = datetime.now().strftime("%Y-%m-%d")
@@ -187,7 +213,7 @@ def pre_buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.Da
             "purchase_price": float(price) if price else 0.0,
             "purchase_date": today,
             "sector": "",
-            "status": "購入予定"
+            "status": "購入予定",
         }
     else:
         i = idx[0]
@@ -205,10 +231,11 @@ def pre_buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.Da
                 "purchase_price": float(price) if price else 0.0,
                 "purchase_date": today,
                 "sector": df.at[i, "sector"],
-                "status": "購入予定"
+                "status": "購入予定",
             }
     print(f"購入予定: {code} {qty}株 @¥{price if price else 'N/A'}")
     return df
+
 
 def main():
     parser = argparse.ArgumentParser(description="my_stock.csvの売買操作ツール")
@@ -232,11 +259,9 @@ def main():
     p_refresh = sub.add_parser("refresh")
     p_refresh.add_argument("code", nargs="?", help="特定銘柄のみ更新（省略時は全銘柄）")
 
-    p_fixnames = sub.add_parser("fixnames")
-
     args = parser.parse_args()
 
-    df = load_codes(CODES_PATH)
+    df = load_codes(config.codes_path)
 
     if args.action == "buy":
         df = buy(df, args.code, args.quantity, getattr(args, "price", None))
@@ -249,7 +274,8 @@ def main():
     elif args.action == "fixnames":
         df = fix_names(df)
 
-    save_codes(df, CODES_PATH)
+    save_codes(df, config.codes_path)
+
 
 if __name__ == "__main__":
     main()

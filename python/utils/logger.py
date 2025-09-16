@@ -1,7 +1,9 @@
 import logging
-import os
-from datetime import datetime
-from pathlib import Path
+
+from python.config import config
+
+__all__ = ["get_logger"]
+
 
 def get_logger(module_name: str, category: str = "general") -> logging.Logger:
     """
@@ -9,12 +11,11 @@ def get_logger(module_name: str, category: str = "general") -> logging.Logger:
     出力先: ./log/{category}/{module_name}/{YYYY-MM-DD}.log
     """
     # プロジェクトルートを基準にログフォルダを作成
-    root_dir = Path(__file__).resolve().parents[2]  # python/ の2つ上がプロジェクトルート
-    log_dir = root_dir / "log" / category / module_name
+    log_dir = config.log_dir / category / module_name
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # ログファイル名（1日ごとにローテーション）
-    log_file = log_dir / f"{datetime.now().strftime('%Y-%m-%d')}.log"
+    log_file = log_dir / "{datetime.now().strftime('%Y-%m-%d')}.log"
 
     logger = logging.getLogger(f"{category}.{module_name}")
     logger.setLevel(logging.INFO)
