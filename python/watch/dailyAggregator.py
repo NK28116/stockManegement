@@ -20,7 +20,7 @@ def save_daily_data_to_db(code, date, open_price, high_price, low_price, close_p
     try:
         c.execute(
             """
-            CREATE TABLE IF NOT EXISTS daily (
+            CREATE TABLE IF NOT EXISTS stock_data (
                 code TEXT,
                 date TEXT,
                 open REAL,
