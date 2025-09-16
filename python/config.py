@@ -34,6 +34,7 @@ class Config:
         self.default_period = "1mo"
         self.ma_short = 5
         self.ma_long = 25
+        self.volatility_period = 10
 
         # リスク管理パラメータ
         self.max_loss_percent = 3.0  # ストップロス幅
