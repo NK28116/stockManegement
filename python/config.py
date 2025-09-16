@@ -57,8 +57,14 @@ class Config:
         self.default_portfolio_file = self.root_dir / "data" / "my_stock.csv"
 
         # アラート設定
-        # 後日設定
-        self.slack_webhook = os.getenv("SLACK_WEBHOOK", "")
+        self.slack_webhook = os.getenv(
+            "SLACK_WEBHOOK", "https://example.invalid/REDACTED_SLACK_WEBHOOK"
+        )
+
+        # 証券会社API
+        self.XXXX_API_KEY = os.getenv("XXXX_API_KEY", "")
+        self.XXXX_API_SECRET = os.getenv("XXXX_API_SECRET", "")
+        self.XXXX_API_URL = os.getenv("XXXX_API_URL", "")
 
     def get_watch_config(self) -> Dict[str, Any]:
         return {
