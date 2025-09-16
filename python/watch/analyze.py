@@ -1,8 +1,4 @@
-# TODO:現在、日足データに対する単純な急落検知（前日比-3%）のみで、リアルタイム監視の「数分で-3%」のような急落検知は `watch.py` の方が担当しています。
-# `analyze.py` はリアルタイム監視の目標に対しては**未実装**です。
-
 import sqlite3
-from datetime import datetime  # timedelta は未使用のため削除
 
 import pandas as pd
 
