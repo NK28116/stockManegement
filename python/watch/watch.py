@@ -85,7 +85,7 @@ def get_stock_price(symbol: str) -> float:
     if not config.XXXX_API_KEY or not config.XXXX_API_SECRET or not config.XXXX_API_URL:
         # --- case1: yfinance ---
         try:
-            ticker = yf.Ticker(f"{symbol}")  # 日本株の場合 .T を付与
+            ticker = yf.Ticker(f"{symbol}")
             price = ticker.history(period="1d")["Close"].iloc[-1]
             logger.info("yfinanceから取得成功: %s -> %s", symbol, price)
             return float(price)
