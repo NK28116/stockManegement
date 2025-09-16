@@ -15,11 +15,11 @@ __all__ = ["ImprovedTradingRules", "generate_trading_report"]
 
 
 class ImprovedTradingRules:
-    """改善された売買ルールクラス"""
+    """売買ルールクラス"""
 
     def analyze_with_improved_rules(self, df: pd.DataFrame) -> List[Dict]:
         """
-        改善されたルールで分析
+        売買ルールで分析
 
         Args:
             df: 株価データ
@@ -191,14 +191,6 @@ def generate_trading_report(comparison: Dict) -> str:
     report.append("最大利益: {new_metrics.get('max_profit', 0):.2%}")
     report.append("最大損失: {new_metrics.get('max_loss', 0):.2%}")
     report.append("プロフィットファクター: {new_metrics.get('profit_factor', 0):.2f}")
-    report.append("")
-
-    # 改善点
-    report.append("【改善点】")
-    report.append("✅ ストップロス機能追加（5%損失で自動売却）")
-    report.append("✅ 利確機能追加（10%利益で自動売却）")
-    report.append("✅ トレーリングストップ（3%で利益保護）")
-    report.append("✅ リスク管理の強化")
     report.append("")
 
     # 推奨事項

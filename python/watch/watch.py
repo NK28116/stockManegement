@@ -5,6 +5,7 @@ import random
 import sqlite3
 import time as time_module
 from datetime import datetime, timedelta
+import requests
 
 import pandas as pd
 
@@ -72,6 +73,42 @@ def calc_volatility(prices):
     return pd.Series(prices).pct_change().std() * 100
 
 
+def get_stock_price(symbol: str) -> float:
+    """
+    株価を取得する
+    - APIキー未設定 → ランダム値を返す
+    - APIキー設定済み → 証券会社APIから取得
+    """
+    if not config.XXXX_API_KEY or not config.XXXX_API_SECRET or not config.XXXX_API_URL:
+        # case1: ランダム値
+        price = round(random.uniform(1000, 5000), 2)
+        logger.info("ランダムな値を使用: %s -> %s", symbol, price)
+        return price
+
+    # case2: API利用
+    try:
+        response = requests.get(
+            f"{config.XXXX_API_URL}/price/{symbol}",
+            headers={
+                "X-API-KEY": config.XXXX_API_KEY,
+                "X-API-SECRET": config.XXXX_API_SECRET,
+            },
+            timeout=10,
+        )
+        response.raise_for_status()
+        data = response.json()
+        price = float(data.get("price"))
+        logger.info("APIから取得成功: %s -> %s", symbol, price)
+        return price
+
+    except requests.exceptions.RequestException as e:
+        logger.error("API取得エラー: %s", e)
+        # フォールバックとしてランダム値
+        price = round(random.uniform(1000, 5000), 2)
+        logger.warning("フォールバック: ランダム値を使用 %s -> %s", symbol, price)
+        return price
+
+
 # --- 擬似リアルタイム監視(devモード用) ---
 def run_dev_mode(dev_date):
     logging.info("=== 開発モード: 過去日の擬似リアルタイム監視 ===")
@@ -112,7 +149,8 @@ def run_dev_mode(dev_date):
             if len(history) >= 2:
                 drop_pct = (history[-1] - history[-2]) / history[-2] * 100
                 if drop_pct <= config.crash_threshold:
-                    message = f"{code} 前回比 {config.crash_threshold}%以上下落: {history[-2]:.1f} -> {history[-1]:.1f} ({drop_pct:.2f}%)"
+                    message = f"{code} 前回比 {config.crash_threshold}%以上下落:\
+                                {history[-2]:.1f} -> {history[-1]:.1f} ({drop_pct:.2f}%)"
                     logging.warning(message)
                     from python.utils.alert import send_alert
 
@@ -132,9 +170,10 @@ def run_realtime_mode():
     while True:
         current_dt = datetime.now()
         for code in codes:
-            # TODO: 証券会社APIなどでリアル株価取得
-            # 現状はランダムな価格を使用
-            price = last_price[code] * (1 + random.uniform(-0.01, 0.01))
+            # 株価取得（API or ランダム）
+            price = get_stock_price(code)
+
+            # volume が未定義だったので追加（ランダム値でOK）
             volume = random.randint(100, 1000)
 
             save_data_to_db(code, current_dt, price, volume)
@@ -162,7 +201,7 @@ def run_realtime_mode():
                 logging.warning(
                     f"{code} 前回比 {config.crash_threshold}%以上下落: {prev:.1f} -> {price:.1f} ({drop_pct:.2f}%)"
                 )
-                # 将来 Slack/LINE 通知は alert.py の send_alert() を呼ぶ
+                # 将来 Slack 通知は alert.py の send_alert() を呼ぶ
 
             last_price[code] = price
 
