@@ -2,15 +2,14 @@
 .history
 *.code-workspace
 .env
-venv/*
-data/chartImg/*
-data/practice/*
-data/report/*
-data/ChartsExample/*
-data/charts/*
 
-*.db
+
+.idea
+
 */__pycache__/*
-*.pyc
+*.*.pyc
 log/*
 *.log
+python/__pycache__/config.cpython-312.pyc
+python/__pycache__/config.cpython-312.pyc
+python/__pycache__/config.cpython-313.pyc
