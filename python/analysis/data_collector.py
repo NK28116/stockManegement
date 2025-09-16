@@ -21,7 +21,7 @@ __all__ = ["main", "StockDataCollector", "get_stock_list_from_db"]
 class StockDataCollector:
     def __init__(self):
         self.quarter_start, self.quarter_end = self._get_last_quarter_dates()
-        self.four_quarter_start, self.four_quarter_end = self._get_four_quarter_date()
+        self.four_quarter_start, self.four_quarter_end = self._get_four_quarter_dates()
 
     def _get_last_quarter_dates(self) -> Tuple[str, str]:
         """前四半期の期間を取得"""
@@ -55,7 +55,7 @@ class StockDataCollector:
         try:
             # 入力検証
             if not code or code.strip() == "":
-                get_logger("警告: 無効な銘柄コード: {code}")
+                get_logger(f"警告: 無効な銘柄コード: {code}")
                 return None
 
             # .Tが既に含まれているかチェック
@@ -63,12 +63,12 @@ class StockDataCollector:
             if not symbol.endswith(".T"):
                 symbol = "{symbol}.T"
 
-            get_logger("データ取得中: {symbol} ({self.quarter_start} - {self.quarter_end})")
+            get_logger(f"データ取得中: {symbol} ({self.quarter_start} - {self.quarter_end})")
             ticker = yf.Ticker(symbol)
             df = ticker.history(start=self.quarter_start, end=self.quarter_end)
 
             if df.empty:
-                get_logger("警告: {code}のデータが取得できませんでした（上場廃止または銘柄コードが無効の可能性）")
+                get_logger(f"警告: {code}のデータが取得できませんでした（上場廃止または銘柄コードが無効の可能性）")
                 return None
 
             # 最低限のデータが存在するかチェック
@@ -88,11 +88,11 @@ class StockDataCollector:
             # より詳細なエラーハンドリング
             error_msg = str(e)
             if "404" in error_msg or "not found" in error_msg.lower():
-                get_logger("エラー: {code}の銘柄が見つかりません（上場廃止の可能性）")
+                get_logger(f"エラー: {code}の銘柄が見つかりません（上場廃止の可能性）")
             elif "timeout" in error_msg.lower():
-                get_logger("エラー: {code}のデータ取得がタイムアウトしました")
+                get_logger(f"エラー: {code}のデータ取得がタイムアウトしました")
             else:
-                get_logger("エラー: {code}のデータ取得失敗 - {e}")
+                get_logger(f"エラー: {code}のデータ取得失敗 - {e}")
             return None
 
     def fetch_and_store_prices(self, code: str, quarter_start: str, quarter_end: str):
@@ -101,7 +101,7 @@ class StockDataCollector:
             # 過去1年間のデータを取得し、最新のデータのみを更新対象とする
             df = yf.download(code, start=quarter_start, end=quarter_end)
             if df.empty:
-                logger.warning("データなし: {code}")
+                logger.warning(f"データなし: {code}")
                 return
 
             conn = sqlite3.connect(config.db_path)
@@ -127,9 +127,9 @@ class StockDataCollector:
                 )
             conn.commit()
             conn.close()
-            logger.info("日次データ取得・保存完了: {code} ({len(df)}件)")
+            logger.info(f"日次データ取得・保存完了: {code} ({len(df)}件)")
         except Exception as e:
-            logger.error("エラー: {code} - {e}")
+            logger.error(f"エラー: {code} - {e}")
 
 
 def get_stock_list_from_db() -> list:

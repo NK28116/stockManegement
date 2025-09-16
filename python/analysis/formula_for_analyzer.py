@@ -9,7 +9,7 @@ import pandas as pd
 import ta
 from python.config import config
 
-__all__ = ["calculate_technical_indicators", "check_buy_signal", "check_sell_signal"]
+__all__ = ["calculate_technical_indicators", "check_buy_signal", "check_sell_signal", "generate_buy_sell_signals"]
 
 
 def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
