@@ -2,8 +2,7 @@
 import os
 import sqlite3
 from datetime import datetime
-from tkinter import N
-from typing import Dict, List
+from typing import Dict
 
 import matplotlib.pyplot as plt
 import pandas as pd

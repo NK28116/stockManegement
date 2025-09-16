@@ -2,11 +2,11 @@
 分析に関するモジュール
 """
 
-from . import fetch_stock_data, save_results, PortfolioAnalyzer
+from .data_collector import StockDataCollector
+from .portfolio_analyzer import PortfolioAnalyzer
 
 __all__ = [
-    "fetch_stock_data",
-    "save_results",
+    "StockDataCollector",
     "PortfolioAnalyzer",
 ]
 
