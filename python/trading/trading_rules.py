@@ -219,4 +219,4 @@ if __name__ == "__main__":
     comparison = {"new_rules": {"metrics": metrics}}
 
     report = generate_trading_report(comparison)
-    print(report)
+    print(freport)
