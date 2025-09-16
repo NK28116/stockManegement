@@ -1,0 +1,31 @@
+name: Release main to runProjectByWindows
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # すべての履歴を取得（マージに必要）
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch all branches
+        run: git fetch origin
+
+      - name: Checkout runProjectByWindows branch
+        run: |
+          git checkout runProjectByWindows || git checkout -b runProjectByWindows
+          git merge origin/main --no-edit
+
+      - name: Push changes to runProjectByWindows
+        run: git push origin runProjectByWindows
