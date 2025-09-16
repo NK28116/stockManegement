@@ -5,9 +5,10 @@ import random
 import sqlite3
 import time as time_module
 from datetime import datetime, timedelta
-import requests
 
 import pandas as pd
+import requests
+import yfinance as yf
 
 from python.config import config
 from python.utils.logger import get_logger
@@ -60,9 +61,11 @@ def save_data_to_db(code, timestamp, price, volume):
             "INSERT OR REPLACE INTO intraday VALUES (?, ?, ?, ?)",
             (code, timestamp_str, price, volume),
         )
+
+        conn.commit()
+        logger.info("保存成功: intraday にデータ追加 -> %s %s %.2f %d", code, timestamp_str, price, volume)
     except Exception as e:
         logging.error(f"DB保存エラー: {e}")
-    conn.commit()
     conn.close()
 
 
@@ -76,16 +79,24 @@ def calc_volatility(prices):
 def get_stock_price(symbol: str) -> float:
     """
     株価を取得する
-    - APIキー未設定 → ランダム値を返す
+    - APIキー未設定 → yfinanceから取得
     - APIキー設定済み → 証券会社APIから取得
     """
     if not config.XXXX_API_KEY or not config.XXXX_API_SECRET or not config.XXXX_API_URL:
-        # case1: ランダム値
-        price = round(random.uniform(1000, 5000), 2)
-        logger.info("ランダムな値を使用: %s -> %s", symbol, price)
-        return price
+        # --- case1: yfinance ---
+        try:
+            ticker = yf.Ticker(f"{symbol}")  # 日本株の場合 .T を付与
+            price = ticker.history(period="1d")["Close"].iloc[-1]
+            logger.info("yfinanceから取得成功: %s -> %s", symbol, price)
+            return float(price)
+        except Exception as e:
+            logger.error("yfinance取得エラー: %s", e)
+            # フォールバック: ランダム値
+            price = round(random.uniform(1000, 5000), 2)
+            logger.warning("フォールバック: ランダム値を使用 %s -> %s", symbol, price)
+            return price
 
-    # case2: API利用
+    # --- case2: API利用 ---
     try:
         response = requests.get(
             f"{config.XXXX_API_URL}/price/{symbol}",
@@ -103,10 +114,16 @@ def get_stock_price(symbol: str) -> float:
 
     except requests.exceptions.RequestException as e:
         logger.error("API取得エラー: %s", e)
-        # フォールバックとしてランダム値
-        price = round(random.uniform(1000, 5000), 2)
-        logger.warning("フォールバック: ランダム値を使用 %s -> %s", symbol, price)
-        return price
+        # フォールバック: yfinance or ランダム
+        try:
+            ticker = yf.Ticker(f"{symbol}.T")
+            price = ticker.history(period="1d")["Close"].iloc[-1]
+            logger.info("フォールバック(yfinance): %s -> %s", symbol, price)
+            return float(price)
+        except Exception:
+            price = round(random.uniform(1000, 5000), 2)
+            logger.warning("フォールバック: ランダム値を使用 %s -> %s", symbol, price)
+            return price
 
 
 # --- 擬似リアルタイム監視(devモード用) ---
