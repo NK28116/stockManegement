@@ -26,14 +26,14 @@ def dump_and_delete_table_by_year(table_name: str, date_column: str, target_year
     df = pd.read_sql_query(query, conn, params=(str(target_year),))
 
     if df.empty:
-        print("⚠ {table_name}: {target_year}年のデータはありません")
+        print(f"⚠ {table_name}: {target_year}年のデータはありません")
         conn.close()
         return
 
     # CSV出力
     output_file = config.archive_dir / "{table_name}_{target_year}.csv"
     df.to_csv(output_file, index=False, encoding="utf-8")
-    print("✅ {table_name} {target_year}年分を保存しました: {output_file}")
+    print(f"✅ {table_name} {target_year}年分を保存しました: {output_file}")
 
     # DBから削除
     delete_query = "DELETE FROM {table_name} WHERE strftime('%Y', {date_column}) = ?"
@@ -41,21 +41,21 @@ def dump_and_delete_table_by_year(table_name: str, date_column: str, target_year
     cur.execute(delete_query, (str(target_year),))
     conn.commit()
     conn.close()
-    print("🗑️ {table_name} {target_year}年分をDBから削除しました")
+    print(f"🗑️ {table_name} {target_year}年分をDBから削除しました")
 
 
 def main():
     # ユーザーから対象年を入力
     target_year = input("ダンプ＆削除する年を入力してください (例: 2023): ").strip()
     if not target_year.isdigit():
-        print("❌ 無効な入力です。西暦の数字を入力してください。")
+        print(f"❌ 無効な入力です。西暦の数字を入力してください。")
         return
     target_year = int(target_year)
 
-    print("\n=== {target_year}年分のデータを処理開始 ===")
+    print(f"\n=== {target_year}年分のデータを処理開始 ===")
     dump_and_delete_table_by_year("stock_prices", "date", target_year)
     dump_and_delete_table_by_year("trading_signals", "signal_date", target_year)
-    print("=== {target_year}年分の処理完了 ===")
+    print(f"=== {target_year}年分の処理完了 ===")
 
     if __name__ == "__main__":
         main()
