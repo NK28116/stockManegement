@@ -125,6 +125,10 @@ class PortfolioAnalyzer:
 
         self.save_analysis(portfolio_df, indicators_dict)
         logger.info("✅ ポートフォリオ分析完了")
+        # 週次レポートとしてSlackに通知
+        from python.utils.report import send_weekly_report
+
+        send_weekly_report()
 
 
 if __name__ == "__main__":
