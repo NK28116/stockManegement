@@ -179,7 +179,7 @@ class EveryStockAnalyzer:
             if not mask.any():
                 return f"{target_date.strftime('%Y-%m-%d')}: データなし"
             day = idx[mask][-1]
-            day_str = day.strftime(f"%Y-%m-%d")
+            day_str = day.strftime("%Y-%m-%d")
 
             # 取引履歴から当日(=day)の記録を優先、それが無ければ直近過去の記録
             day_trade = None
@@ -290,7 +290,7 @@ class EveryStockAnalyzer:
         try:
             # サマリーレポート
             summary_report = self.generate_summary_report(results)
-            summary_file = "../data/report/summary/summary_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            summary_file = f"../data/report/summary/summary_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
             os.makedirs(os.path.dirname(summary_file), exist_ok=True)
 
             with open(summary_file, "w", encoding="utf-8") as f:
@@ -300,7 +300,7 @@ class EveryStockAnalyzer:
 
             # 詳細レポート
             detailed_report = self.generate_detailed_report(results)
-            detailed_file = "../data/report/detailed/detailed_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            detailed_file = f"../data/report/detailed/detailed_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
             os.makedirs(os.path.dirname(detailed_file), exist_ok=True)
 
             with open(detailed_file, "w", encoding="utf-8") as f:
