@@ -21,19 +21,42 @@ def _get_latest_report_file(report_type: str) -> str | None:
     return str(files[0]) if files else None
 
 
+# 平日の17:00に日次レポートを生成し、Slackに送信する
 def send_daily_report():
     """日次レポートをSlackに送信する"""
     logger.info("日次レポートを生成し、Slackに送信します。")
 
-    # 例: 日足データ分析の概要
-    message = f"【日次レポート】 {datetime.now().strftime('%Y-%m-%d')}\n\n"
-    message += "今日の市場の動きの概要や、日足での急落アラートなどをここに含めます。\n"
-    message += "詳細な日足分析結果はログまたは別途生成されるレポートをご確認ください。"
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    message = f"【日次レポート】 {current_date}\n\n"
+
+    # every_stock_buy_and_sell_timing.py が生成する最新のサマリーレポートを読み込む
+    summary_report_path = _get_latest_report_file("summary")
+    if summary_report_path and os.path.exists(summary_report_path):
+        with open(summary_report_path, "r", encoding="utf-8") as f:
+            summary_content = f.read()
+            # 「前日の各銘柄ステータス」セクションを抽出
+            status_section_start = summary_content.find("【前日の各銘柄ステータス】")
+            if status_section_start != -1:
+                status_section = summary_content[status_section_start:]
+                # 次のセクションの開始（例: 空行や別の見出し）までを抽出
+                next_section_start = status_section.find("\n\n", len("【前日の各銘柄ステータス】"))
+                if next_section_start != -1:
+                    status_section = status_section[:next_section_start]
+                message += status_section.strip() + "\n\n"
+            else:
+                message += "前日の銘柄ステータスが見つかりませんでした。\n\n"
+    else:
+        message += "全銘柄売買タイミング分析サマリーレポートが見つかりませんでした。\n\n"
+
+    message += "【今日の市場の動き】\n"
+    message += "市場全体の動向や、注目すべきニュース、日足での急落アラートなどをここに含めます。\n"
+    message += "詳細な日足分析結果はログまたは別途生成される詳細レポートをご確認ください。\n"
 
     send_alert(message, level="INFO")
     logger.info("日次レポートのSlack送信が完了しました。")
 
 
+# 土曜日の13：00に週次レポートを生成し、Slackに送信する
 def send_weekly_report():
     """週次レポートをSlackに送信する"""
     logger.info("週次レポートを生成し、Slackに送信します。")
@@ -55,7 +78,7 @@ def send_weekly_report():
     else:
         message += "ポートフォリオサマリーレポートが見つかりませんでした。\n"
 
-    # グラフ画像へのリンク（例）
+    # グラフ画像へのリンク
     plot_dir = config.root_dir / "data" / "plots"
     if plot_dir.exists():
         image_files = sorted(plot_dir.glob("*.png"), reverse=True)
@@ -66,10 +89,14 @@ def send_weekly_report():
         else:
             message += "最新のチャート画像が見つかりませんでした。\n"
 
+    message += "\n【週間の市場トレンドと注目銘柄】\n"
+    message += "週間での市場全体のトレンドやセクターごとの動向、特にパフォーマンスが良かった/悪かった銘柄のハイライトなどをここに含めます。\n"
+
     send_alert(message, level="INFO")
     logger.info("週次レポートのSlack送信が完了しました。")
 
 
+# 月末の17:00に月次レポートを生成し、Slackに送信する
 def send_monthly_report():
     """月次レポートをSlackに送信する"""
     logger.info("月次レポートを生成し、Slackに送信します。")
@@ -84,7 +111,16 @@ def send_monthly_report():
     else:
         message += "詳細レポートが見つかりませんでした。\n"
 
-    message += "\n今月のポートフォリオパフォーマンスや再構築検討事項などをここに含めます。"
+    message += "\n【月間のポートフォリオパフォーマンス】\n"
+    message += (
+        "月間の総投資額、総リターン、年率リターン、シャープレシオなどの詳細なパフォーマンス分析をここに含めます。\n"
+    )
+    message += "\n【ポートフォリオの再構築検討事項】\n"
+    message += "月間のパフォーマンスに基づいたポートフォリオの見直しや、今後の戦略に関する提案をここに含めます。\n"
+    message += "\n【市場の長期トレンド分析と経済指標の影響】\n"
+    message += "月間を通じた市場全体の長期的なトレンド分析、主要な経済指標やイベントがポートフォリオに与えた影響の分析をここに含めます。\n"
+    message += "\n【個別銘柄の月間パフォーマンス】\n"
+    message += "各銘柄の月間での損益、売買履歴、今後の見通しをここに含めます。\n"
 
     send_alert(message, level="INFO")
     logger.info("月次レポートのSlack送信が完了しました。")

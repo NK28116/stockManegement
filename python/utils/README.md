@@ -2,28 +2,43 @@
 # ユーティリティモジュールガイド
 
 ## 📁 **ディレクトリ概要**
+
 `python/utils/`は、株式投資分析システムで使用する共通のユーティリティ関数とクラスを管理するディレクトリです。
 
 ## 🔧 **モジュール一覧**
 
-### **__init__.py**
+### ****`init.py`**
+
 - **用途**: パッケージの初期化ファイル
 - **内容**: モジュールのインポート設定
 - **使用方法**: 自動的に読み込まれる
 
-### **alert.py**
+### **`alert.py`**
+
 - **用途**: アラート・通知機能
 - **機能**: 価格変動、売買シグナル、リスク管理の通知
 
-### **indicators.py**
+### **`indicators.py`**
+
 - **用途**: テクニカル指標の計算
 - **機能**: RSI、移動平均、ボリンジャーバンド等の計算
 
-## 📊 **alert.py - アラート機能**
+### **`logger.py`**
+
+- **用途**: ロギング機能
+- **機能**: アプリケーションのログ出力設定と管理
+
+### **`report.py`**
+
+- **用途**: レポート生成機能
+- **機能**: 分析結果や取引履歴のレポート作成
+
+## 📊 **`alert.py` - アラート機能**
 
 ### **主要クラス**
 
 #### **PriceAlert（価格アラート）**
+
 ```python
 from utils.alert import PriceAlert
 
@@ -40,6 +55,7 @@ if alert.check_condition(current_price):
 ```
 
 #### **PortfolioAlert（ポートフォリオアラート）**
+
 ```python
 from utils.alert import PortfolioAlert
 
@@ -63,6 +79,7 @@ portfolio_alert.check_portfolio_status(portfolio_data)
 | **ポートフォリオアラート** | 全体の状況 | リスク管理 |
 
 ### **設定例**
+
 ```python
 # 設定ファイルでのアラート設定
 ALERT_CONFIG = {
@@ -73,11 +90,12 @@ ALERT_CONFIG = {
 }
 ```
 
-##  **indicators.py - テクニカル指標**
+## **indicators.py - テクニカル指標**
 
 ### **利用可能な指標**
 
 #### **移動平均（Moving Average）**
+
 ```python
 from utils.indicators import calculate_moving_average
 
@@ -89,6 +107,7 @@ ema_20 = calculate_moving_average(prices, window=20, method='exponential')
 ```
 
 #### **RSI（相対力指数）**
+
 ```python
 from utils.indicators import calculate_rsi
 
@@ -101,6 +120,7 @@ is_oversold = rsi_14 < 30
 ```
 
 #### **ボリンジャーバンド**
+
 ```python
 from utils.indicators import calculate_bollinger_bands
 
@@ -117,6 +137,7 @@ is_lower_band = current_price < lower[-1]
 ```
 
 #### **MACD**
+
 ```python
 from utils.indicators import calculate_macd
 
@@ -134,6 +155,7 @@ dead_cross = macd_line[-1] < signal_line[-1] and macd_line[-2] >= signal_line[-2
 ```
 
 ### **カスタム指標の作成**
+
 ```python
 from utils.indicators import BaseIndicator
 
@@ -156,6 +178,7 @@ class CustomIndicator(BaseIndicator):
 ## 🚀 **使用方法**
 
 ### **基本的なインポート**
+
 ```python
 # 全ユーティリティをインポート
 from utils import alert, indicators
@@ -166,6 +189,7 @@ from utils.indicators import calculate_rsi
 ```
 
 ### **アラートシステムの統合**
+
 ```python
 # ポートフォリオ分析での使用例
 def analyze_portfolio_with_alerts(portfolio_data):
@@ -190,6 +214,7 @@ def analyze_portfolio_with_alerts(portfolio_data):
 ```
 
 ### **テクニカル指標の活用**
+
 ```python
 # 売買シグナルの生成
 def generate_trading_signals(stock_data):
@@ -221,6 +246,7 @@ def generate_trading_signals(stock_data):
 ## ⚙️ **設定とカスタマイズ**
 
 ### **アラート設定のカスタマイズ**
+
 ```python
 # config.pyでの設定例
 ALERT_SETTINGS = {
@@ -235,6 +261,7 @@ ALERT_SETTINGS = {
 ```
 
 ### **指標パラメータの調整**
+
 ```python
 # 指標計算のパラメータ調整
 INDICATOR_PARAMS = {
@@ -248,6 +275,7 @@ INDICATOR_PARAMS = {
 ## 🔍 **デバッグとテスト**
 
 ### **ログ出力の確認**
+
 ```python
 import logging
 
@@ -260,6 +288,7 @@ logger.debug('RSI計算開始')
 ```
 
 ### **単体テスト**
+
 ```python
 # テストファイルでの使用例
 def test_rsi_calculation():
