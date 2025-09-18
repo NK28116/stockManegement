@@ -1,171 +1,114 @@
-# 株価チャート可視化ツール
+# 可視化モジュールガイド
 
-このツールセットは、ポートフォリオ内の全銘柄について売買タイミングを可視化するためのツールです。
+## 📁 **ディレクトリ概要**
 
-## 機能
+`python/visualization/`は、株式データや分析結果を視覚的に表現するためのモジュールを管理するディレクトリです。チャート生成、指標プロット、チャート表示などの機能を提供します。
 
-- **視覚的チャート**: 価格チャート、出来高、移動平均線、売買ポイントの表示
-- **詳細レポート**: 各銘柄の取引パフォーマンス分析
+## 🔧 **モジュール一覧**
 
-## ファイル構成
+### ****`init.py`**
 
-```
-python/
-├── stock_chart_visualizer.py      # メイン可視化クラス
-├── generate_all_charts.py         # 全銘柄一括処理
-├── view_charts.py                 # チャート表示ヘルパー
-```
+- **用途**: パッケージの初期化ファイル
+- **内容**: モジュールのインポート設定
+- **使用方法**: 自動的に読み込まれる
 
-## 使用方法
+### **`generate_all_charts.py`**
 
-### 1. 全銘柄のチャート作成
+- **用途**: 全てのチャートを一括生成
+- **機能**: 指定された銘柄リストやポートフォリオに対して、必要な全てのチャート（株価、テクニカル指標など）を自動で生成し、保存します。
 
-```bash
-# ポートフォリオ内の全銘柄を一括処理
-python3 generate_all_charts.py
-```
+### **`plot_indicators.py`**
 
-これにより以下が生成されます：
-- 各銘柄のチャート画像（PNG形式）
-- 取引サマリーレポート（TXT形式）
+- **用途**: テクニカル指標のプロット
+- **機能**: 株価データにRSI、移動平均、ボリンジャーバンドなどのテクニカル指標を重ねてプロットし、視覚的に分かりやすいチャートを生成します。
 
-### 2. インタラクティブ選択
+### **`stock_chart_visualizer.py`**
 
-```bash
-# ポートフォリオと期間を選択
-python3 stock_chart_visualizer.py
-```
+- **用途**: 個別株チャートの可視化
+- **機能**: 特定の銘柄の株価データを詳細に可視化するためのクラスや関数を提供します。期間指定、イベント表示などの機能を含みます。
 
-利用可能なオプション：
-- ポートフォリオ: practice, beginner, diversified, growth, stable
-- 期間: 1mo, 3mo, 6mo, 1y
+### **`view_charts.py`**
 
-### 3. 単一銘柄のデモ
+- **用途**: 生成されたチャートの表示
+- **機能**: 生成されたチャート画像ファイルを読み込み、ユーザーが簡単に閲覧できるインターフェースを提供します。
 
-```bash
-# トヨタ自動車のデモチャート
-python3 single_stock_demo.py
-```
+## 🚀 **使用方法**
 
-### 4. チャート表示
+### **基本的なインポート**
 
-```bash
-# Finderでチャートフォルダを開く
-python3 view_charts.py
-
-# サマリーレポートを表示
-python3 view_charts.py --summary
-```
-
-## 出力内容
-
-### チャート要素
-
-1. **価格チャート**（上部）
-   - 終値ライン（青）
-   - 5日移動平均線（オレンジ）
-   - 25日移動平均線（紫）
-   - 買いシグナル（緑の上向き三角）
-   - 売りシグナル（赤の下向き三角）
-
-2. **出来高チャート**（下部）
-   - 日次出来高（グレーのバー）
-
-3. **アノテーション**
-   - 各売買ポイントに価格と損益率を表示
-   - 売買理由（ゴールデンクロス、デッドクロス、ストップロス等）
-
-### サマリーレポート内容
-
-各銘柄について以下の情報を提供：
-
-```
-=== トヨタ自動車 (7203.T) 取引サマリー ===
-総取引数: 4
-完了取引数: 4
-勝率: 75.0%
-平均損益: 2.87%
-総リターン: 11.50%
-最大利益: 9.74%
-最大損失: -1.08%
-
-【買いシグナル】
-  2025-07-02: ¥2465.50 - ゴールデンクロス（++）エントリー
-  ...
-
-【売りシグナル】
-  2025-07-04: ¥2484.50 - デッドクロス（--）売却 (損益: 0.77%)
-  ...
-```
-
-
-## 技術的詳細
-
-### 依存関係
-- `yfinance`: 株価データ取得
-- `matplotlib`: チャート作成
-- `pandas`: データ処理
-- `numpy`: 数値計算
-
-### データソース
-- Yahoo Finance API（yfinance経由）
-- リアルタイム日本株データ
-
-### ファイル形式
-- チャート: PNG（150 DPI）
-- レポート: UTF-8テキスト
-- 設定: CSV形式のポートフォリオ
-
-## カスタマイズ
-
-### パラメータ調整
-`trading_rules.py`で以下を変更可能：
 ```python
-ImprovedTradingRules(
-    stop_loss_percent=0.05,    # ストップロス（5%）
-    take_profit_percent=0.10,  # 利確（10%）
-    trailing_stop_percent=0.03 # トレーリングストップ（3%）
-)
+# 全可視化ユーティリティをインポート
+from visualization import generate_all_charts, plot_indicators, stock_chart_visualizer, view_charts
+
+# 特定の機能のみインポート
+from visualization.generate_all_charts import ChartGenerator
+from visualization.plot_indicators import plot_stock_with_indicators
 ```
 
-### 新しいポートフォリオ追加
-1. `data/`フォルダに新しいCSVファイルを作成
-2. `stock_chart_visualizer.py`の`portfolios`リストに追加
+### **全チャートの一括生成**
 
-### チャートスタイル変更
-`create_chart_with_signals()`メソッドで色、サイズ、レイアウトを調整可能
+```python
+from visualization.generate_all_charts import ChartGenerator
 
-## トラブルシューティング
+# チャートジェネレーターの初期化
+chart_generator = ChartGenerator(output_dir="data/chartImg")
 
-### データ取得エラー
-- インターネット接続を確認
-- ティッカーシンボルの正確性を確認
-- Yahoo Financeのサービス状況を確認
-
-### フォント警告
-- システムフォントが見つからない場合の警告（機能には影響なし）
-- macOSの場合、通常は`DejaVu Sans`が使用される
-
-### メモリ使用量
-- 大量銘柄処理時はメモリ使用量に注意
-- 必要に応じて分割処理を検討
-
-## 出力例
-
-生成されるファイル：
-```
-data/chartImg/
-├── 7203_T_トヨタ自動車.png
-├── 6758_T_ソニーグループ.png
-├── 9984_T_ソフトバンクグループ.png
-├── ...
-└── trading_summary_portfolio_practice.txt
+# 全チャートの生成
+chart_generator.generate_charts_for_portfolio(portfolio_data)
 ```
 
-## 次のステップ
+### **指標付きチャートのプロット**
 
-1. **バックテスト拡張**: 複数期間での性能評価
-2. **リスク指標追加**: シャープレシオ、最大ドローダウン等
-3. **アラート機能**: 売買シグナル発生時の通知
-4. **Webダッシュボード**: リアルタイム監視画面
+```python
+from visualization.plot_indicators import plot_stock_with_indicators
+import pandas as pd
 
+# サンプルデータ（DataFrame形式）
+stock_data = pd.DataFrame({
+    'Date': pd.to_datetime(['2023-01-01', '2023-01-02', '2023-01-03']),
+    'Open': [100, 101, 102],
+    'High': [102, 103, 104],
+    'Low': [99, 100, 101],
+    'Close': [101, 102, 103],
+    'Volume': [1000, 1200, 1100]
+}).set_index('Date')
+
+# 指標付きチャートのプロット
+plot_stock_with_indicators(stock_data, code="7974.T", name="任天堂", output_path="data/plots/7974.T_indicators.png")
+```
+
+### **チャートの表示**
+
+```python
+from visualization.view_charts import ChartViewer
+
+# チャートビューアの初期化
+viewer = ChartViewer(chart_dir="data/chartImg")
+
+# チャートの表示
+viewer.display_charts()
+```
+
+## ⚙️ **設定とカスタマイズ**
+
+### **チャート生成設定のカスタマイズ**
+
+```python
+# config.pyでの設定例
+CHART_SETTINGS = {
+    'output_directory': 'data/chartImg',
+    'chart_type': 'candlestick', # candlestick, line
+    'include_indicators': ['RSI', 'MACD', 'BollingerBands'],
+    'date_range': '1Y' # 1Y, 3M, ALL
+}
+```
+
+## 📚 **関連ドキュメント**
+
+- メインREADME: `../README.md`
+- ユーティリティモジュール: `../utils/README.md`
+- 設定ファイル: `../config.py`
+
+---
+
+**注意**: 可視化モジュールは、データの解釈を助ける強力なツールです。生成されるチャートが正確で分かりやすいことを確認してください。
