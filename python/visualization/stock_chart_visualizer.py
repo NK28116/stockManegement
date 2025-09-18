@@ -48,17 +48,17 @@ class StockChartVisualizer:
     def __init__(self, period="3mo"):
         self.period = period
         self.trading_rules = ImprovedTradingRules()
-        self.output_dir = "../data/chartImg"  # 出力先を変更
+        self.data_dir = "../data/chartImg"  # 出力先を変更
         self.plot_image_dir = "../data/plots"  # 銘柄ごとのMACDとボリンジャーバンドグラフ
-        os.makedirs(self.output_dir, exist_ok=True)
+        os.makedirs(self.data_dir, exist_ok=True)
 
-    def clean_output_dir(self):
+    def clean_data_dir(self):
         """出力先の既存PNGを削除"""
         removed = 0
-        for name in os.listdir(self.output_dir):
+        for name in os.listdir(self.data_dir):
             if name.lower().endswith(".png"):
                 try:
-                    os.remove(os.path.join(self.output_dir, name))
+                    os.remove(os.path.join(self.data_dir, name))
                     removed += 1
                 except Exception:
                     pass
@@ -71,7 +71,7 @@ class StockChartVisualizer:
             if portfolio_file == "my_stock.csv":
                 portfolio_path = config.codes_path
             else:
-                portfolio_path = config.output_dir + "/practice/{portfolio_file}"
+                portfolio_path = config.data_dir + "/practice/{portfolio_file}"
 
             df = pd.read_csv(portfolio_path)
 
@@ -370,7 +370,7 @@ class StockChartVisualizer:
 
                 # Save chart
                 chart_filename = f"{stock_info['code'].replace('.', '_')}_{stock_info['name']}.png"
-                chart_path = os.path.join(self.output_dir, chart_filename)
+                chart_path = os.path.join(self.data_dir, chart_filename)
                 figSignal.savefig(chart_path, dpi=150, bbox_inches="tight")
                 plt.close(figSignal)
 
@@ -392,13 +392,13 @@ class StockChartVisualizer:
 
         print("\n=== 処理完了 ===")
         print(f"成功: {successful_charts}/{len(stocks)} 銘柄")
-        print(f"チャート保存先: {os.path.abspath(self.output_dir)}")
+        print(f"チャート保存先: {os.path.abspath(self.data_dir)}")
 
     def save_summary_report(self, summaries: List[str], portfolio_file: str):
         """サマリーレポートを保存"""
         try:
             report_filename = f"trading_summary_{portfolio_file.replace('.csv', '')}.txt"
-            report_path = os.path.join(self.output_dir, report_filename)
+            report_path = os.path.join(self.data_dir, report_filename)
 
             with open(report_path, "w", encoding="utf-8") as f:
                 f.write("=== 全銘柄売買タイミング分析レポート ===\n")

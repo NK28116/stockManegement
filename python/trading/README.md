@@ -30,7 +30,7 @@ python3 buy_and_sell_stock.py sell 7203.T 500   # トヨタ自動車を500株売
 これにより,`data/my_stock.csv`から売却株式としてステータスを更新します
 
 ```bash
-python3 buy_and_sell_stock.py prebuy 7203.T 1000          # 保有株式の一覧表示
+python3 buy_and_sell_stock.py prebuy 7203.T           # 保有株式の一覧表示
 ```
 これにより,`data/my_stock.csv`に監視株式として追加されます
 
@@ -97,6 +97,7 @@ python3 every_stock_BuySell_timing.py ../data/my_stock.csv
 具体的な基準は以下の数字を利用しています
 
 ```python
+
     def __init__(self, 
                 stop_loss_percent: float = 0.05,  # 5%ストップロス
                 take_profit_percent: float = 0.10,  # 10%利確

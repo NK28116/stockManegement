@@ -3,10 +3,18 @@
 # Variables
 PYTHON = python3
 PYTHONPATH = ${PWD}
+
 WATCH_DIR = python/watch
 ANALYSIS_DIR = python/analysis
-DB_DIR = data/database
+DB_DIR = python/db
 LOG_DIR = log
+
+PYTHON_WATCH_MODULES =python.watch
+PYTHON_ANALYSIS_MODULES =python.analysis
+PYTHON_DB_MODULES =python.db
+PYTHON_UTIL_MODULES =python.utils
+PYTHON_TRADING_MODULES =python.trading
+PYTHON_VISUALIZATION_MODULES =python.visualization
 
 # Default target
 .DEFAULT_GOAL := help
@@ -49,18 +57,18 @@ help:
 .PHONY: watch-dev
 watch-dev:
 	@echo "Starting watch in development mode..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${WATCH_DIR}.watch --dev
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${PYTHON_WATCH_MODULES}.watch --dev
 
 .PHONY: watch-realtime
 watch-realtime:
 	@echo "Starting real-time monitoring..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${WATCH_DIR}.watch --realtime
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${PYTHON_WATCH_MODULES}.watch --realtime
 
 # Analysis
 .PHONY: analyze
 analyze:
 	@echo "Running analysis for all stocks..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${WATCH_DIR}.analyze
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${PYTHON_WATCH_MODULES}.analyze
 
 .PHONY: analyze-stock
 analyze-stock:
@@ -73,7 +81,7 @@ endif
 .PHONY: aggregate
 aggregate:
 	@echo "Running daily aggregation..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${WATCH_DIR}.dailyAggregator
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${PYTHON_WATCH_MODULES}.dailyAggregator
 
 # Database
 .PHONY: init-db
@@ -86,7 +94,7 @@ init-db:
 backup-db:
 	@echo "Creating database backup..."
 	@mkdir -p ${DB_DIR}/backups
-	@cp ${DB_DIR}/stock_data.db ${DB_DIR}/backups/stock_data_$(shell date +%Y%m%d_%H%M%S).db
+	@cp ${DB_DIR}/my_stock.db ${DB_DIR}/backups/my_stock$(shell date +%Y%m%d_%H%M%S).db
 
 # Development
 .PHONY: install
@@ -124,7 +132,7 @@ clean:
 .PHONY: run-daily
 run-daily: backup-db
 	@echo "Running daily tasks..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${WATCH_DIR}.dailyAggregator
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${PYTHON_WATCH_MODULES}.dailyAggregator
 	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${ANALYSIS_DIR}.daily_report
 	@echo "Daily tasks completed."
 
