@@ -67,7 +67,7 @@ def init_database():
             target_price REAL,
             planned_date DATE,
             sector TEXT,
-            status TEXT DEFAULT '購入予定',
+            status TEXT DEFAULT '監視中',
             PRIMARY KEY (code, date)
         )
         """,
@@ -151,7 +151,7 @@ CREATE TABLE IF NOT EXISTS trading_signals (
     print("作成されたテーブル:")
     print("- intraday (分足データ)")
     print("- daily (保有中の銘柄データ)")
-    print("- pre_buy_daily(購入予定の銘柄データ)")
+    print("- pre_buy_daily(監視中の銘柄データ)")
     print("- portfolio (ポートフォリオ情報)")
     print("- stocks (銘柄情報)")
     print("- portfolio_holdings (ポートフォリオ保有銘柄)")
