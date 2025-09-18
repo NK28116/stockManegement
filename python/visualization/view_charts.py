@@ -19,7 +19,7 @@ def select_csv_file():
         print(f"CSVファイルが {practice_dir} に見つかりません。")
         return None
 
-    print(f"\n=== 利用可能なCSVファイル ===")
+    print("\n=== 利用可能なCSVファイル ===")
     for i, file in enumerate(sorted(csv_files), 1):
         filename = os.path.basename(file)
         print(f"  {i}. {filename}")
@@ -30,9 +30,9 @@ def select_csv_file():
             idx = int(choice) - 1
             if 0 <= idx < len(csv_files):
                 return csv_files[idx]
-            print(f"無効な番号です。")
+            print("無効な番号です。")
         except ValueError:
-            print(f"数字を入力してください。")
+            print("数字を入力してください。")
 
 
 def open_charts_folder(dev_mode=False):
@@ -48,7 +48,7 @@ def open_charts_folder(dev_mode=False):
 
     if not os.path.exists(abs_path):
         print(f"チャートフォルダが存在しません: {abs_path}")
-        print(f"まず generate_all_charts.py を実行してください。")
+        print("まず generate_all_charts.py を実行してください。")
         return
 
     print(f"\nチャート保存先: {abs_path}")
@@ -57,8 +57,8 @@ def open_charts_folder(dev_mode=False):
     png_files = [f for f in os.listdir(abs_path) if f.endswith(".png")]
 
     if not png_files:
-        print(f"チャートファイルが見つかりません。")
-        print(f"まず generate_all_charts.py を実行してください。")
+        print("チャートファイルが見つかりません。")
+        print("まず generate_all_charts.py を実行してください。")
         return
 
     print(f"\n利用可能なチャート: {len(png_files)}件")
@@ -71,7 +71,7 @@ def open_charts_folder(dev_mode=False):
             print(f"  {i}. {stock_name}")
 
     if not dev_mode:
-        print(f"\n詳細レポート: trading_summary_portfolio_practice.txt")
+        print("\n詳細レポート: trading_summary_portfolio_practice.txt")
 
     # try:
     #     subprocess.run(['open', abs_path], check=True)
@@ -93,7 +93,7 @@ def print_summary(dev_mode=False):
     summary_file = os.path.join(charts_dir, "trading_summary_portfolio_practice.txt")
 
     if os.path.exists(summary_file):
-        print(f"=== トレーディングサマリー ===")
+        print("=== トレーディングサマリー ===")
         with open(summary_file, "r", encoding="utf-8") as f:
             content = f.read()
 
@@ -101,23 +101,23 @@ def print_summary(dev_mode=False):
         preview_lines = lines[:50]
 
         for line in preview_lines:
-            print(fline)
+            print(f"{line}\n" if line else line)
 
         if len(lines) > 50:
             print(f"\n... (残り {len(lines) - 50} 行)\n")
             print(f"完全版は {summary_file} を確認してください。")
     else:
-        print(f"サマリーファイルが見つかりません。")
-        print(f"まず generate_all_charts.py を実行してください。")
+        print("サマリーファイルが見つかりません。")
+        print("まず generate_all_charts.py を実行してください。")
 
 
 def main():
     """メイン関数"""
-    print(f"=== チャート表示ヘルパー ===")
+    print("=== チャート表示ヘルパー ===")
 
     dev_mode = len(sys.argv) > 1 and sys.argv[1] == "dev-mode"
     if dev_mode:
-        print(f"[開発モード] practiceフォルダ内のCSVファイルを使用します")
+        print("[開発モード] practiceフォルダ内のCSVファイルを使用します")
 
     if len(sys.argv) > 1 and sys.argv[-1] == "--summary":
         print_summary(dev_mode)
