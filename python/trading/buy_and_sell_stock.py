@@ -114,7 +114,11 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
         # 購入日は初回のまま残す（必要なら更新: df.at[i,"purchase_date"]=today）
     action = "買い" if qty > 0 else "売り"
     sign = "+" if qty > 0 else ""
-    print(f"{action}: {code} {sign}{qty}株 @¥{price if price else 'N/A'}")
+    message = f"{action}: {code} {sign}{qty}株 @¥{price if price else 'N/A'}"
+    print(message)
+    from python.utils.alert import send_alert
+
+    send_alert(message, level="INFO")
     return df
 
 
@@ -137,7 +141,11 @@ def sell(df: pd.DataFrame, code: str, qty: int) -> pd.DataFrame:
     else:
         if "status" in df.columns:
             df.at[i, "status"] = "保有中"
-    print(f"売り: {code} -{qty}株（残 {new_q}株）")
+    message = f"売り: {code} -{qty}株（残 {new_q}株）"
+    print(message)
+    from python.utils.alert import send_alert
+
+    send_alert(message, level="INFO")
     return df
 
 
@@ -233,7 +241,11 @@ def pre_buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.Da
                 "sector": df.at[i, "sector"],
                 "status": "購入予定",
             }
-    print(f"購入予定: {code} {qty}株 @¥{price if price else 'N/A'}")
+    message = f"購入予定: {code} {qty}株 @¥{price if price else 'N/A'}"
+    print(message)
+    from python.utils.alert import send_alert
+
+    send_alert(message, level="INFO")
     return df
 
 
