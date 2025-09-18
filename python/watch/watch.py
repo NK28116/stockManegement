@@ -215,10 +215,13 @@ def run_realtime_mode():
             prev = last_price[code]
             drop_pct = (price - prev) / prev * 100
             if drop_pct <= config.crash_threshold:  # config.crash_threshold を利用
-                logging.warning(
+                message = (
                     f"{code} 前回比 {config.crash_threshold}%以上下落: {prev:.1f} -> {price:.1f} ({drop_pct:.2f}%)"
                 )
-                # 将来 Slack 通知は alert.py の send_alert() を呼ぶ
+                logging.warning(message)
+                from python.utils.alert import send_alert
+
+                send_alert(message, level="WARNING")
 
             last_price[code] = price
 
