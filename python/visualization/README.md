@@ -51,7 +51,7 @@ from visualization.plot_indicators import plot_stock_with_indicators
 from visualization.generate_all_charts import ChartGenerator
 
 # チャートジェネレーターの初期化
-chart_generator = ChartGenerator(output_dir="data/chartImg")
+chart_generator = ChartGenerator(data_dir="data/chartImg")
 
 # 全チャートの生成
 chart_generator.generate_charts_for_portfolio(portfolio_data)
@@ -96,7 +96,7 @@ viewer.display_charts()
 ```python
 # config.pyでの設定例
 CHART_SETTINGS = {
-    'output_directory': 'data/chartImg',
+    'data_directory': 'data/chartImg',
     'chart_type': 'candlestick', # candlestick, line
     'include_indicators': ['RSI', 'MACD', 'BollingerBands'],
     'date_range': '1Y' # 1Y, 3M, ALL
