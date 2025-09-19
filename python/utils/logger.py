@@ -1,5 +1,6 @@
 import logging
 
+from datetime import datetime
 from python.config import config
 
 __all__ = ["get_logger"]
@@ -15,7 +16,7 @@ def get_logger(module_name: str, category: str = "general") -> logging.Logger:
     log_dir.mkdir(parents=True, exist_ok=True)
 
     # ログファイル名（1日ごとにローテーション）
-    log_file = log_dir / "{datetime.now().strftime('%Y-%m-%d')}.log"
+    log_file = log_dir / (f"{datetime.now().strftime('%Y-%m-%d')}.log")
 
     logger = logging.getLogger(f"{category}.{module_name}")
     logger.setLevel(logging.INFO)
