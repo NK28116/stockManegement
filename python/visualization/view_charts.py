@@ -7,20 +7,22 @@ import glob
 import os
 import sys
 
+from python.config import config
+
 __all__ = ["main", "print_summary", "select_csv_file", "open_charts_folder"]
 
 
 def select_csv_file():
     """開発モード用のCSVファイル選択"""
-    practice_dir = "../practice"
-    csv_files = glob.glob(os.path.join(practice_dir, "*.csv"))
+    practice_dir = f"{config.data_dir}/practice"
+    practice_csv_files = glob.glob(os.path.join(practice_dir, "*.csv"))
 
-    if not csv_files:
+    if not practice_csv_files:
         print(f"CSVファイルが {practice_dir} に見つかりません。")
         return None
 
     print("\n=== 利用可能なCSVファイル ===")
-    for i, file in enumerate(sorted(csv_files), 1):
+    for i, file in enumerate(sorted(practice_csv_files), 1):
         filename = os.path.basename(file)
         print(f"  {i}. {filename}")
 
@@ -28,8 +30,8 @@ def select_csv_file():
         try:
             choice = input("\n使用するファイルの番号を入力してください: ")
             idx = int(choice) - 1
-            if 0 <= idx < len(csv_files):
-                return csv_files[idx]
+            if 0 <= idx < len(practice_csv_files):
+                return practice_csv_files[idx]
             print("無効な番号です。")
         except ValueError:
             print("数字を入力してください。")
@@ -37,21 +39,24 @@ def select_csv_file():
 
 def open_charts_folder(dev_mode=False):
     """チャートフォルダを開く"""
-    charts_dir = "../data/chartImg"
+    charts_dir = f"{config.data_dir}/chartImg"
     if dev_mode:
         selected_csv = select_csv_file()
         if not selected_csv:
             return
-        charts_dir = os.path.join("../practice/charts", os.path.splitext(os.path.basename(selected_csv))[0])
+        charts_dir = os.path.join(
+            "f{config.data_dir}/practice/charts", os.path.splitext(os.path.basename(selected_csv))[0]
+        )
 
     abs_path = os.path.abspath(charts_dir)
+    relative_path_for_display = os.path.join(os.path.basename(os.getcwd()), os.path.relpath(abs_path, os.getcwd()))
 
     if not os.path.exists(abs_path):
-        print(f"チャートフォルダが存在しません: {abs_path}")
+        print(f"チャートフォルダ：{relative_path_for_display}が見つかりません。")
         print("まず generate_all_charts.py を実行してください。")
         return
 
-    print(f"\nチャート保存先: {abs_path}")
+    print(f"\nチャート保存先: /{relative_path_for_display}")
 
     # List available charts
     png_files = [f for f in os.listdir(abs_path) if f.endswith(".png")]
@@ -71,7 +76,7 @@ def open_charts_folder(dev_mode=False):
             print(f"  {i}. {stock_name}")
 
     if not dev_mode:
-        print("\n詳細レポート: trading_summary_portfolio_practice.txt")
+        print(f"\n詳細レポート: {relative_path_for_display}/trading_summary_portfolio_practice.txt")
 
     # try:
     #     subprocess.run(['open', abs_path], check=True)
@@ -86,9 +91,11 @@ def print_summary(dev_mode=False):
         selected_csv = select_csv_file()
         if not selected_csv:
             return
-        charts_dir = os.path.join("../practice/charts", os.path.splitext(os.path.basename(selected_csv))[0])
+        charts_dir = os.path.join(
+            f"{config.data_dir}/practice/charts", os.path.splitext(os.path.basename(selected_csv))[0]
+        )
     else:
-        charts_dir = "../data/chartImg"
+        charts_dir = f"{config.data_dir}/chartImg"
 
     summary_file = os.path.join(charts_dir, "trading_summary_portfolio_practice.txt")
 
