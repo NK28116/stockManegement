@@ -6,24 +6,18 @@
 import sys
 from datetime import datetime
 
-from python.analysis.data_collector import DataCollector
+import python.analysis.data_collector
 from python.analysis.portfolio_analyzer import PortfolioAnalyzer
 from python.db import dump_csv
 from python.trading import every_stock_buy_and_sell_timing
 from python.utils.logger import get_logger
-from python.utils.report import (
-    send_daily_report,
-    send_monthly_report,
-    send_weekly_report,
-)
+from python.utils.report import send_daily_report, send_monthly_report
 from python.visualization import generate_all_charts
-from python.watch.analyze import analyze_daily_data  # 急落検知用
 from python.watch.dailyAggregator import aggregate_intraday_to_daily
 
 logger = get_logger("main_task", category="task")
 
 analyzer = PortfolioAnalyzer()
-data_collector = DataCollector()
 
 
 def run_daily_task():
@@ -41,8 +35,22 @@ def run_daily_task():
     # 4. 日次レポートのSlack通知
     send_daily_report()
 
-    # 5. 前日の日足データから急落を検知したら暴落通知をslackで送る
-    analyze_daily_data()
+    # 5. 全銘柄の急落検知とテクニカル指標に基づく警告
+    import pandas as pd
+
+    from python.config import config
+    from python.watch.analyze import (
+        analyze_daily_data as run_analyze_daily_data,  # 名前衝突を避けるためエイリアス
+    )
+
+    try:
+        stock_df = pd.read_csv(config.codes_path)
+        codes = stock_df["code"].tolist()
+        logger.info(f"急落検知対象銘柄数: {len(codes)}")
+        for code in codes:
+            run_analyze_daily_data(code)
+    except Exception as e:
+        logger.error(f"急落検知処理中にエラーが発生しました: {e}")
 
     logger.info("=== 日次タスク完了 ===")
 
@@ -55,8 +63,8 @@ def run_weekly_task():
     # 2. ポートフォリオ分析
     analyzer.analyze_portfolio()
 
-    # 3. 週次レポートのSlack通知
-    send_weekly_report()  # analyzer.analyze_portfolio()内で呼ばれる場合もあるが、明示的に呼ぶ
+    # 3. 週次レポートのSlack通知 (analyzer.analyze_portfolio()内で既に呼び出されるため、ここでは不要)
+    # send_weekly_report()
 
     logger.info("=== 週次タスク完了 ===")
 
@@ -64,7 +72,7 @@ def run_weekly_task():
 def run_monthly_task():
     logger.info("=== 月次タスク開始 ===")
     # 1. 四半期データ収集・分析
-    data_collector.collect_quarterly_data()
+    python.analysis.data_collector.main()
 
     # 2. 全銘柄売買タイミング分析 (直近6ヶ月)
     every_stock_buy_and_sell_timing.run_analysis(period="6mo")
