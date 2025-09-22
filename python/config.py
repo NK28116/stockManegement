@@ -4,10 +4,9 @@
 環境変数やパラメータを管理
 """
 
-from pathlib import Path
-from typing import Dict, Any
-
 import os
+from pathlib import Path
+from typing import Any, Dict
 
 
 class Config:
@@ -19,7 +18,7 @@ class Config:
 
         # 固定パス
         self.codes_path = self.root_dir / "data" / "my_stock.csv"
-        self.output_dir = self.root_dir / "data"
+        self.data_dir = self.root_dir / "data"
         self.db_path = self.root_dir / "python" / "db" / "my_stock.db"
         self.log_dir = self.root_dir / "log"
         self.archive_dir = self.root_dir / "data" / "archive"
@@ -52,6 +51,14 @@ class Config:
         self.volume_spike_threshold = 2.0  # 出来高
         self.rsi_overbought_threshold = 70.0  # RSI過買い
         self.rsi_oversold_threshold = 30.0  # RSI過売り
+        
+        # テクニカル指標パラメータ
+        self.macd_fast_period = 12  # MACD短期EMA期間
+        self.macd_slow_period = 26  # MACD長期EMA期間
+        self.macd_long_period = 26  # MACD計算に必要な最小期間（長期EMAと同じ）
+        self.macd_signal_period = 9  # MACDシグナル期間
+        self.bollinger_period = 20  # ボリンジャーバンド期間
+        self.bollinger_std = 2  # ボリンジャーバンド標準偏差
 
         # ポートフォリオ分析パラメータ
         self.risk_free_rate = 0.001

@@ -30,14 +30,13 @@ class EveryStockAnalyzer:
         self.csv_file = csv_file
         self.codes = self.load_codes_from_csv()
         self.analyzer = ImprovedTradingRules()
+        self.status = self.load_status_from_codes()
 
     def load_codes_from_csv(self) -> List[str]:
         """CSVファイルから銘柄コードを読み込み"""
         try:
-
             # CSVファイル読み込み
             df = pd.read_csv(self.csv_file)
-
             # 銘柄コードの列を特定
             code_column = None
             for col in df.columns:
@@ -96,6 +95,7 @@ class EveryStockAnalyzer:
             # 結果をまとめる
             result = {
                 "code": code,
+                "code_status": self.status.get(code, "監視中"),
                 "status": "success",
                 "name": self.get_stock_name(code),  # Add stock name
                 "data": df,  # データフレームを追加
@@ -109,7 +109,7 @@ class EveryStockAnalyzer:
                 ),
             }
 
-            loggerEveryStockAnalysis.info(f"分析完了: {code} - 取引件数: {len(trades)}")
+            loggerEveryStockAnalysis.info(f"分析完了: {code} - 取引件数: {len(trades)}\n")
             return result
 
         except Exception as e:
@@ -125,17 +125,39 @@ class EveryStockAnalyzer:
             print(f"分析中... {i}/{len(self.codes)}: {code}")
             result = self.analyze_single_stock(code, period)
             results.append(result)
+            print(result['name'], result['status'])
 
             # 進捗表示
             if i % 5 == 0 or i == len(self.codes):
-                print(f"進捗: {i}/{len(self.codes)} 完了")
+                print(f" 進捗: {i}/{len(self.codes)} 完了")
 
         loggerEveryStockAnalysis.info(f"全銘柄分析完了: {len(results)}銘柄")
         return results
 
+    def load_status_from_codes(self):
+        """my_stock.csvから銘柄ステータスを読み込む"""
+        try:
+            df = pd.read_csv(self.csv_file)
+            if "code" not in df.columns or "status" not in df.columns:
+                loggerEveryStockAnalysis.error("CSVに 'code' または 'status' 列が存在しません")
+                return {}
+
+            self.status = {row["code"]: row["status"] for _, row in df.iterrows()}
+            loggerEveryStockAnalysis.info(f"銘柄ステータス読み込み完了: {len(self.status)}銘柄")
+            return self.status
+        except Exception as e:
+            # CSVファイル読み込みエラー
+            loggerEveryStockAnalysis.error(f"CSVファイル読み込みエラー: {e}")
+            return {}
+
     def generate_summary_report(self, results: List[Dict]) -> str:
-        """サマリーレポート生成"""
-        successful_results = [r for r in results if r["status"] == "success"]
+        """保有中のみサマリーレポート生成"""
+        if not hasattr(self, "status"):
+            self.status = self.load_status_from_codes()
+
+        successful_results = [
+            r for r in results if r["status"] == "success" and self.status.get(r["code"]) == "保有中"
+        ]
         error_results = [r for r in results if r["status"] == "error"]
 
         report = []
@@ -228,56 +250,67 @@ class EveryStockAnalyzer:
         report.append("=" * 80)
         report.append(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         report.append("")
-
+        # statusごとに銘柄を分類
+        categorized = {"保有中": [], "監視中": []}
         for result in successful_results:
-            # 基本情報
-            report.append(f"資産名: {result['code']}-{result['name']}")
+            code = result["code"]
+            status = self.status.get(code, "監視中")
+            categorized[status].append(result)
 
-            # 購入情報（my_stock.csvから取得）
-            purchase_info = self.get_purchase_info(result["code"])
-            if purchase_info:
-                purchase_date = purchase_info.get("purchase_date", "N/A")
-                purchase_price = purchase_info.get("purchase_price", 0)
-                quantity = purchase_info.get("quantity", 0)
-                report.append(f"購入日: {purchase_date}")
-                report.append(f"購入額(所持数): ¥{purchase_price:,.0f}({quantity}株)")
-            else:
-                report.append("購入情報: N/A")
+        # 各セクションごとに出力
+        for status_name, stock_list in categorized.items():
+            if not stock_list:
+                continue
+            report.append(f"=== {status_name} ===")
 
-            report.append("---")
+            for result in stock_list:
+                code = result["code"]
+                # 基本情報
+                report.append(f"資産名: {result["code"]}-{result["name"]}")
+                # 購入情報（my_stock.csvから取得）
+                purchase_info = self.get_purchase_info(result["code"])
+                if purchase_info:
+                    purchase_date = purchase_info.get("purchase_date", "N/A")
+                    purchase_price = purchase_info.get("purchase_price", 0)
+                    quantity = purchase_info.get("quantity", 0)
+                    report.append(f"購入日: {purchase_date}")
+                    report.append(f"購入額(所持数): ¥{purchase_price:,.0f}({quantity}株)")
+                else:
+                    report.append("購入情報: N/A")
+                report.append("---")
+                # 月次損益計算
+                monthly_returns = self.calculate_monthly_returns(result)
+                for month, return_value in monthly_returns.items():
+                    report.append(f"{month}: {return_value:+.2%}")
 
-            # 月次損益計算
-            monthly_returns = self.calculate_monthly_returns(result)
-            for month, return_value in monthly_returns.items():
-                report.append(f"{month}: {return_value:+.2%}")
+                report.append("---")
 
-            report.append("---")
+                # 直近1ヶ月の値動き（取引履歴形式）
+                report.append("直近1ヶ月の値動き")
+                daily_status = self.get_daily_status(result["data"], result["trades"], days=30)
+                if daily_status:
+                    for date, status_info in daily_status.items():
+                        # 1行にまとめて表示
+                        line = f"{date}: {status_info['status']} - {status_info['reason']}"
+                        if status_info.get("stop_price"):
+                            line += f" (ストップ: {status_info['stop_price']}円)"
+                        report.append(line)
+                else:
+                    report.append("直近1ヶ月のデータなし")
 
-            # 直近1ヶ月の値動き（取引履歴形式）
-            report.append("直近1ヶ月の値動き")
-            daily_status = self.get_daily_status(result["data"], result["trades"], days=30)
-            if daily_status:
-                for date, status_info in daily_status.items():
-                    # 1行にまとめて表示
-                    line = "{date}: {status_info['status']} - {status_info['reason']}"
-                    if status_info.get("stop_price"):
-                        line += f" (ストップ: {status_info['stop_price']}円)"
-                    report.append(line)
-            else:
-                report.append("直近1ヶ月のデータなし")
+                report.append("---")
 
-            report.append("---")
+                # 売却額と損益
+                current_value = result["current_price"] * purchase_info.get("quantity", 0) if purchase_info else 0
+                purchase_value = (
+                    purchase_info.get("purchase_price", 0) * purchase_info.get("quantity", 0) if purchase_info else 0
+                )
+                profit_loss = current_value - purchase_value
+                profit_loss_percent = (profit_loss / purchase_value) if purchase_value > 0 else 0
 
-            # 売却額と損益
-            current_value = result["current_price"] * purchase_info.get("quantity", 0) if purchase_info else 0
-            purchase_value = (
-                purchase_info.get("purchase_price", 0) * purchase_info.get("quantity", 0) if purchase_info else 0
-            )
-            profit_loss = current_value - purchase_value
-            profit_loss_percent = (profit_loss / purchase_value) if purchase_value > 0 else 0
-
-            report.append(f"売却額: ¥{current_value:,.0f}")
-            report.append(f"損益: ¥{profit_loss:+,.0f} ({profit_loss_percent:+.2%})")
+                report.append(f"売却額: ¥{current_value:,.0f}")
+                report.append(f"損益: ¥{profit_loss:+,.0f} ({profit_loss_percent:+.2%})")
+                report.append("############")
 
             report.append("")
             report.append("=" * 80)
@@ -290,7 +323,9 @@ class EveryStockAnalyzer:
         try:
             # サマリーレポート
             summary_report = self.generate_summary_report(results)
-            summary_file = f"../data/report/summary/summary_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            summary_file = (
+                f"{config.data_dir}/report/summary/summary_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            )
             os.makedirs(os.path.dirname(summary_file), exist_ok=True)
 
             with open(summary_file, "w", encoding="utf-8") as f:
@@ -300,7 +335,9 @@ class EveryStockAnalyzer:
 
             # 詳細レポート
             detailed_report = self.generate_detailed_report(results)
-            detailed_file = f"../data/report/detailed/detailed_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            detailed_file = (
+                f"{config.data_dir}/report/detailed/detailed_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            )
             os.makedirs(os.path.dirname(detailed_file), exist_ok=True)
 
             with open(detailed_file, "w", encoding="utf-8") as f:
@@ -314,9 +351,10 @@ class EveryStockAnalyzer:
     def get_purchase_info(self, code: str) -> Dict:
         """my_stock.csvから購入情報を取得"""
         try:
-            codes_file = "../data/my_stock.csv"
+            codes_file = config.codes_path
             if os.path.exists(codes_file):
                 df = pd.read_csv(codes_file)
+                df["code"] = df["code"].astype(str).str.strip()
                 stock_info = df[df["code"] == code]
                 if not stock_info.empty:
                     return stock_info.iloc[0].to_dict()
@@ -327,7 +365,7 @@ class EveryStockAnalyzer:
     def get_stock_name(self, code: str) -> str:
         """銘柄コードから銘柄名を取得"""
         purchase_info = self.get_purchase_info(code)
-        return purchase_info.get("name", code)  # デフォルトでコードを返す
+        return purchase_info.get("name", code)
 
     def calculate_monthly_returns(self, result: Dict[str, Any]) -> Dict[str, float]:
         """月次リターンを計算（各月の終値/始値 - 1）"""

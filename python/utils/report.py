@@ -1,5 +1,9 @@
 import os
 from datetime import datetime
+import threading
+import psutil
+import time
+from python.utils.monitor import get_db_size, api_call_count
 
 from python.config import config
 from python.utils.alert import send_alert
@@ -8,6 +12,32 @@ from python.utils.logger import get_logger
 logger = get_logger("report", category="report")
 
 __all__ = ["send_daily_report", "send_weekly_report", "send_monthly_report"]
+
+MONITOR_INTERVAL = 60  # 秒
+
+
+def log_system_resources(interval=MONITOR_INTERVAL):
+    """CPU/メモリ/DBサイズ/APIコール数を定期ログ"""
+    process = psutil.Process(os.getpid())
+    while True:
+        cpu_percent = psutil.cpu_percent(interval=1)
+        memory_usage = process.memory_info().rss / (1024 * 1024)  # MB
+        db_size = get_db_size()
+        logger.info(
+            "リソース使用状況 | CPU: %.1f%% | MEM: %.1fMB | DB: %.2fMB | API Calls: %d",
+            cpu_percent,
+            memory_usage,
+            db_size,
+            api_call_count,
+        )
+        time.sleep(interval)
+
+
+# --- レポート送信と並行してモニタリングを開始 ---
+def start_monitoring():
+    """別スレッドでリソースモニタリングを開始"""
+    thread = threading.Thread(target=log_system_resources, daemon=True)
+    thread.start()
 
 
 def _get_latest_report_file(report_type: str) -> str | None:
@@ -127,6 +157,7 @@ def send_monthly_report():
 
 
 if __name__ == "__main__":
+    start_monitoring()
     # テスト実行
     print("--- 日次レポートテスト ---")
     send_daily_report()
