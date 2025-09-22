@@ -63,9 +63,10 @@ def save_data_to_db(code, timestamp, price, volume):
         )
 
         conn.commit()
-        logger.info("保存成功: intraday にデータ追加 -> %s %s %.2f %d", code, timestamp_str, price, volume)
+        logger.info("\n DB保存成功: intraday にデータ追加")
+        # logger.info("\n DB保存成功: intraday にデータ追加 -> %s %s %.2f %d \n", code, timestamp_str, price, volume)
     except Exception as e:
-        logging.error(f"DB保存エラー: {e}")
+        logging.error(f"\n DB保存エラー: {e}\n")
     conn.close()
 
 
@@ -87,14 +88,13 @@ def get_stock_price(symbol: str) -> float:
         try:
             ticker = yf.Ticker(f"{symbol}")
             price = ticker.history(period="1d")["Close"].iloc[-1]
-            logger.info("yfinanceから取得成功: %s -> %s", symbol, price)
-            return float(price)
-        except Exception as e:
-            logger.error("yfinance取得エラー: %s", e)
+            volume = ticker.history(period="1d")["Volume"].iloc[-1]
+            return float(price), int(volume)
+        except Exception:
             # フォールバック: ランダム値
             price = round(random.uniform(1000, 5000), 2)
-            logger.warning("フォールバック: ランダム値を使用 %s -> %s", symbol, price)
-            return price
+            volume = random.randint(100, 1000)
+            return price, volume
 
     # --- case2: API利用 ---
     try:
@@ -106,24 +106,74 @@ def get_stock_price(symbol: str) -> float:
             },
             timeout=10,
         )
-        response.raise_for_status()
         data = response.json()
         price = float(data.get("price"))
-        logger.info("APIから取得成功: %s -> %s", symbol, price)
-        return price
-
+        volume = int(data.get("volume", random.randint(100, 1000)))  # Assume API can return volume, otherwise random
+        return price, volume
     except requests.exceptions.RequestException as e:
-        logger.error("API取得エラー: %s", e)
+        logger.error("\n ==API取得エラー: %s==\n", e)
         # フォールバック: yfinance or ランダム
         try:
             ticker = yf.Ticker(f"{symbol}.T")
             price = ticker.history(period="1d")["Close"].iloc[-1]
-            logger.info("フォールバック(yfinance): %s -> %s", symbol, price)
-            return float(price)
+            volume = ticker.history(period="1d")["Volume"].iloc[-1]
+            logger.info("\n ==フォールバック(yfinance): %s -> %s==\n", symbol, price)
+            return float(price), int(volume)
         except Exception:
             price = round(random.uniform(1000, 5000), 2)
-            logger.warning("フォールバック: ランダム値を使用 %s -> %s", symbol, price)
-            return price
+            volume = random.randint(100, 1000)  # Ensure volume is defined
+            logger.warning("\n== フォールバック: ランダム値を使用 %s -> %s==\n", symbol, price)
+            return price, volume
+
+
+# --- 共通処理 ---
+def _monitor_stock(code, current_dt, price, volume, history, last_price, name=None):
+    """
+    監視処理共通化（銘柄ごとにまとめてログ出力）
+    """
+    save_data_to_db(code, current_dt, price, volume)
+    history.append(float(price))
+
+    logs = []
+    warnings = []
+    ticker = yf.Ticker(f"{code}")
+    name = ticker.info["shortName"]
+
+    # === INFOログ ===
+    if name:
+        header = f"\n########## {code} ({name}) ###########"
+    else:
+        header = f"\n### {code} ###"
+    logs.append(header)
+
+    logs.append(f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - 株価取得成功: {code} -> {price}")
+
+    logs.append(f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - DB保存成功: intraday にデータ追加\n")
+
+    # === 警告系 ===
+    if len(history) >= 3 and history[-1] < history[-2] < history[-3]:
+        warnings.append(f"- 連続下落検出: {history[-3]:.1f} -> {history[-2]:.1f} -> {history[-1]:.1f}")
+
+    recent_prices = history[-config.volatility_period :]
+    if len(recent_prices) >= 2:
+        vol = calc_volatility(recent_prices)
+        if vol > config.volatility_threshold:
+            warnings.append(f"- ボラティリティ警告: {vol:.2f}%")
+
+    if last_price is not None and last_price > 0:
+        drop_pct = (price - last_price) / last_price * 100
+        if drop_pct <= config.crash_threshold:
+            warnings.append(
+                f"- 前回比 {config.crash_threshold}%以上下落: {last_price:.1f} -> {price:.1f} ({drop_pct:.2f}%)\n"
+            )
+
+    if warnings:
+        logs.append(f"WARNING: {code}\n" + "\n".join(warnings))
+
+    # === 出力 ===
+    print("\n".join(logs))
+
+    return float(price)
 
 
 # --- 擬似リアルタイム監視(devモード用) ---
@@ -146,32 +196,7 @@ def run_dev_mode(dev_date):
             price = last_price[code] * (1 + change_pct)
             volume = random.randint(100, 1000)
 
-            save_data_to_db(code, current_dt, price, volume)
-
-            history = price_history[code]
-            history.append(price)
-            last_price[code] = price
-
-            # --- 連続下落検知 ---
-            if len(history) >= 3 and history[-1] < history[-2] < history[-3]:
-                logging.warning(f"{code} 連続下落検出: {history[-3]:.1f} -> {history[-2]:.1f} -> {history[-1]:.1f}")
-
-            # --- ボラティリティ警告(直近5本) ---
-            recent_prices = history[-5:]
-            vol = calc_volatility(recent_prices)
-            if vol > config.volatility_threshold:
-                logging.warning(f"{code} ボラティリティ警告: {vol:.2f}%")
-
-            # --- 前回比 -3%以上下落 ---
-            if len(history) >= 2:
-                drop_pct = (history[-1] - history[-2]) / history[-2] * 100
-                if drop_pct <= config.crash_threshold:
-                    message = f"{code} 前回比 {config.crash_threshold}%以上下落:\
-                                {history[-2]:.1f} -> {history[-1]:.1f} ({drop_pct:.2f}%)"
-                    logging.warning(message)
-                    from python.utils.alert import send_alert
-
-                    send_alert(message, level="WARNING")
+            last_price[code] = _monitor_stock(code, current_dt, price, volume, price_history[code], last_price[code])
 
         current_dt += timedelta(minutes=1)
         time_module.sleep(0.5)
@@ -182,50 +207,22 @@ def run_realtime_mode():
     logging.info("=== リアルタイム監視開始 ===")
     stock_df = pd.read_csv(config.codes_path)
     codes = stock_df["code"].tolist()
+
+    price_history = {code: [] for code in codes}
     last_price = {code: random.uniform(1000, 2000) for code in codes}  # 仮の前回価格
 
     while True:
         current_dt = datetime.now()
         for code in codes:
-            # 株価取得（API or ランダム）
-            price = get_stock_price(code)
+            price, volume = get_stock_price(code)
+            # DBから履歴を取得（足りない場合は空のまま）
+            if not price_history[code]:
+                history = get_price_history(code, limit=config.volatility_period + 2)
+                price_history[code] = history if history else []
 
-            # volume が未定義だったので追加（ランダム値でOK）
-            volume = random.randint(100, 1000)
+            last_price[code] = _monitor_stock(code, current_dt, price, volume, price_history[code], last_price[code])
 
-            save_data_to_db(code, current_dt, price, volume)
-
-            history = get_price_history(
-                code, limit=config.volatility_period + 2
-            )  # ボラティリティ計算に必要な期間+2本分
-            if not history:
-                history = [price]  # 履歴がない場合は現在の価格のみ
-
-            # --- 連続下落検知 ---
-            if len(history) >= 3 and history[-1] < history[-2] < history[-3]:
-                logging.warning(f"{code} 連続下落検出: {history[-3]:.1f} -> {history[-2]:.1f} -> {history[-1]:.1f}")
-
-            # --- ボラティリティ警告(直近N本) ---
-            recent_prices = history[-config.volatility_period :]
-            vol = calc_volatility(recent_prices)
-            if vol > config.volatility_threshold:
-                logging.warning(f"{code} ボラティリティ警告: {vol:.2f}%")
-
-            # --- 前回比 -3%以上下落 ---
-            prev = last_price[code]
-            drop_pct = (price - prev) / prev * 100
-            if drop_pct <= config.crash_threshold:  # config.crash_threshold を利用
-                message = (
-                    f"{code} 前回比 {config.crash_threshold}%以上下落: {prev:.1f} -> {price:.1f} ({drop_pct:.2f}%)"
-                )
-                logging.warning(message)
-                from python.utils.alert import send_alert
-
-                send_alert(message, level="WARNING")
-
-            last_price[code] = price
-
-        time_module.sleep(120)  # 2分周期
+        time_module.sleep(120)
 
 
 # --- メイン ---

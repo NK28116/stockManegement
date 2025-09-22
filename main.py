@@ -10,23 +10,44 @@ from python.db import dump_csv
 from python.trading import every_stock_buy_and_sell_timing
 from python.utils.logger import get_logger
 from python.utils.report import send_daily_report, send_monthly_report
+from python.utils.monitor import log_resource_usage
 from python.visualization import generate_all_charts
+from python.watch import run_realtime_mode
+from python.watch.dailyAggregator import save_daily_data_to_db, aggregate_intraday_to_daily
 
 logger = get_logger("main_task", category="task")
 
 analyzer = PortfolioAnalyzer()
 
+# 常駐メソッド
+def always_running():
+    logger.info("===常駐タスク===")
+    # 1.市場の監視
+    run_realtime_mode()
+    # 2.計算資源消費の監視
+    log_resource_usage()
+    # 3.前日の日足データから急落を検知したら暴落通知をslackで送る
+    analyze_daily_data()
 
+    logger.info("===常駐タスク起動完了===")
+
+# 毎日18:00に実行
 def run_daily_task():
     logger.info("=== 日次タスク開始 ===")
     # 1. 全銘柄の売買タイミング分析とレポート保存
     every_stock_buy_and_sell_timing.run()
-
-    # 2. 日次レポートのSlack通知
+    # 2. 今日の分足データを日速にしてdbに保存
+    today = (datetime.now()).strftime("%Y-%m-%d")
+    aggregate_intraday_to_daily(today)
+    # 3. 売買タイミングをレポート
+    every_stock_buy_and_sell_timing data/my_stock.csv
+    # 4. 全銘柄のチャートを生成
+    generate_all_charts.main()
+    # 4.日次レポートのSlack通知
     send_daily_report()
+
     logger.info("=== 日次タスク完了 ===")
-
-
+# 毎週土曜日の13:00に実行
 def run_weekly_task():
     logger.info("=== 週次タスク開始 ===")
     # 日次タスクを実行
@@ -41,17 +62,18 @@ def run_weekly_task():
     # 3. 週次レポートのSlack通知（analyzer.analyze_portfolio()内で既に呼び出されるため、ここでは不要）
     logger.info("=== 週次タスク完了 ===")
 
-
+# 毎月1日の18:00に実行
 def run_monthly_task():
     logger.info("=== 月次タスク開始 ===")
     # 週次タスクを実行
     run_weekly_task()
+    # trading_rulesの見直し
 
-    # 1. 月次レポートのSlack通知
+    # 月次レポートのSlack通知
     send_monthly_report()
     logger.info("=== 月次タスク完了 ===")
 
-
+# 毎年1月1日の18:00に実行
 def run_yearly_task():
     logger.info("=== 年次タスク開始 ===")
 

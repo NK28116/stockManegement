@@ -1,5 +1,5 @@
 """
-改善された売買判断ルール
+売買判断ルール
 リスク管理と利益確定を重視
 """
 
@@ -180,8 +180,8 @@ def generate_trading_report(comparison: Dict) -> str:
     report.append(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     report.append("")
 
-    # 新ルール
-    report.append("【新ルール（改善版）】")
+    # ルール
+    report.append("ルール")
     new_metrics = comparison["new_rules"]["metrics"]
     report.append("総取引数: {new_metrics.get('total_trades', 0)}")
     report.append("完了取引数: {new_metrics.get('completed_trades', 0)}")
@@ -219,4 +219,3 @@ if __name__ == "__main__":
     comparison = {"new_rules": {"metrics": metrics}}
 
     report = generate_trading_report(comparison)
-    print(freport)

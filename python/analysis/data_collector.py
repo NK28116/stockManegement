@@ -156,8 +156,8 @@ def main():
             results.append(stock_data)
 
     if results:
-        output_path = os.path.join(config.output_dir, "quarterly_data_collection.csv")
-        os.makedirs(config.output_dir, exist_ok=True)
+        output_path = os.path.join(config.data_dir, "quarterly_data_collection.csv")
+        os.makedirs(config.data_dir, exist_ok=True)
         pd.DataFrame(results).to_csv(output_path, index=False, encoding="utf-8")
         logger.info(f"分析結果を保存しました: {output_path}")
     else:

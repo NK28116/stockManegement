@@ -4,8 +4,8 @@ import pandas as pd
 
 from python.utils.logger import get_logger
 
-from ..config import config
-from ..utils.indicators import (  # インジケーター計算関数をインポート
+from python.config import config
+from python.utils.indicators import (  # インジケーター計算関数をインポート
     calculate_bollinger_bands,
     calculate_macd,
 )

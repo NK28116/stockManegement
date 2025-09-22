@@ -6,7 +6,6 @@ PortfolioAnalyzer や trading で再利用可能
 
 from typing import List, Dict
 import pandas as pd
-import ta
 from python.config import config
 
 __all__ = ["calculate_technical_indicators", "check_buy_signal", "check_sell_signal", "generate_buy_sell_signals"]
