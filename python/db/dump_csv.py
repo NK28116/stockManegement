@@ -48,7 +48,7 @@ def main():
     # ユーザーから対象年を入力
     target_year = input("ダンプ＆削除する年を入力してください (例: 2023): ").strip()
     if not target_year.isdigit():
-        print(f"❌ 無効な入力です。西暦の数字を入力してください。")
+        print("❌ 無効な入力です。西暦の数字を入力してください。")
         return
     target_year = int(target_year)
 
