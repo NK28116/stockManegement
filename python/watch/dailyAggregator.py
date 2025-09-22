@@ -33,7 +33,7 @@ def save_daily_data_to_db(code, date, open_price, high_price, low_price, close_p
         """
         )
         c.execute(
-            "INSERT OR REPLACE INTO daily VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT OR REPLACE INTO stock_data VALUES (?, ?, ?, ?, ?, ?, ?)",
             (code, date, open_price, high_price, low_price, close_price, volume),
         )
         conn.commit()

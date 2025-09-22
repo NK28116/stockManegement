@@ -187,7 +187,7 @@ make analyze-stock CODE=7203
 
 - Make なしでの実行（PowerShell / cmd）
 
-```powershell
+```powersershell
 # 監視（開発モード）
 python -m python.watch.watch --dev 20250115
 
@@ -305,3 +305,54 @@ stockManegement/
 本リポジトリのライセンスが未指定の場合は、クローズド運用を前提とします。公開・配布を行う場合はライセンスの明示を行ってください。
 
 ---
+
+### 定期タスクの直接実行コマンド (Pythonスクリプト)
+
+以下は、`python/`ディレクトリ内のスクリプトを直接実行する形式での定期タスクコマンドです。
+
+#### Daily Tasks
+
+- **日足データ集計**: 分足データから日足データを集計し、DBに保存します。
+
+  ```bash
+  python -m python.watch.dailyAggregator
+  ```
+
+- **全銘柄売買タイミング分析 (直近1ヶ月)**: `data/my_stock.csv`に記載された全銘柄について、直近1ヶ月のデータを用いて売買タイミングを分析し、レポートを生成します。
+
+  ```bash
+  python -m python.trading.every_stock_buy_and_sell_timing data/my_stock.csv --period 1mo
+  ```
+
+- **全銘柄チャート一括生成**: 日足データと分析結果に基づき、全銘柄のチャートを生成し、`data/chartImg`フォルダに保存します。
+
+  ```bash
+  python -m python.visualization.generate_all_charts
+  ```
+
+#### Weekly Tasks
+
+- **全銘柄売買タイミング分析 (直近3ヶ月)**: `data/my_stock.csv`に記載された全銘柄について、直近3ヶ月のデータを用いて売買タイミングを分析し、レポートを生成します。
+
+  ```bash
+  python -m python.trading.every_stock_buy_and_sell_timing data/my_stock.csv --period 3mo
+  ```
+
+- **ポートフォリオ分析**: 保有銘柄のポートフォリオ全体を分析し、結果を保存し、週次レポートをSlackに通知します。
+
+  ```bash
+  python -m python.analysis.portfolio_analyzer
+  ```
+
+#### Monthly Tasks
+
+- **四半期データ収集・分析**: 前四半期および直近4四半期の株価データを収集し、分析結果をCSVに保存します。
+
+  ```bash
+  python -m python.analysis.data_collector
+  ```
+
+- **全銘柄売買タイミング分析 (直近6ヶ月)**: `data/my_stock.csv`に記載された全銘柄について、直近6ヶ月のデータを用いて売買タイミングを分析し、レポートを生成します。
+
+  ```bash
+  python -m python.trading.every_stock_buy_and_sell_timing data/my_stock.csv --period 6mo

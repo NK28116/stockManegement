@@ -210,6 +210,7 @@ def fix_names(df: pd.DataFrame) -> pd.DataFrame:
 def pre_buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFrame:
     today = datetime.now().strftime("%Y-%m-%d")
     idx = df.index[df["code"] == code]
+    qty = 1
     if price is None:
         price = get_price(code)
     if len(idx) == 0:
@@ -221,12 +222,12 @@ def pre_buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.Da
             "purchase_price": float(price) if price else 0.0,
             "purchase_date": today,
             "sector": "",
-            "status": "購入予定",
+            "status": "監視中",
         }
     else:
         i = idx[0]
-        if df.at[i, "status"] == "購入予定":
-            # 既存の購入予定があれば更新
+        if df.at[i, "status"] == "監視中":
+            # 既存の監視中があれば更新
             df.at[i, "quantity"] = qty
             df.at[i, "purchase_price"] = float(price) if price else 0.0
             df.at[i, "purchase_date"] = today
@@ -239,9 +240,9 @@ def pre_buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.Da
                 "purchase_price": float(price) if price else 0.0,
                 "purchase_date": today,
                 "sector": df.at[i, "sector"],
-                "status": "購入予定",
+                "status": "監視中",
             }
-    message = f"購入予定: {code} {qty}株 @¥{price if price else 'N/A'}"
+    message = f"監視中: {code} ({qty}株あたり) @¥{price if price else 'N/A'}"
     print(message)
     from python.utils.alert import send_alert
 
@@ -258,7 +259,7 @@ def main():
     p_buy.add_argument("quantity", type=int)
     p_buy.add_argument("--price", type=float, default=None)
 
-    # 購入予定用のパーサーを追加
+    # 監視中用のパーサーを追加
     p_prebuy = sub.add_parser("prebuy")
     p_prebuy.add_argument("code")
     p_prebuy.add_argument("quantity", type=int)
