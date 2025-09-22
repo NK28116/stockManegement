@@ -20,7 +20,7 @@ from .trading_rules import ImprovedTradingRules
 loggerBuySellTiming = get_logger("every_stock_BuySell_timing", category="trading")
 loggerEveryStockAnalysis = get_logger("every_stock_analysis", category="analysis")
 
-__all__ = ["main", "run", "EveryStockAnalyzer"]
+__all__ = ["main", "run", "run_analysis", "EveryStockAnalyzer"]
 
 
 class EveryStockAnalyzer:
@@ -125,7 +125,7 @@ class EveryStockAnalyzer:
             print(f"分析中... {i}/{len(self.codes)}: {code}")
             result = self.analyze_single_stock(code, period)
             results.append(result)
-            print(result['name'], result['status'])
+            print(result["name"], result["status"])
 
             # 進捗表示
             if i % 5 == 0 or i == len(self.codes):
@@ -496,6 +496,17 @@ def run():
 
     analyzer = EveryStockAnalyzer(csv_file)
     results = analyzer.analyze_all_stocks(period="3mo")
+    analyzer.save_reports(results)
+
+
+def run_analysis(period: str = "3mo"):
+    """
+    指定された期間で全銘柄の売買タイミング分析を実行し、レポートを保存する。
+    main.pyからの定期タスク実行用。
+    """
+    csv_file = config.codes_path
+    analyzer = EveryStockAnalyzer(csv_file)
+    results = analyzer.analyze_all_stocks(period=period)
     analyzer.save_reports(results)
 
 
