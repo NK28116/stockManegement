@@ -18,7 +18,7 @@ jobs:
     - name: Python環境をセットアップ
       uses: actions/setup-python@v5
       with:
-        python-version: '3.12' # 使用するPythonのバージョンを指定
+        python-version: '3.13' # 使用するPythonのバージョンを指定
 
     - name: 依存関係をインストール
       run: |
