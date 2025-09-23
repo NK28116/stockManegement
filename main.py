@@ -6,13 +6,19 @@
 import sys
 from datetime import datetime
 
+import pandas as pd
+
 import python.analysis.data_collector
 from python.analysis.portfolio_analyzer import PortfolioAnalyzer
+from python.config import config
 from python.db import dump_csv
 from python.trading import every_stock_buy_and_sell_timing
 from python.utils.logger import get_logger
 from python.utils.report import send_daily_report, send_monthly_report
 from python.visualization import generate_all_charts
+from python.watch.analyze import (
+    analyze_daily_data as run_analyze_daily_data,  # 名前衝突を避けるためエイリアス
+)
 from python.watch.dailyAggregator import aggregate_intraday_to_daily
 
 logger = get_logger("main_task", category="task")
@@ -36,13 +42,6 @@ def run_daily_task():
     send_daily_report()
 
     # 5. 全銘柄の急落検知とテクニカル指標に基づく警告
-    import pandas as pd
-
-    from python.config import config
-    from python.watch.analyze import (
-        analyze_daily_data as run_analyze_daily_data,  # 名前衝突を避けるためエイリアス
-    )
-
     try:
         stock_df = pd.read_csv(config.codes_path)
         codes = stock_df["code"].tolist()
