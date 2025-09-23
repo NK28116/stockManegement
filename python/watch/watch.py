@@ -3,14 +3,15 @@ import argparse
 import logging
 import random
 import sqlite3
-import time as time_module
 from datetime import datetime, timedelta
+import time
 
 import pandas as pd
 import requests
 import yfinance as yf
 
 from python.config import config
+from ..utils.alert import send_alert
 from python.utils.logger import get_logger
 
 # 設定読み込み
@@ -202,30 +203,66 @@ def run_dev_mode(dev_date):
         time_module.sleep(0.5)
 
 
-# --- 本番リアルタイム監視（2分周期） ---
-def run_realtime_mode():
-    logging.info("=== リアルタイム監視開始 ===")
+def load_stock_codes():
+    """監視対象コード一覧をCSVから取得"""
     stock_df = pd.read_csv(config.codes_path)
-    codes = stock_df["code"].tolist()
+    return stock_df["code"].tolist()
 
-    price_history = {code: [] for code in codes}
-    last_price = {code: random.uniform(1000, 2000) for code in codes}  # 仮の前回価格
 
+def run_once():
+    codes = load_stock_codes()
+    current_dt = datetime.now()
+    results = []
+
+    for code in codes:
+        price, volume = get_stock_price(code)
+        history = get_price_history(code, limit=config.volatility_period + 2)
+        last_price = history[-1] if history else None
+
+        updated_price = _monitor_stock(code, current_dt, price, volume, history, last_price)
+        results.append((code, updated_price, volume))
+
+    return results
+
+
+def detect_intraday_crash(code, current_price, last_price):
+    if last_price is None or last_price == 0:
+        return None
+
+    drop_pct = (current_price - last_price) / last_price * 100
+    if drop_pct <= config.crash_threshold:
+        message = f"[分足急落] {code}: {last_price:.1f} -> {current_price:.1f} " f"({drop_pct:.2f}%)"
+        send_alert(message, level="WARNING")  # Slack に送信
+        return message
+    return None
+
+
+def run_once_with_crash_check():
+    """分足1回取得＋急落検知"""
+    codes = load_stock_codes()
+    current_dt = datetime.now()
+    alerts = []
+
+    for code in codes:
+        price, volume = get_stock_price(code)
+        history = get_price_history(code, limit=3)
+        last_price = history[-1] if history else None
+
+        _monitor_stock(code, current_dt, price, volume, history, last_price)
+        alert = detect_intraday_crash(code, price, last_price)
+        if alert:
+            alerts.append(alert)
+
+    return alerts
+
+
+def run_realtime_mode():
+    """ローカル実行: 2分ごとの無限ループ"""
     while True:
-        current_dt = datetime.now()
-        for code in codes:
-            price, volume = get_stock_price(code)
-            # DBから履歴を取得（足りない場合は空のまま）
-            if not price_history[code]:
-                history = get_price_history(code, limit=config.volatility_period + 2)
-                price_history[code] = history if history else []
-
-            last_price[code] = _monitor_stock(code, current_dt, price, volume, price_history[code], last_price[code])
-
-        time_module.sleep(120)
+        run_once()
+        time.sleep(120)
 
 
-# --- メイン ---
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dev", help="開発モード: 過去日 YYYYMMDD")

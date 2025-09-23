@@ -3,18 +3,7 @@
 # Variables
 PYTHON = python3
 PYTHONPATH = ${PWD}
-
-WATCH_DIR = python/watch
-ANALYSIS_DIR = python/analysis
-DB_DIR = python/db
 LOG_DIR = log
-
-PYTHON_WATCH_MODULES =python.watch
-PYTHON_ANALYSIS_MODULES =python.analysis
-PYTHON_DB_MODULES =python.db
-PYTHON_UTIL_MODULES =python.utils
-PYTHON_TRADING_MODULES =python.trading
-PYTHON_VISUALIZATION_MODULES =python.visualization
 
 # Default target
 .DEFAULT_GOAL := help
@@ -50,10 +39,6 @@ help:
 	@echo "  run-monthly     Execute monthly tasks via main.py"
 	@echo "  run-yearly      Execute yearly tasks via main.py"
 	@echo "  install-cron    Install scheduled tasks with cron"
-	@echo ""
-	@echo "Windows Specific:"
-	@echo "  create-win-batch  Generate run_watch.bat for Windows auto-startup"
-	@echo "  run-win-batch     Test the generated run_watch.bat"
 
 # Watch Module
 .PHONY: watch-dev
@@ -62,18 +47,18 @@ ifndef DATE
 	$(error Please specify a date with DATE=YYYYMMDD for development mode)
 endif
 	@echo "Starting watch in development mode for date: ${DATE}..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${WATCH_DIR}.watch --dev ${DATE}
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} python/watch/watch.py --dev ${DATE}
 
 .PHONY: watch-realtime
 watch-realtime:
 	@echo "Starting real-time monitoring..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${WATCH_DIR}.watch
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} python/watch/watch.py
 
 # Analysis
 .PHONY: analyze
 analyze:
 	@echo "Running analysis for all stocks..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${WATCH_DIR}.analyze
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} python/watch/analyze.py
 
 .PHONY: analyze-stock
 analyze-stock:
@@ -86,20 +71,20 @@ endif
 .PHONY: aggregate
 aggregate:
 	@echo "Running daily aggregation..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -m ${WATCH_DIR}.dailyAggregator
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} python/watch/dailyAggregator.py
 
 # Database
 .PHONY: init-db
 init-db:
 	@echo "Initializing database..."
-	@mkdir -p ${DB_DIR}
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -c "from python.init_database import init_database; init_database()"
+	@mkdir -p data/db
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} python/init_database.py
 
 .PHONY: backup-db
 backup-db:
 	@echo "Creating database backup..."
-	@mkdir -p ${DB_DIR}/backups
-	@cp ${DB_DIR}/my_stock.db ${DB_DIR}/backups/my_stock_$(shell date +%Y%m%d_%H%M%S).db
+	@mkdir -p data/db/backups
+	@cp data/db/my_stock.db data/db/backups/my_stock_$(shell date +%Y%m%d_%H%M%S).db
 
 # Development
 .PHONY: install
@@ -136,25 +121,25 @@ clean:
 .PHONY: run-daily
 run-daily: backup-db
 	@echo "Running daily tasks..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} main.py daily
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} main.py daily > ${LOG_DIR}/cron_daily.log 2>&1
 	@echo "Daily tasks completed."
 
 .PHONY: run-weekly
 run-weekly: backup-db
 	@echo "Running weekly tasks..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} main.py weekly
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} main.py weekly > ${LOG_DIR}/cron_weekly.log 2>&1
 	@echo "Weekly tasks completed."
 
 .PHONY: run-monthly
 run-monthly: backup-db
 	@echo "Running monthly tasks..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} main.py monthly
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} main.py monthly > ${LOG_DIR}/cron_monthly.log 2>&1
 	@echo "Monthly tasks completed."
 
 .PHONY: run-yearly
 run-yearly: backup-db
 	@echo "Running yearly tasks..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} main.py yearly
+	@PYTHONPATH=${PYTHONPATH} ${PYTHON} main.py yearly > ${LOG_DIR}/cron_yearly.log 2>&1
 	@echo "Yearly tasks completed."
 
 # スケジュール設定 (crontab用)
@@ -163,28 +148,15 @@ install-cron:
 	@echo "Installing cron jobs..."
 	@(crontab -l 2>/dev/null; \
 	  echo "# Stock Management System - Daily tasks (9:00 AM on weekdays)"; \
-	  echo "0 9 * * 1-5 cd /mnt/e/doc/git/PrivateDevelop/stockManegement && ${PYTHON} main.py daily > ${LOG_DIR}/cron_daily.log 2>&1"; \
+	  echo "0 9 * * 1-5 cd ${PWD} && ${PYTHON} main.py daily > ${LOG_DIR}/cron_daily.log 2>&1"; \
 	  echo ""; \
 	  echo "# Weekly tasks (Saturday 10:00 AM)"; \
-	  echo "0 10 * * 6 cd /mnt/e/doc/git/PrivateDevelop/stockManegement && ${PYTHON} main.py weekly > ${LOG_DIR}/cron_weekly.log 2>&1"; \
+	  echo "0 10 * * 6 cd ${PWD} && ${PYTHON} main.py weekly > ${LOG_DIR}/cron_weekly.log 2>&1"; \
 	  echo ""; \
 	  echo "# Monthly tasks (1st day of month at 11:00 AM)"; \
-	  echo "0 11 1 * * cd /mnt/e/doc/git/PrivateDevelop/stockManegement && ${PYTHON} main.py monthly > ${LOG_DIR}/cron_monthly.log 2>&1"; \
+	  echo "0 11 1 * * cd ${PWD} && ${PYTHON} main.py monthly > ${LOG_DIR}/cron_monthly.log 2>&1"; \
 	  echo ""; \
 	  echo "# Yearly tasks (January 1st at 12:00 PM)"; \
-	  echo "0 12 1 1 * cd /mnt/e/doc/git/PrivateDevelop/stockManegement && ${PYTHON} main.py yearly > ${LOG_DIR}/cron_yearly.log 2>&1") | crontab -
+	  echo "0 12 1 1 * cd ${PWD} && ${PYTHON} main.py yearly > ${LOG_DIR}/cron_yearly.log 2>&1") | crontab -
 	@echo "Cron jobs installed. Current crontab:"
 	@crontab -l
-
-
-# Windows 用: 自動起動バッチ作成
-create-win-batch:
-	@echo @echo off > run_watch.bat
-	@echo cd /d ${PWD} >> run_watch.bat
-	@echo ${PYTHON} main.py watch-realtime >> run_watch.bat
-	@echo "✅ run_watch.bat を作成しました。スタートアップにショートカットを置いてください。"
-	@echo "# Note: This batch file is also updated automatically via GitHub Actions on each push to keep Windows deployment in sync."
-
-# Windows 用: バッチ実行確認
-run-win-batch:
-	@cmd /c run_watch.bat
