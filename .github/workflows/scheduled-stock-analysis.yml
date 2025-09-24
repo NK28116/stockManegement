@@ -32,7 +32,7 @@ jobs:
         # lambda_function.py を直接実行する場合
         # python lambda_function.py
         # python/watch/watch.py を実行する場合
-        python python/watch/watch.py
+        python3 -m python.watch.watch
         # または、lambda_function.py の lambda_handler 関数を呼び出す場合
         # python -c "from lambda_function import lambda_handler; lambda_handler({}, {})"
       # スクリプトの実行方法に合わせて調整してください。
