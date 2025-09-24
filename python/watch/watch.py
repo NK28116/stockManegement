@@ -3,16 +3,18 @@ import argparse
 import logging
 import random
 import sqlite3
-from datetime import datetime, timedelta
 import time
+from datetime import datetime, timedelta
+from typing import List, Optional
 
 import pandas as pd
 import requests
 import yfinance as yf
 
 from python.config import config
-from ..utils.alert import send_alert
 from python.utils.logger import get_logger
+
+from ..utils.alert import send_alert
 
 # 設定読み込み
 
@@ -200,7 +202,7 @@ def run_dev_mode(dev_date):
             last_price[code] = _monitor_stock(code, current_dt, price, volume, price_history[code], last_price[code])
 
         current_dt += timedelta(minutes=1)
-        time_module.sleep(0.5)
+        time.sleep(0.5)
 
 
 def load_stock_codes():
@@ -209,12 +211,15 @@ def load_stock_codes():
     return stock_df["code"].tolist()
 
 
-def run_once():
-    codes = load_stock_codes()
+def run_once(codes: Optional[List[str]] = None):  # codes引数を追加
+    if codes:
+        target_codes = codes
+    else:
+        target_codes = load_stock_codes()
     current_dt = datetime.now()
     results = []
 
-    for code in codes:
+    for code in target_codes:  # target_codesを使用
         price, volume = get_stock_price(code)
         history = get_price_history(code, limit=config.volatility_period + 2)
         last_price = history[-1] if history else None
@@ -266,9 +271,13 @@ def run_realtime_mode():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dev", help="開発モード: 過去日 YYYYMMDD")
+    parser.add_argument("--once", action="store_true", help="監視タスクを1回だけ実行")
+    parser.add_argument("codes", nargs="*", help="監視対象の銘柄コード (複数指定可能)")
     args = parser.parse_args()
 
     if args.dev:
         run_dev_mode(args.dev)
+    elif args.once:
+        run_once(codes=args.codes)  # codes引数を渡す
     else:
         run_realtime_mode()

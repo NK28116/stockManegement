@@ -36,7 +36,7 @@ def run_daily_task():
     every_stock_buy_and_sell_timing.run_analysis(period="1mo")
 
     # 3. 全銘柄チャート一括生成
-    generate_all_charts.main()
+    generate_all_charts.main(period="3mo")  # 日次レポート用として3ヶ月期間を指定
 
     # 4. 日次レポートのSlack通知
     send_daily_report()

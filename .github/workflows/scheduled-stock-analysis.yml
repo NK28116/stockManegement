@@ -4,7 +4,7 @@ on:
   schedule:
     # UTC時間で毎日午前2時30分に実行
     # cron式の詳細: https://docs.github.com/ja/actions/using-workflows/events-that-trigger-workflows#schedule
-    - cron: '30 2 * * *'
+    - cron: '*/2 0-6 * * *' # UTC 0:00-6:00 (JST 9:00-15:00) の間、2分ごとに実行
   workflow_dispatch: # 手動実行を可能にする
 
 jobs:
@@ -19,6 +19,8 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.13' # 使用するPythonのバージョンを指定
+        cache: 'pip' # pipキャッシュを有効にする
+        cache-dependency-path: 'requirements.txt' # requirements.txtをキャッシュのキーとして使用
 
     - name: 依存関係をインストール
       run: |
@@ -27,15 +29,16 @@ jobs:
       # matplotlibのような大きなライブラリはビルドに時間がかかる場合があります。
       # 必要に応じて、ビルドツール（例: apt-get install build-essential）のインストールステップを追加することも検討してください。
 
-    - name: スクリプトを実行
+    - name: Run daily analysis to get filtered stocks
+      run: python -m python.watch.analyze > filtered_codes.json
+    - name: Get filtered codes
+      id: get_filtered_codes
       run: |
-        # lambda_function.py を直接実行する場合
-        # python lambda_function.py
-        # python/watch/watch.py を実行する場合
-        python3 -m python.watch.watch
-        # または、lambda_function.py の lambda_handler 関数を呼び出す場合
-        # python -c "from lambda_function import lambda_handler; lambda_handler({}, {})"
-      # スクリプトの実行方法に合わせて調整してください。
+        FILTERED_CODES=$(jq -r '.[]' filtered_codes.json | tr '\n' ' ') # スペース区切りの文字列にする
+        echo "FILTERED_CODES=$FILTERED_CODES" >> $GITHUB_ENV
+    - name: Run watch script for filtered stocks (once)
+      if: env.FILTERED_CODES != '' # フィルタリングされた銘柄がある場合のみ実行
+      run: python3 -m python.watch.watch --once ${{ env.FILTERED_CODES }}
 
     # オプション: AWSサービスとの連携
     # - name: AWS認証情報を設定
