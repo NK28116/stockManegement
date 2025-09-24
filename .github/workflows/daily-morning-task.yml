@@ -1,0 +1,19 @@
+name: Daily Morning Task (Formal Report)
+
+on:
+  schedule:
+    - cron: '0 21 * * *' # UTC 21:00 = JST 6:00 (翌朝)
+
+jobs:
+  run_morning_tasks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13' # プロジェクトのPythonバージョンに合わせて調整
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run daily main task
+        run: python main.py daily

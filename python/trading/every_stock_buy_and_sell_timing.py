@@ -4,6 +4,7 @@
 CSVファイルから銘柄を読み込んで一括分析
 """
 import os
+import sqlite3
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
@@ -31,6 +32,41 @@ class EveryStockAnalyzer:
         self.codes = self.load_codes_from_csv()
         self.analyzer = ImprovedTradingRules()
         self.status = self.load_status_from_codes()
+
+    def _period_to_timedelta(self, period: str) -> timedelta:
+        """期間文字列をtimedeltaオブジェクトに変換するヘルパー関数"""
+        num = int(period[:-2])
+        unit = period[-2:]
+        if unit == "mo":
+            # 概算で30日/月とする
+            return timedelta(days=num * 30)
+        elif unit == "y":
+            return timedelta(days=num * 365)
+        elif unit == "wk":
+            return timedelta(weeks=num)
+        elif unit == "d":
+            return timedelta(days=num)
+        else:
+            raise ValueError(f"不明な期間単位: {unit}")
+
+    def _get_latest_date_from_db(self, code: str) -> Optional[datetime]:
+        """DBから指定銘柄の最新の日付を取得する"""
+        conn = sqlite3.connect(config.db_path)
+        try:
+            # .T を除去してDBのコードと一致させる
+            db_code = code.replace(".T", "")
+            query = f"SELECT MAX(date) FROM stock_data WHERE code = '{db_code}'"
+            cursor = conn.cursor()
+            cursor.execute(query)
+            latest_date_str = cursor.fetchone()[0]
+            if latest_date_str:
+                return datetime.strptime(latest_date_str, "%Y-%m-%d")
+            return None
+        except Exception as e:
+            loggerEveryStockAnalysis.error(f"DBから最新日付の取得に失敗しました: {e}")
+            return None
+        finally:
+            conn.close()
 
     def load_codes_from_csv(self) -> List[str]:
         """CSVファイルから銘柄コードを読み込み"""
@@ -76,12 +112,29 @@ class EveryStockAnalyzer:
         try:
             loggerEveryStockAnalysis.info(f"分析開始: {code}")
 
-            # データ取得
+            # DBから最新の日付を取得
+            latest_db_date = self._get_latest_date_from_db(code)
+
+            # yfinanceからデータを取得
+            end_date = datetime.now()
+            start_date_from_period = end_date - self._period_to_timedelta(period)
+
+            if latest_db_date:
+                # DBの最新日付の翌日を開始日とする
+                start_date_for_yf = latest_db_date + timedelta(days=1)
+                # periodで指定された開始日とDBの最新日付の翌日のうち、新しい方を開始日とする
+                start_date = max(start_date_from_period, start_date_for_yf)
+            else:
+                start_date = start_date_from_period
+
+            # yfinanceのhistoryメソッドはperiodとstart/endを同時に指定できないため、start/endを使用
             ticker = yf.Ticker(code)
-            df = ticker.history(period=period)
+            df = ticker.history(start=start_date, end=end_date)
 
             if df.empty:
-                loggerEveryStockAnalysis.warning(f"データが取得できません: {code}")
+                loggerEveryStockAnalysis.warning(
+                    f"データが取得できません: {code} (期間: {start_date.strftime('%Y-%m-%d')} - {end_date.strftime('%Y-%m-%d')})"
+                )
                 return {
                     "code": code,
                     "status": "error",
