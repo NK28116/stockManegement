@@ -14,5 +14,5 @@ jobs:
         SLACK_COLOR: ${{ job.status }} # or a specific color like 'good' or '#ff00ff'
         SLACK_ICON: https://github.com/rtCamp.png?size=48
         SLACK_MESSAGE: 'GitHub Action has completed with status: ${{ job.status }}'
-        SLACK_TITLE: '${github.workflow} - ${{ job.status }}'
+        SLACK_TITLE: '${{github.workflow}} - ${{ job.status }}'
         SLACK_USERNAME: schedule-executor-notifier
