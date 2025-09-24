@@ -27,5 +27,11 @@ jobs:
           git checkout runProjectByWindows || git checkout -b runProjectByWindows
           git merge origin/main --no-edit
 
-      - name: Push changes to runProjectByWindows
-        run: git push origin runProjectByWindows
+    - name: Push changes
+      run: git push origin runProjectByWindows
+      env:
+        GIT_TOKEN: REDACTED_GITHUB_PAT
+        # Change the remote URL to use the token
+      run: |
+        git remote set-url origin https://x-access-token:${GIT_TOKEN}@github.com/NK28116/stockManegement.git
+        git push origin runProjectByWindows
