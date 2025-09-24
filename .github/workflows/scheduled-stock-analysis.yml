@@ -36,8 +36,11 @@ jobs:
       run: |
         FILTERED_CODES=$(jq -r '.[]' filtered_codes.json | tr '\n' ' ') # スペース区切りの文字列にする
         echo "FILTERED_CODES=$FILTERED_CODES" >> $GITHUB_ENV
+    - name: Get current UTC hour
+      id: get_utc_hour
+      run: echo "CURRENT_UTC_HOUR=$(date -u +%H)" >> $GITHUB_ENV
     - name: Run watch script for filtered stocks (once)
-      if: env.FILTERED_CODES != '' # フィルタリングされた銘柄がある場合のみ実行
+      if: env.FILTERED_CODES != '' && (env.CURRENT_UTC_HOUR >= '00' && env.CURRENT_UTC_HOUR < '06') # UTC 0:00-6:00 (JST 9:00-15:00) の間のみ実行
       run: python3 -m python.watch.watch --once ${{ env.FILTERED_CODES }}
 
     # オプション: AWSサービスとの連携

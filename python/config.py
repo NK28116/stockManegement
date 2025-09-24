@@ -19,15 +19,15 @@ class Config:
         # 固定パス
         self.codes_path = self.root_dir / "data" / "my_stock.csv"
         self.data_dir = self.root_dir / "data"
-        self.db_path = self.root_dir / "python" / "db" / "my_stock.db"
         self.log_dir = self.root_dir / "log"
         self.archive_dir = self.root_dir / "data" / "archive"
 
-        # DB接続設定 (SQLite)
-        self.db_options = {
-            "timeout": int(os.getenv("DB_TIMEOUT", "30")),
-            "check_same_thread": os.getenv("DB_CHECK_SAME_THREAD", "false").lower() == "true",
-        }
+        # DB接続設定 (PostgreSQL)
+        self.pg_host = os.getenv("PG_HOST", "localhost")
+        self.pg_port = int(os.getenv("PG_PORT", "5432"))
+        self.pg_database = os.getenv("PG_DATABASE", "stock_db")
+        self.pg_user = os.getenv("PG_USER", "stock_user")
+        self.pg_password = os.getenv("PG_PASSWORD", "")
 
         # 分析パラメータ
         self.default_period = "1mo"
@@ -51,7 +51,7 @@ class Config:
         self.volume_spike_threshold = 2.0  # 出来高
         self.rsi_overbought_threshold = 70.0  # RSI過買い
         self.rsi_oversold_threshold = 30.0  # RSI過売り
-        
+
         # テクニカル指標パラメータ
         self.macd_fast_period = 12  # MACD短期EMA期間
         self.macd_slow_period = 26  # MACD長期EMA期間
@@ -83,8 +83,11 @@ class Config:
 
     def get_db_config(self) -> Dict[str, Any]:
         return {
-            "db_path": str(self.db_path),
-            "options": {"timeout": 30, "check_same_thread": False},
+            "host": self.pg_host,
+            "port": self.pg_port,
+            "database": self.pg_database,
+            "user": self.pg_user,
+            "password": self.pg_password,
         }
 
     def get_alert_config(self) -> Dict[str, Any]:
