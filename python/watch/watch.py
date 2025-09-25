@@ -2,75 +2,94 @@
 import argparse
 import logging
 import random
-import sqlite3
 import time
 from datetime import datetime, timedelta
 from typing import List, Optional
 
 import pandas as pd
+import psycopg2
 import requests
 import yfinance as yf
+from psycopg2 import Error as PgError
 
 from python.config import config
-from python.utils.logger import get_logger
-
 from python.utils.alert import send_alert
+from python.utils.logger import get_logger
 
 # 設定読み込み
 
 
 logger = get_logger("watch", category="watch")
 
-DB_PATH = config.db_path
-
 __all__ = ["save_data_to_db", "get_price_history", "calc_volatility", "run_realtime_mode", "run_dev_mode"]
 
 
 # --- データ取得 ---
 def get_price_history(code, limit=5):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute(
-        "SELECT price FROM intraday WHERE code = ? ORDER BY timestamp DESC LIMIT ?",
-        (code, limit),
-    )
-    history = [row[0] for row in c.fetchall()][::-1]  # 古い順に並べ替え
-    conn.close()
-    return history
+    conn = None
+    try:
+        db_config = config.get_db_config()
+        conn = psycopg2.connect(**db_config)
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT price FROM intraday WHERE code = %s ORDER BY timestamp DESC LIMIT %s",
+            (code, limit),
+        )
+        history = [row[0] for row in cur.fetchall()][::-1]  # 古い順に並べ替え
+        return history
+    except PgError as e:
+        logger.error(f"価格履歴取得エラー: {e}")
+        return []
+    finally:
+        if conn:
+            conn.close()
 
 
 # --- データ保存 ---
 def save_data_to_db(code, timestamp, price, volume):
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
+    conn = None
     try:
+        db_config = config.get_db_config()
+        conn = psycopg2.connect(**db_config)
+        cur = conn.cursor()
+
         if hasattr(timestamp, "strftime"):
             timestamp_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
         else:
             timestamp_str = str(timestamp)
 
-        c.execute(
+        # テーブルが存在しない場合は作成 (init_database.pyで作成済みだが念のため)
+        cur.execute(
             """
             CREATE TABLE IF NOT EXISTS intraday (
                 code TEXT,
-                timestamp DATETIME,
-                price REAL,
+                timestamp TIMESTAMP,
+                price DOUBLE PRECISION,
                 volume INTEGER,
                 PRIMARY KEY (code, timestamp)
             )
         """
         )
-        c.execute(
-            "INSERT OR REPLACE INTO intraday VALUES (?, ?, ?, ?)",
+        cur.execute(
+            """
+            INSERT INTO intraday (code, timestamp, price, volume)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (code, timestamp) DO UPDATE SET
+                price = EXCLUDED.price,
+                volume = EXCLUDED.volume
+            """,
             (code, timestamp_str, price, volume),
         )
 
         conn.commit()
         logger.info("\n DB保存成功: intraday にデータ追加")
-        # logger.info("\n DB保存成功: intraday にデータ追加 -> %s %s %.2f %d \n", code, timestamp_str, price, volume)
-    except Exception as e:
-        logging.error(f"\n DB保存エラー: {e}\n")
-    conn.close()
+    except PgError as e:
+        logger.error(f"\n DB保存エラー: {e}\n")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            conn.close()
 
 
 # --- ボラティリティ計算 ---
@@ -236,7 +255,7 @@ def detect_intraday_crash(code, current_price, last_price):
 
     drop_pct = (current_price - last_price) / last_price * 100
     if drop_pct <= config.crash_threshold:
-        message = f"[分足急落] {code}: {last_price:.1f} -> {current_price:.1f} " f"({drop_pct:.2f}%)"
+        message = f"[分足急落] {code}: {last_price:.1f} -> {current_price:.1f} ({drop_pct:.2f}%)"
         send_alert(message, level="WARNING")  # Slack に送信
         return message
     return None
