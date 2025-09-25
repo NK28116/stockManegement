@@ -22,57 +22,60 @@ class Config:
         self.log_dir = self.root_dir / "log"
         self.archive_dir = self.root_dir / "data" / "archive"
 
-        # DB接続設定 (PostgreSQL)
-        self.pg_host = os.getenv("PG_HOST", "localhost")
-        self.pg_port = int(os.getenv("PG_PORT", "5432"))
-        self.pg_database = os.getenv("PG_DATABASE", "stock_db")
-        self.pg_user = os.getenv("PG_USER", "stock_user")
-        self.pg_password = os.getenv("PG_PASSWORD", "")
+        # DB接続設定 (切り替え)
+        self.db_env = os.getenv("DB_ENV", "local")
 
-        # 分析パラメータ
+        # 分析・リスク管理・監視パラメータ（省略：既存コードそのまま）
         self.default_period = "1mo"
         self.ma_short = 5
         self.ma_long = 25
         self.volatility_period = 10
-
-        # リスク管理パラメータ
-        self.max_loss_percent = 3.0  # ストップロス幅
+        self.max_loss_percent = 3.0
         self.risk_per_trade = 1.0
-        self.take_profit_percent = 8.0  # 利確幅
-
-        # トレーティングルール
-        self.stop_loss_percent = 0.05  # 5%ストップロス
-        self.take_profit_percent = 0.10  # 10%利確
-        self.trailing_stop_percent = 0.03  # 3%トレーリングストップ
-
-        # 監視パラメータ
-        self.crash_threshold = -3.0  # 暴落アラート閾値
-        self.volatility_threshold = 3.0  # ボラリティ
-        self.volume_spike_threshold = 2.0  # 出来高
-        self.rsi_overbought_threshold = 70.0  # RSI過買い
-        self.rsi_oversold_threshold = 30.0  # RSI過売り
-
-        # テクニカル指標パラメータ
-        self.macd_fast_period = 12  # MACD短期EMA期間
-        self.macd_slow_period = 26  # MACD長期EMA期間
-        self.macd_long_period = 26  # MACD計算に必要な最小期間（長期EMAと同じ）
-        self.macd_signal_period = 9  # MACDシグナル期間
-        self.bollinger_period = 20  # ボリンジャーバンド期間
-        self.bollinger_std = 2  # ボリンジャーバンド標準偏差
-
-        # ポートフォリオ分析パラメータ
+        self.take_profit_percent = 8.0
+        self.stop_loss_percent = 0.05
+        self.take_profit_percent = 0.10
+        self.trailing_stop_percent = 0.03
+        self.crash_threshold = -3.0
+        self.volatility_threshold = 3.0
+        self.volume_spike_threshold = 2.0
+        self.rsi_overbought_threshold = 70.0
+        self.rsi_oversold_threshold = 30.0
+        self.macd_fast_period = 12
+        self.macd_slow_period = 26
+        self.macd_long_period = 26
+        self.macd_signal_period = 9
+        self.bollinger_period = 20
+        self.bollinger_std = 2
         self.risk_free_rate = 0.001
         self.default_portfolio_file = self.root_dir / "data" / "my_stock.csv"
 
         # アラート設定
-        self.slack_webhook = os.getenv(
-            "SLACK_WEBHOOK", "https://hooks.slack.com/services/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"
-        )
+        self.slack_webhook = os.getenv("SLACK_WEBHOOK", "")
 
         # 証券会社API
         self.XXXX_API_KEY = os.getenv("XXXX_API_KEY", "")
         self.XXXX_API_SECRET = os.getenv("XXXX_API_SECRET", "")
         self.XXXX_API_URL = os.getenv("XXXX_API_URL", "")
+
+    def get_db_config(self) -> Dict[str, Any]:
+        """DB接続設定を環境に応じて返す"""
+        if self.db_env == "cloud":
+            return {
+                "host": os.getenv("CLOUD_PG_HOST", "localhost"),
+                "port": int(os.getenv("CLOUD_PG_PORT", "5432")),
+                "database": os.getenv("CLOUD_PG_DATABASE", "stock_db"),
+                "user": os.getenv("CLOUD_PG_USER"),
+                "password": os.getenv("CLOUD_PG_PASSWORD"),
+            }
+        else:  # default local
+            return {
+                "host": os.getenv("LOCAL_PG_HOST", "localhost"),
+                "port": int(os.getenv("LOCAL_PG_PORT", "5432")),
+                "database": os.getenv("LOCAL_PG_DATABASE", "stock_db"),
+                "user": os.getenv("LOCAL_PG_USER", "stock_user"),
+                "password": os.getenv("LOCAL_PG_PASSWORD", ""),
+            }
 
     def get_watch_config(self) -> Dict[str, Any]:
         return {
@@ -81,29 +84,12 @@ class Config:
             "volume_spike_threshold": self.volume_spike_threshold,
         }
 
-    def get_db_config(self) -> Dict[str, Any]:
-        return {
-            "host": self.pg_host,
-            "port": self.pg_port,
-            "database": self.pg_database,
-            "user": self.pg_user,
-            "password": self.pg_password,
-        }
-
     def get_alert_config(self) -> Dict[str, Any]:
-        """アラート設定を取得"""
-        return {
-            "slack_webhook": self.slack_webhook,
-            "enabled": bool(self.slack_webhook),
-        }
+        return {"slack_webhook": self.slack_webhook, "enabled": bool(self.slack_webhook)}
 
     def get_trade_config(self) -> Dict[str, Any]:
-        """取引設定を取得"""
-        return {
-            "risk_per_trade": self.risk_per_trade,
-            "max_loss_percent": self.max_loss_percent,
-        }
+        return {"risk_per_trade": self.risk_per_trade, "max_loss_percent": self.max_loss_percent}
 
 
-# どのモジュールからも共通で使えるインスタンス
+# 共通インスタンス
 config = Config()
