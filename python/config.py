@@ -58,6 +58,11 @@ class Config:
         self.XXXX_API_SECRET = os.getenv("XXXX_API_SECRET", "")
         self.XXXX_API_URL = os.getenv("XXXX_API_URL", "")
 
+        # バックグラウンドタスク間隔設定 (秒)
+        self.watch_interval_seconds = int(os.getenv("WATCH_INTERVAL_SECONDS", "120"))  # 2分
+        self.analyze_interval_seconds = int(os.getenv("ANALYZE_INTERVAL_SECONDS", "3600"))  # 1時間
+        self.monitor_interval_seconds = int(os.getenv("MONITOR_INTERVAL_SECONDS", "60"))  # 1分
+
     def get_db_config(self) -> Dict[str, Any]:
         """DB接続設定を環境に応じて返す"""
         if self.db_env == "cloud":
