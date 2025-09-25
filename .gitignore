@@ -19,3 +19,22 @@ python/db/my_stock.db
 data/chartImg/*.png
 data/plots/*.*.png
 data/report/*
+
+# 環境変数ファイル
+.env
+
+# 秘密鍵/認証情報
+KEY.json
+
+# 設定ファイル (機密情報を含む場合)
+python/config.py
+
+# API設定ファイル
+data/API/kabu_STATION_API.yaml
+
+# 個人情報/取引履歴/ポートフォリオデータ
+data/quarterly_analysis.csv
+data/practice/*.csv
+
+# macOSメタデータファイル
+.DS_Store

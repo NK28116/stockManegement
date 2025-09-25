@@ -1,17 +1,18 @@
 import os
-from datetime import datetime
 import threading
-import psutil
 import time
-from python.utils.monitor import get_db_size, api_call_count
+from datetime import datetime, timedelta
+
+import psutil
 
 from python.config import config
 from python.utils.alert import send_alert
 from python.utils.logger import get_logger
+from python.utils.monitor import api_call_count, get_db_size
 
 logger = get_logger("report", category="report")
 
-__all__ = ["send_daily_report", "send_weekly_report", "send_monthly_report"]
+__all__ = ["send_daily_monitor_report", "send_daily_evening_report", "send_weekly_report", "send_monthly_report"]
 
 MONITOR_INTERVAL = 60  # 秒
 
@@ -51,30 +52,40 @@ def _get_latest_report_file(report_type: str) -> str | None:
     return str(files[0]) if files else None
 
 
-# 平日の17:00に日次レポートを生成し、Slackに送信する
-def send_daily_report():
-    """日次レポートをSlackに送信する"""
-    logger.info("日次レポートを生成し、Slackに送信します。")
+# 平日の09:00(市場開場前)に前日のレポートを生成し、Slackに送信する
+def send_daily_monitor_report():
+    """前日の日次レポートをSlackに送信する"""
+    logger.info("前日の日次レポートを生成し、Slackに送信します。")
 
-    current_date = datetime.now().strftime("%Y-%m-%d")
-    message = f"【日次レポート】 {current_date}\n\n"
+    # 前日の日付を取得
+    yesterday = datetime.now() - timedelta(days=1)
+    report_date = yesterday.strftime("%Y-%m-%d")
+    message = f"【日次レポート】 {report_date} (前日)\n\n"
 
     # every_stock_buy_and_sell_timing.py が生成する最新のサマリーレポートを読み込む
+    # ここでは最新のレポートファイルを取得し、その内容から前日の情報を抽出することを想定
+    # _get_latest_report_file関数が日付フィルタリングをサポートしていないため、
+    # レポート内容から日付を判断する必要がある。
+    # もし_get_latest_report_fileが特定日付のレポートを取得できるなら、そのように変更する。
     summary_report_path = _get_latest_report_file("summary")
     if summary_report_path and os.path.exists(summary_report_path):
         with open(summary_report_path, "r", encoding="utf-8") as f:
             summary_content = f.read()
-            # 「前日の各銘柄ステータス」セクションを抽出
-            status_section_start = summary_content.find("【前日の各銘柄ステータス】")
-            if status_section_start != -1:
-                status_section = summary_content[status_section_start:]
-                # 次のセクションの開始（例: 空行や別の見出し）までを抽出
-                next_section_start = status_section.find("\n\n", len("【前日の各銘柄ステータス】"))
-                if next_section_start != -1:
-                    status_section = status_section[:next_section_start]
-                message += status_section.strip() + "\n\n"
+            # レポート内容に日付が含まれているか確認し、前日の情報であることを確認
+            if report_date in summary_content:
+                # 「前日の各銘柄ステータス」セクションを抽出
+                status_section_start = summary_content.find("【前日の各銘柄ステータス】")
+                if status_section_start != -1:
+                    status_section = summary_content[status_section_start:]
+                    # 次のセクションの開始（例: 空行や別の見出し）までを抽出
+                    next_section_start = status_section.find("\n\n", len("【前日の各銘柄ステータス】"))
+                    if next_section_start != -1:
+                        status_section = status_section[:next_section_start]
+                    message += status_section.strip() + "\n\n"
+                else:
+                    message += "前日の銘柄ステータスが見つかりませんでした。\n\n"
             else:
-                message += "前日の銘柄ステータスが見つかりませんでした。\n\n"
+                message += f"日付 {report_date} のサマリーレポートが見つかりませんでした。\n\n"
     else:
         message += "全銘柄売買タイミング分析サマリーレポートが見つかりませんでした。\n\n"
 
@@ -83,7 +94,52 @@ def send_daily_report():
     message += "詳細な日足分析結果はログまたは別途生成される詳細レポートをご確認ください。\n"
 
     send_alert(message, level="INFO")
-    logger.info("日次レポートのSlack送信が完了しました。")
+    logger.info("前日の日次レポートのSlack送信が完了しました。")
+
+
+# 平日の17:00にその日のレポートを生成し、Slackに送信する
+def send_daily_evening_report():
+    """その日の日次レポートをSlackに送信する"""
+    logger.info("その日の日次レポートを生成し、Slackに送信します。")
+
+    # 今日の日付を取得
+    today = datetime.now()
+    report_date = today.strftime("%Y-%m-%d")
+    message = f"【日次レポート】 {report_date} (本日)\n\n"
+
+    # every_stock_buy_and_sell_timing.py が生成する最新のサマリーレポートを読み込む
+    summary_report_path = _get_latest_report_file("summary")
+    if summary_report_path and os.path.exists(summary_report_path):
+        with open(summary_report_path, "r", encoding="utf-8") as f:
+            summary_content = f.read()
+            # レポート内容に日付が含まれているか確認し、その日の情報であることを確認
+            if report_date in summary_content:
+                # 「前日の各銘柄ステータス」セクションを抽出 (ここでは「今日の各銘柄ステータス」を想定)
+                # 現在の実装では「前日の各銘柄ステータス」を抽出しているため、
+                # レポート生成ロジックに合わせてここも調整が必要
+                status_section_start = summary_content.find(
+                    "【前日の各銘柄ステータス】"
+                )  # ここは「今日の各銘柄ステータス」に変わるべき
+                if status_section_start != -1:
+                    status_section = summary_content[status_section_start:]
+                    # 次のセクションの開始（例: 空行や別の見出し）までを抽出
+                    next_section_start = status_section.find("\n\n", len("【前日の各銘柄ステータス】"))
+                    if next_section_start != -1:
+                        status_section = status_section[:next_section_start]
+                    message += status_section.strip() + "\n\n"
+                else:
+                    message += "今日の銘柄ステータスが見つかりませんでした。\n\n"
+            else:
+                message += f"日付 {report_date} のサマリーレポートが見つかりませんでした。\n\n"
+    else:
+        message += "全銘柄売買タイミング分析サマリーレポートが見つかりませんでした。\n\n"
+
+    message += "【今日の市場の動き】\n"
+    message += "市場全体の動向や、注目すべきニュース、日足での急落アラートなどをここに含めます。\n"
+    message += "詳細な日足分析結果はログまたは別途生成される詳細レポートをご確認ください。\n"
+
+    send_alert(message, level="INFO")
+    logger.info("その日の日次レポートのSlack送信が完了しました。")
 
 
 # 土曜日の13：00に週次レポートを生成し、Slackに送信する
@@ -159,8 +215,10 @@ def send_monthly_report():
 if __name__ == "__main__":
     start_monitoring()
     # テスト実行
-    print("--- 日次レポートテスト ---")
-    send_daily_report()
+    print("--- 日次モニターレポート(前日) ---")
+    send_daily_monitor_report()
+    print("\n--- 日次イブニングレポート(当日) ---")
+    send_daily_evening_report()
     print("\n--- 週次レポートテスト ---")
     send_weekly_report()
     print("\n--- 月次レポートテスト ---")

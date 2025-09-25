@@ -78,21 +78,7 @@ class EveryStockAnalyzer:
         try:
             loggerEveryStockAnalysis.info(f"分析開始: {code}")
 
-            # DBから最新の日付を取得
-            latest_db_date = _get_latest_date_from_db(code)
-
             # yfinanceからデータを取得
-            end_date = datetime.now()
-            start_date_from_period = end_date - self._period_to_timedelta(period)
-
-            if latest_db_date:
-                # DBの最新日付の翌日を開始日とする
-                start_date_for_yf = latest_db_date + timedelta(days=1)
-                # periodで指定された開始日とDBの最新日付の翌日のうち、新しい方を開始日とする
-                # start_date = max(start_date_from_period, start_date_for_yf) # 未使用のため削除
-            else:
-                pass  # start_date = start_date_from_period # 未使用のため削除
-
             # yfinanceのhistoryメソッドはperiodとstart/endを同時に指定できないため、periodを使用
             ticker = yf.Ticker(code)
             df = ticker.history(period=period)
