@@ -11,9 +11,8 @@ import yfinance as yf
 
 from python.config import config
 from python.db.database import get_db_connection  # PostgreSQL接続用に追加
+from python.utils.alert import send_alert
 from python.utils.logger import get_logger
-
-from ..utils.alert import send_alert
 
 # 設定読み込み
 
