@@ -20,6 +20,7 @@ def get_logger(module_name: str, category: str = "general") -> logging.Logger:
 
     logger = logging.getLogger(f"{category}.{module_name}")
     logger.setLevel(logging.INFO)
+    logger.propagate = False  # 親ロガーへの伝播を停止
 
     # ロガーにハンドラが設定されていない場合のみ追加
     if not logger.handlers:
