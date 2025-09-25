@@ -4,14 +4,16 @@
 CSVファイルから銘柄を読み込んで一括分析
 """
 import os
-import sqlite3
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
+import psycopg2
 import yfinance as yf
+from psycopg2 import Error as PgError
 
 from python.config import config
+from python.db.database import get_db_connection
 from python.utils.logger import get_logger
 
 from .trading_rules import ImprovedTradingRules
@@ -32,41 +34,6 @@ class EveryStockAnalyzer:
         self.codes = self.load_codes_from_csv()
         self.analyzer = ImprovedTradingRules()
         self.status = self.load_status_from_codes()
-
-    def _period_to_timedelta(self, period: str) -> timedelta:
-        """期間文字列をtimedeltaオブジェクトに変換するヘルパー関数"""
-        num = int(period[:-2])
-        unit = period[-2:]
-        if unit == "mo":
-            # 概算で30日/月とする
-            return timedelta(days=num * 30)
-        elif unit == "y":
-            return timedelta(days=num * 365)
-        elif unit == "wk":
-            return timedelta(weeks=num)
-        elif unit == "d":
-            return timedelta(days=num)
-        else:
-            raise ValueError(f"不明な期間単位: {unit}")
-
-    def _get_latest_date_from_db(self, code: str) -> Optional[datetime]:
-        """DBから指定銘柄の最新の日付を取得する"""
-        conn = sqlite3.connect(config.db_path)
-        try:
-            # .T を除去してDBのコードと一致させる
-            db_code = code.replace(".T", "")
-            query = f"SELECT MAX(date) FROM stock_data WHERE code = '{db_code}'"
-            cursor = conn.cursor()
-            cursor.execute(query)
-            latest_date_str = cursor.fetchone()[0]
-            if latest_date_str:
-                return datetime.strptime(latest_date_str, "%Y-%m-%d")
-            return None
-        except Exception as e:
-            loggerEveryStockAnalysis.error(f"DBから最新日付の取得に失敗しました: {e}")
-            return None
-        finally:
-            conn.close()
 
     def load_codes_from_csv(self) -> List[str]:
         """CSVファイルから銘柄コードを読み込み"""
@@ -113,7 +80,7 @@ class EveryStockAnalyzer:
             loggerEveryStockAnalysis.info(f"分析開始: {code}")
 
             # DBから最新の日付を取得
-            latest_db_date = self._get_latest_date_from_db(code)
+            latest_db_date = _get_latest_date_from_db(code)
 
             # yfinanceからデータを取得
             end_date = datetime.now()
@@ -129,12 +96,10 @@ class EveryStockAnalyzer:
 
             # yfinanceのhistoryメソッドはperiodとstart/endを同時に指定できないため、start/endを使用
             ticker = yf.Ticker(code)
-            df = ticker.history(start=start_date, end=end_date)
+            df = ticker.history(period=period)
 
             if df.empty:
-                loggerEveryStockAnalysis.warning(
-                    f"データが取得できません: {code} (期間: {start_date.strftime('%Y-%m-%d')} - {end_date.strftime('%Y-%m-%d')})"
-                )
+                loggerEveryStockAnalysis.warning(f"データが取得できません: {code} ")
                 return {
                     "code": code,
                     "status": "error",
@@ -241,7 +206,7 @@ class EveryStockAnalyzer:
         return "\n".join(report)
 
     def get_status_for_date(self, result: Dict, target_date: datetime) -> str:
-        """指定日のステータスを 'YYYY-MM-DD: STATUS - 理由 (ストップ: XXX円)' 形式で返す"""
+        """指定日のステータスを 'YYYY-MM-%d: STATUS - 理由 (ストップ: XXX円)' 形式で返す"""
         try:
             df = result.get("data")
             trades = result.get("trades", [])
@@ -541,6 +506,28 @@ class EveryStockAnalyzer:
         except Exception as e:
             loggerBuySellTiming.error(f"ストップ値計算エラー: {e}")
             return None
+
+
+def _get_latest_date_from_db(code: str) -> Optional[datetime]:
+    """DBから指定銘柄の最新日付を取得する"""
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT MAX(date) FROM stock_data WHERE code = %s",
+            (code.replace(".T", ""),),
+        )
+        latest_date_str = cur.fetchone()[0]
+        if latest_date_str:
+            return datetime.strptime(str(latest_date_str), "%Y-%m-%d")
+        return None
+    except PgError as e:
+        loggerEveryStockAnalysis.error(f"DBから最新日付取得エラー: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
 
 
 def run():

@@ -1,20 +1,21 @@
 # python/analysis/portfolio_analyzer.py
 import os
-import sqlite3
 from datetime import datetime
 from typing import Dict
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import psycopg2
 import yfinance as yf
+from psycopg2 import Error as PgError
 
 from python.analysis.formula_for_analyzer import calculate_technical_indicators
 from python.config import config
+from python.db.database import get_db_connection
 from python.utils.logger import get_logger
 
 logger = get_logger("PortfolioAnalyzer", category="analysis")
 
-DB_PATH = config.db_path
 RESULT_DIR = config.root_dir / "data"
 PLOT_DIR = RESULT_DIR / "plots"
 os.makedirs(PLOT_DIR, exist_ok=True)
@@ -23,23 +24,30 @@ __all__ = ["PortfolioAnalyzer"]
 
 
 class PortfolioAnalyzer:
-    def __init__(self, db_path=DB_PATH, result_dir=RESULT_DIR):
-        self.db_path = db_path
+    def __init__(self, result_dir=RESULT_DIR):
         self.result_dir = result_dir
         os.makedirs(self.result_dir, exist_ok=True)
 
     def get_portfolio(self, portfolio_name="my_stock") -> pd.DataFrame:
         """DBから保有株式情報を全取得"""
-        query = """
-        SELECT ph.id, ph.code, s.name, s.sector, ph.quantity, ph.purchase_price, ph.purchase_date
-        FROM portfolio_holdings ph
-        JOIN stocks s ON ph.code = s.code
-        WHERE ph.portfolio_name = ?
-        """
-        with sqlite3.connect(self.db_path) as conn:
+        conn = None
+        try:
+            conn = get_db_connection()
+            query = """
+            SELECT ph.id, ph.code, s.name, s.sector, ph.quantity, ph.purchase_price, ph.purchase_date
+            FROM portfolio_holdings ph
+            JOIN stocks s ON ph.code = s.code
+            WHERE ph.portfolio_name = %s
+            """
             df = pd.read_sql_query(query, conn, params=(portfolio_name,))
-        logger.info(f"DBポートフォリオ取得: {portfolio_name} ({len(df)}件)")
-        return df
+            logger.info(f"DBポートフォリオ取得: {portfolio_name} ({len(df)}件)")
+            return df
+        except PgError as e:
+            logger.error(f"DBポートフォリオ取得エラー: {e}")
+            return pd.DataFrame()
+        finally:
+            if conn:
+                conn.close()
 
     def fetch_stock_data(self, ticker: str, period="1y") -> pd.DataFrame:
         """Yahoo Finance から株価データを取得"""
