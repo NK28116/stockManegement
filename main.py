@@ -178,10 +178,6 @@ def watch_task():
 
             rest_all_seconds = (next_open - now).total_seconds()
 
-            wait_hours = int(rest_all_seconds // 3600)
-            wait_minutes = int((rest_all_seconds % 3600) // 60)
-            wait_seconds = int(rest_all_seconds - wait_hours * 3600 - wait_minutes * 60)
-
             # 閉場中の待機ロジック
             # 2時間ごとに市場開閉をチェックするように変更
             wait_interval = 2 * 3600  # 2時間 (秒)
@@ -201,12 +197,13 @@ def watch_task():
                 # そうでない場合は、次の開場までの時間待機
                 sleep_duration = min(rest_all_seconds, wait_interval)
 
-                wait_hours = int(sleep_duration // 3600)
-                wait_minutes = int((sleep_duration % 3600) // 60)
-                wait_seconds = int(sleep_duration - wait_hours * 3600 - wait_minutes * 60)
+                # 次の開場までの全時間に基づいて待機時間を計算
+                total_wait_hours = int(rest_all_seconds // 3600)
+                total_wait_minutes = int((rest_all_seconds % 3600) // 60)
+                total_wait_seconds = int(rest_all_seconds - total_wait_hours * 3600 - total_wait_minutes * 60)
 
                 logger.info(
-                    f"市場閉場中: 次のチェックまで{wait_hours}時間{wait_minutes}分{wait_seconds}秒待機します。"
+                    f"市場閉場中: 開場まで{total_wait_hours}時間{total_wait_minutes}分{total_wait_seconds}秒です。"
                 )
                 time.sleep(sleep_duration)
 
