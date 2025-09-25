@@ -8,9 +8,8 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
-import psycopg2
 import yfinance as yf
-from psycopg2 import Error as PgError
+from psycopg2 import Error as PgError  # PgErrorはget_db_connection内で使われる可能性があるので残す
 
 from python.config import config
 from python.db.database import get_db_connection
@@ -90,11 +89,11 @@ class EveryStockAnalyzer:
                 # DBの最新日付の翌日を開始日とする
                 start_date_for_yf = latest_db_date + timedelta(days=1)
                 # periodで指定された開始日とDBの最新日付の翌日のうち、新しい方を開始日とする
-                start_date = max(start_date_from_period, start_date_for_yf)
+                # start_date = max(start_date_from_period, start_date_for_yf) # 未使用のため削除
             else:
-                start_date = start_date_from_period
+                pass  # start_date = start_date_from_period # 未使用のため削除
 
-            # yfinanceのhistoryメソッドはperiodとstart/endを同時に指定できないため、start/endを使用
+            # yfinanceのhistoryメソッドはperiodとstart/endを同時に指定できないため、periodを使用
             ticker = yf.Ticker(code)
             df = ticker.history(period=period)
 
@@ -284,7 +283,7 @@ class EveryStockAnalyzer:
             for result in stock_list:
                 code = result["code"]
                 # 基本情報
-                report.append(f"資産名: {result["code"]}-{result["name"]}")
+                report.append(f"資産名: {result['code']}-{result['name']}")
                 # 購入情報（my_stock.csvから取得）
                 purchase_info = self.get_purchase_info(result["code"])
                 if purchase_info:
