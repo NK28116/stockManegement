@@ -1,15 +1,16 @@
 # python/utils/monitor.py
 import os
 import time
-import psutil
 
+import psutil
+import psycopg2
+from psycopg2 import Error as PgError
 
 from python.config import config
 from python.utils.logger import get_logger
 
 logger = get_logger("monitor", category="system")
 
-DB_PATH = config.db_path
 
 # --- 計測対象: API呼び出し回数をトラッキング ---
 api_call_count = 0
@@ -22,10 +23,21 @@ def count_api_call():
 
 
 def get_db_size():
-    """SQLite DBファイルのサイズ（MB）"""
-    if os.path.exists(DB_PATH):
-        return os.path.getsize(DB_PATH) / (1024 * 1024)  # MB
-    return 0
+    """PostgreSQL DBのサイズ（MB）"""
+    conn = None
+    try:
+        db_config = config.get_db_config()
+        conn = psycopg2.connect(**db_config)
+        cur = conn.cursor()
+        cur.execute(f"SELECT pg_database_size('{db_config['database']}')")
+        size_bytes = cur.fetchone()[0]
+        return size_bytes / (1024 * 1024)  # MB
+    except PgError as e:
+        logger.error(f"データベースサイズ取得エラー: {e}")
+        return 0
+    finally:
+        if conn:
+            conn.close()
 
 
 def log_resource_usage(interval=60):
