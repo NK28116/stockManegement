@@ -1,7 +1,7 @@
 .vscode
 .history
 *.code-workspace
-.env
+
 
 
 .idea
