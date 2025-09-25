@@ -3,11 +3,16 @@
 日次 / 週次 / 月次 / 年次タスクをコマンドで実行
 """
 
+import shutil
 import sys
 import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from datetime import time as dt_time
+from datetime import timedelta
+
+# main.py の冒頭に追加
+from pathlib import Path
 
 import jpholiday  # 祝日判定ライブラリ
 import pandas as pd
@@ -25,15 +30,9 @@ from python.utils.report import (
     send_monthly_report,
 )
 from python.visualization import generate_all_charts
-from python.watch.analyze import (
-    analyze_daily_data as run_analyze_daily_data,
-)
+from python.watch.analyze import analyze_daily_data as run_analyze_daily_data
 from python.watch.dailyAggregator import aggregate_intraday_to_daily
 from python.watch.watch import run_once_with_crash_check  # watchタスク用
-
-# main.py の冒頭に追加
-from pathlib import Path
-import shutil
 
 FLAG_DIR = Path("data/crash_flags")
 
@@ -183,8 +182,33 @@ def watch_task():
             wait_minutes = int((rest_all_seconds % 3600) // 60)
             wait_seconds = int(rest_all_seconds - wait_hours * 3600 - wait_minutes * 60)
 
-            logger.info(f"市場閉場中: 次の開場まで{wait_hours}時間{wait_minutes}分{wait_seconds}秒待機します。")
-            time.sleep(rest_all_seconds)  # 1分ごとに市場開閉をチェック
+            # 閉場中の待機ロジック
+            # 2時間ごとに市場開閉をチェックするように変更
+            wait_interval = 2 * 3600  # 2時間 (秒)
+            while not is_market_open(datetime.now()):
+                now = datetime.now()
+                next_open = None
+                for start_hour in [9, 12]:
+                    if now.time() < dt_time(start_hour, 0):
+                        next_open = datetime.combine(now.date(), dt_time(start_hour, 0))
+                        break
+                if not next_open:
+                    next_open = get_next_open_datetime(now)
+
+                rest_all_seconds = (next_open - now).total_seconds()
+
+                # 次の開場までの時間が2時間以上ある場合は、2時間待機
+                # そうでない場合は、次の開場までの時間待機
+                sleep_duration = min(rest_all_seconds, wait_interval)
+
+                wait_hours = int(sleep_duration // 3600)
+                wait_minutes = int((sleep_duration % 3600) // 60)
+                wait_seconds = int(sleep_duration - wait_hours * 3600 - wait_minutes * 60)
+
+                logger.info(
+                    f"市場閉場中: 次のチェックまで{wait_hours}時間{wait_minutes}分{wait_seconds}秒待機します。"
+                )
+                time.sleep(sleep_duration)
 
 
 def analyze_background_task():
