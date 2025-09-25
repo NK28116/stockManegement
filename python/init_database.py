@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS trading_signals (
 
         # インデックスの作成
         indexes = [
-            "CREATE INDEX IF NOT EXISTS idx_intraday_code_date ON intraday(code, timestamp::date)",
+            "CREATE INDEX IF NOT EXISTS idx_intraday_code_date ON intraday(code, CAST(timestamp AS DATE))",
             "CREATE INDEX IF NOT EXISTS idx_daily_code_date ON daily(code, date)",
             "CREATE INDEX IF NOT EXISTS idx_sample_daily_code_date ON pre_buy_daily(code, date)",
             "CREATE INDEX IF NOT EXISTS idx_portfolio_holdings_portfolio_name ON portfolio_holdings(portfolio_name)",
