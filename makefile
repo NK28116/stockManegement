@@ -147,8 +147,11 @@ run-yearly: backup-db
 install-cron:
 	@echo "Installing cron jobs..."
 	@(crontab -l 2>/dev/null; \
-	  echo "# Stock Management System - Daily tasks (9:00 AM on weekdays)"; \
-	  echo "0 9 * * 1-5 cd ${PWD} && ${PYTHON} main.py daily > ${LOG_DIR}/cron_daily.log 2>&1"; \
+	  echo "# Stock Management System - Daily Monitor Report (9:00 AM on weekdays)"; \
+	  echo "0 9 * * 1-5 cd ${PWD} && ${PYTHON} main.py daily > ${LOG_DIR}/cron_daily_monitor.log 2>&1"; \
+	  echo ""; \
+	  echo "# Stock Management System - Daily Evening Report (5:00 PM on weekdays)"; \
+	  echo "0 17 * * 1-5 cd ${PWD} && PYTHONPATH=${PYTHONPATH} ${PYTHON} -c \"from python.utils.report import send_daily_evening_report; send_daily_evening_report()\" > ${LOG_DIR}/cron_daily_evening.log 2>&1"; \
 	  echo ""; \
 	  echo "# Weekly tasks (Saturday 10:00 AM)"; \
 	  echo "0 10 * * 6 cd ${PWD} && ${PYTHON} main.py weekly > ${LOG_DIR}/cron_weekly.log 2>&1"; \

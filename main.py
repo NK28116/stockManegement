@@ -6,7 +6,7 @@
 import sys
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from datetime import time as dt_time
 
 import jpholiday  # 祝日判定ライブラリ
@@ -19,13 +19,31 @@ from python.db import dump_csv
 from python.trading import every_stock_buy_and_sell_timing
 from python.utils.logger import get_logger
 from python.utils.monitor import log_resource_usage  # monitorタスク用
-from python.utils.report import send_daily_report, send_monthly_report
+from python.utils.report import (
+    send_daily_evening_report,
+    send_daily_morning_report,
+    send_monthly_report,
+)
 from python.visualization import generate_all_charts
 from python.watch.analyze import (
-    analyze_daily_data as run_analyze_daily_data,  # 名前衝突を避けるためエイリアス
+    analyze_daily_data as run_analyze_daily_data,
 )
 from python.watch.dailyAggregator import aggregate_intraday_to_daily
 from python.watch.watch import run_once_with_crash_check  # watchタスク用
+
+# main.py の冒頭に追加
+from pathlib import Path
+import shutil
+
+FLAG_DIR = Path("data/crash_flags")
+
+
+def clear_old_flags():
+    """前日の分足急落フラグを削除"""
+    if FLAG_DIR.exists():
+        shutil.rmtree(FLAG_DIR)
+    FLAG_DIR.mkdir(parents=True, exist_ok=True)
+
 
 logger = get_logger("main_task", category="task")
 
@@ -34,28 +52,37 @@ analyzer = PortfolioAnalyzer()
 
 def run_daily_task():
     logger.info("=== 日次タスク開始 ===")
-    # 1. 日足データ集計
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    aggregate_intraday_to_daily(today_str)
 
-    # 2. 全銘柄売買タイミング分析 (直近1ヶ月)
-    every_stock_buy_and_sell_timing.run_analysis(period="1mo")
+    # 🚨 日足分析前にフラグをリセット
+    clear_old_flags()
 
-    # 3. 全銘柄チャート一括生成
-    generate_all_charts.main(period="3mo")  # 日次レポート用として3ヶ月期間を指定
+    if datetime().now() < dt_time(9, 0):
+        logger.info("=== 日次タスク: 市場開場前モード ===")
+        send_daily_morning_report()
+    else:
+        logger.info("=== 日次タスク: 市場閉場後モード ===")
+        # 1. 日足データ集計
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        aggregate_intraday_to_daily(today_str)
 
-    # 4. 日次レポートのSlack通知
-    send_daily_report()
+        # 2. 全銘柄売買タイミング分析 (直近1ヶ月)
+        every_stock_buy_and_sell_timing.run_analysis(period="1mo")
 
-    # 5. 全銘柄の急落検知とテクニカル指標に基づく警告
-    try:
-        stock_df = pd.read_csv(config.codes_path)
-        codes = stock_df["code"].tolist()
-        logger.info(f"急落検知対象銘柄数: {len(codes)}")
-        for code in codes:
-            run_analyze_daily_data(code)
-    except Exception as e:
-        logger.error(f"急落検知処理中にエラーが発生しました: {e}")
+        # 3. 全銘柄チャート一括生成
+        generate_all_charts.main(period="3mo")  # 日次レポート用として3ヶ月期間を指定
+
+        # 4. 日次モニターレポートのSlack通知 (市場開場前)
+        send_daily_evening_report()
+
+        # 5. 全銘柄の急落検知とテクニカル指標に基づく警告
+        try:
+            stock_df = pd.read_csv(config.codes_path)
+            codes = stock_df["code"].tolist()
+            logger.info(f"急落検知対象銘柄数: {len(codes)}")
+            for code in codes:
+                run_analyze_daily_data(code)
+        except Exception as e:
+            logger.error(f"急落検知処理中にエラーが発生しました: {e}")
 
     logger.info("=== 日次タスク完了 ===")
 
@@ -121,6 +148,17 @@ def is_market_open(current_datetime: datetime) -> bool:
     return False
 
 
+def get_next_open_datetime(now: datetime) -> datetime:
+    """次の営業日の9:00を返す（土日祝を考慮）"""
+    next_day = now.date()
+    while True:
+        next_day += timedelta(days=1)
+        # 土日 or 祝日はスキップ
+        if next_day.weekday() >= 5 or jpholiday.is_holiday(next_day):
+            continue
+        return datetime.combine(next_day, dt_time(9, 0))
+
+
 def watch_task():
     """市場開閉に合わせて株価を監視するタスク"""
     logger.info("=== watchタスク開始 ===")
@@ -131,8 +169,22 @@ def watch_task():
             run_once_with_crash_check()  # 分足取得と急落検知
             time.sleep(config.watch_interval_seconds)  # configで監視間隔を設定できるようにする
         else:
-            logger.info("市場閉場中: 次の開場まで待機します。")
-            time.sleep(60)  # 1分ごとに市場開閉をチェック
+            next_open = None
+            for start_hour in [9, 12]:  # 午前9時と午後12時半の両方をチェック
+                if now.time() < dt_time(start_hour, 0):
+                    next_open = datetime.combine(now.date(), dt_time(start_hour, 0))
+                    break
+            if not next_open:
+                next_open = get_next_open_datetime(now)
+
+            rest_all_seconds = (next_open - now).total_seconds()
+
+            wait_hours = int(rest_all_seconds // 3600)
+            wait_minutes = int((rest_all_seconds % 3600) // 60)
+            wait_seconds = int(rest_all_seconds - wait_hours * 3600 - wait_minutes * 60)
+
+            logger.info(f"市場閉場中: 次の開場まで{wait_hours}時間{wait_minutes}分{wait_seconds}秒待機します。")
+            time.sleep(rest_all_seconds)  # 1分ごとに市場開閉をチェック
 
 
 def analyze_background_task():
