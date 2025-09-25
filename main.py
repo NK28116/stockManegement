@@ -23,7 +23,7 @@ from python.config import config
 from python.db import dump_csv
 from python.trading import every_stock_buy_and_sell_timing
 from python.utils.logger import get_logger
-from python.utils.monitor import log_resource_usage  # monitorタスク用
+from python.utils.monitor import is_market_open, log_resource_usage  # monitorタスク用
 from python.utils.report import (
     send_daily_evening_report,
     send_daily_morning_report,
@@ -55,7 +55,7 @@ def run_daily_task():
     # 🚨 日足分析前にフラグをリセット
     clear_old_flags()
 
-    if datetime().now() < dt_time(9, 0):
+    if datetime.now().time() < dt_time(9, 0):
         logger.info("=== 日次タスク: 市場開場前モード ===")
         send_daily_morning_report()
     else:
@@ -76,10 +76,11 @@ def run_daily_task():
         # 5. 全銘柄の急落検知とテクニカル指標に基づく警告
         try:
             stock_df = pd.read_csv(config.codes_path)
-            codes = stock_df["code"].tolist()
-            logger.info(f"急落検知対象銘柄数: {len(codes)}")
-            for code in codes:
-                run_analyze_daily_data(code)
+            # 'code'と'name'カラムが存在することを前提とする
+            for index, row in stock_df.iterrows():
+                code = row["code"]
+                name = row["name"]
+                run_analyze_daily_data(code, name)
         except Exception as e:
             logger.error(f"急落検知処理中にエラーが発生しました: {e}")
 
@@ -124,27 +125,28 @@ def run_yearly_task():
     logger.info("=== 年次タスク完了 ===")
 
 
-def is_market_open(current_datetime: datetime) -> bool:
-    """日本市場が開いているか判定する (土日祝日、時間帯を考慮)"""
-    # 土日判定
-    if current_datetime.weekday() >= 5:  # 0=月, 5=土, 6=日
-        return False
+# main.py 内の is_market_open 関数を削除し、python.utils.monitor.is_market_open を使用
+# def is_market_open(current_datetime: datetime) -> bool:
+#     """日本市場が開いているか判定する (土日祝日、時間帯を考慮)"""
+#     # 土日判定
+#     if current_datetime.weekday() >= 5:  # 0=月, 5=土, 6=日
+#         return False
 
-    # 祝日判定
-    if jpholiday.is_holiday(current_datetime.date()):
-        return False
+#     # 祝日判定
+#     if jpholiday.is_holiday(current_datetime.date()):
+#         return False
 
-    current_time = current_datetime.time()
-    # 前場: 9:00 - 11:30
-    morning_open = dt_time(9, 0)
-    morning_close = dt_time(11, 30)
-    # 後場: 12:30 - 15:00
-    afternoon_open = dt_time(12, 30)
-    afternoon_close = dt_time(15, 0)
+#     current_time = current_datetime.time()
+#     # 前場: 9:00 - 11:30
+#     morning_open = dt_time(9, 0)
+#     morning_close = dt_time(11, 30)
+#     # 後場: 12:30 - 15:00
+#     afternoon_open = dt_time(12, 30)
+#     afternoon_close = dt_time(15, 0)
 
-    if (morning_open <= current_time <= morning_close) or (afternoon_open <= current_time <= afternoon_close):
-        return True
-    return False
+#     if (morning_open <= current_time <= morning_close) or (afternoon_open <= current_time <= afternoon_close):
+#         return True
+#     return False
 
 
 def get_next_open_datetime(now: datetime) -> datetime:
@@ -163,7 +165,7 @@ def watch_task():
     logger.info("=== watchタスク開始 ===")
     while True:
         now = datetime.now()
-        if is_market_open(now):
+        if is_market_open():  # monitor.py の is_market_open を使用
             logger.info("市場開場中: 株価監視を実行します。")
             run_once_with_crash_check()  # 分足取得と急落検知
             time.sleep(config.watch_interval_seconds)  # configで監視間隔を設定できるようにする
@@ -181,7 +183,7 @@ def watch_task():
             # 閉場中の待機ロジック
             # 2時間ごとに市場開閉をチェックするように変更
             wait_interval = 2 * 3600  # 2時間 (秒)
-            while not is_market_open(datetime.now()):
+            while not is_market_open():  # monitor.py の is_market_open を使用
                 now = datetime.now()
                 next_open = None
                 for start_hour in [9, 12]:
@@ -212,11 +214,16 @@ def analyze_background_task():
     """バックグラウンドで日足データを分析し、急落を知らせるタスク"""
     logger.info("=== analyzeバックグラウンドタスク開始 ===")
     stock_df = pd.read_csv(config.codes_path)
-    codes = stock_df["code"].tolist()
     while True:
-        logger.info("日足データ分析を実行します。")
-        for code in codes:
-            run_analyze_daily_data(code)
+        if is_market_open():  # 市場が開いている場合のみ実行
+            logger.info("日足データ分析を実行します。")
+            # 'code'と'name'カラムが存在することを前提とする
+            for index, row in stock_df.iterrows():
+                code = row["code"]
+                name = row["name"]
+                run_analyze_daily_data(code, name)
+        else:
+            logger.info("市場閉場中: 日足データ分析はスキップします。")
         time.sleep(config.analyze_interval_seconds)  # configで分析間隔を設定できるようにする
 
 

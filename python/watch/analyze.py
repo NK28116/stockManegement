@@ -60,18 +60,18 @@ def get_intraday_price_data(code, limit_minutes=60):  # 15分足作成に必要�
             conn.close()
 
 
-def analyze_minute_data(code: str):
+def analyze_minute_data(code: str, name: str):
     """指定された銘柄の15分足データを分析し急落検知やテクニカル指標に基づく警告を行う
 
     Args:
         code (str): 分析対象の銘柄コード
     """
-    logger.info(f"銘柄 {code} の15分足データ分析を開始")
+    logger.info(f"{name}( {code}) の15分足データ分析を開始")
     # 15分足を作成するために、過去60分間の分足データを取得
     df_minute = get_intraday_price_data(code, limit_minutes=60)
 
     if df_minute.empty:
-        logger.warning(f"銘柄 {code} の分足データが見つかりませんでした。")
+        logger.warning(f"{name}( {code}) の分足データが見つかりませんでした。")
         return
 
     # 分足データを15分足にリサンプリング
@@ -84,7 +84,7 @@ def analyze_minute_data(code: str):
     )  # データがない15分足は除外
 
     if df.empty:
-        logger.warning(f"銘柄 {code} の15分足データが作成できませんでした。")
+        logger.warning(f"{name} ({code}) の15分足データが作成できませんでした。")
         return
 
     # --- 15分足での急落検知 ---
@@ -96,7 +96,7 @@ def analyze_minute_data(code: str):
         drop_pct = (current_close - prev_close) / prev_close * 100
         if drop_pct <= config.crash_threshold:
             message = (
-                f"銘柄 {code} 15分足で {config.crash_threshold}%以上下落: "
+                f"{name} ({code}) 15分足で {config.crash_threshold}%以上下落: "
                 f"{prev_close:.1f} -> {current_close:.1f} ({drop_pct:.2f}%)"
             )
             logger.warning(message)
@@ -113,9 +113,9 @@ def analyze_minute_data(code: str):
         # MACDゴールデンクロス/デッドクロスなどの分析ロジックをここに追加
         # 例: MACDがシグナルを上抜けた/下抜けた
         if df["macd"].iloc[-1] > df["macd_signal"].iloc[-1] and df["macd"].iloc[-2] <= df["macd_signal"].iloc[-2]:
-            logger.info(f"銘柄 {code} MACDゴールデンクロス発生")
+            logger.info(f"{name} ({code}) MACDゴールデンクロス発生")
         elif df["macd"].iloc[-1] < df["macd_signal"].iloc[-1] and df["macd"].iloc[-2] >= df["macd_signal"].iloc[-2]:
-            logger.info(f"銘柄 {code} MACDデッドクロス発生")
+            logger.info(f"{name} ({code}) MACDデッドクロス発生")
 
     # --- ボリンジャーバンド分析 ---
     if len(df) >= config.bollinger_period:  # ボリンジャーバンド計算に必要な期間
@@ -123,9 +123,9 @@ def analyze_minute_data(code: str):
         # ボリンジャーバンドのブレイクアウトなどの分析ロジックをここに追加
         # 例: 終値がアッパーバンドを上抜けた
         if df["close"].iloc[-1] > df["upper_band"].iloc[-1]:
-            logger.info(f"銘柄 {code} ボリンジャーバンドのアッパーバンドを上抜け")
+            logger.info(f"{name} ({code}) ボリンジャーバンドのアッパーバンドを上抜け")
         elif df["close"].iloc[-1] < df["lower_band"].iloc[-1]:
-            logger.info(f"銘柄 {code} ボリンジャーバンドのローワーバンドを下抜け")
+            logger.info(f"{name} ({code}) ボリンジャーバンドのローワーバンドを下抜け")
 
 
 def get_daily_price_data(code, limit=config.volatility_period + 20):  # MACD/BB計算用に多めに取得
@@ -147,18 +147,18 @@ def get_daily_price_data(code, limit=config.volatility_period + 20):  # MACD/BB�
             conn.close()
 
 
-def analyze_daily_data(code: str):
+def analyze_daily_data(code: str, name: str):
     """
     指定された銘柄の日足データを分析し、急落検知やテクニカル指標に基づく警告を行う
 
     Args:
         code (str): 分析対象の銘柄コード
     """
-    logger.info(f"銘柄 {code} の日足データ分析を開始")
+    logger.info(f"{name} ({code}) の日足データ分析を開始")
     df = get_daily_price_data(code)
 
     if df.empty:
-        logger.warning(f"銘柄 {code} の日足データが見つかりませんでした。")
+        logger.warning(f"{name} ({code}) の日足データが見つかりませんでした。")
         return
 
     # --- 前日比急落検知 ---
@@ -171,7 +171,7 @@ def analyze_daily_data(code: str):
             if intraday_flag:
                 # 🚨 分足でも日中に急落あり → 強い警告
                 message = (
-                    f"銘柄 {code} 終値で急落確定！（日中にも急落発生）: "
+                    f"{name} ({code}) 終値で急落確定！（日中にも急落発生）: "
                     f"{prev_close:.1f} -> {current_close:.1f} ({drop_pct:.2f}%)"
                 )
                 send_alert(message, level="CRITICAL")
@@ -179,7 +179,7 @@ def analyze_daily_data(code: str):
             else:
                 # 日足だけ急落 → 通常警告
                 message = (
-                    f"銘柄 {code} 日足で {config.crash_threshold}%以上下落: "
+                    f"{name} ({code}) 日足で {config.crash_threshold}%以上下落: "
                     f"{prev_close:.1f} -> {current_close:.1f} ({drop_pct:.2f}%)"
                 )
                 send_alert(message, level="WARNING")
@@ -191,9 +191,9 @@ def analyze_daily_data(code: str):
         # MACDゴールデンクロス/デッドクロスなどの分析ロジックをここに追加
         # 例: MACDがシグナルを上抜けた/下抜けた
         if df["macd"].iloc[-1] > df["macd_signal"].iloc[-1] and df["macd"].iloc[-2] <= df["macd_signal"].iloc[-2]:
-            logger.info(f"銘柄 {code} MACDゴールデンクロス発生")
+            logger.info(f"{name} ({code}) MACDゴールデンクロス発生")
         elif df["macd"].iloc[-1] < df["macd_signal"].iloc[-1] and df["macd"].iloc[-2] >= df["macd_signal"].iloc[-2]:
-            logger.info(f"銘柄 {code} MACDデッドクロス発生")
+            logger.info(f"{name} ({code}) MACDデッドクロス発生")
 
     # --- ボリンジャーバンド分析 ---
     if len(df) >= config.bollinger_period:  # ボリンジャーバンド計算に必要な期間
@@ -201,11 +201,11 @@ def analyze_daily_data(code: str):
         # ボリンジャーバンドのブレイクアウトなどの分析ロジックをここに追加
         # 例: 終値がアッパーバンドを上抜けた
         if df["close"].iloc[-1] > df["upper_band"].iloc[-1]:
-            logger.info(f"銘柄 {code} ボリンジャーバンドのアッパーバンドを上抜け")
+            logger.info(f"{name} ({code}) ボリンジャーバンドのアッパーバンドを上抜け")
         elif df["close"].iloc[-1] < df["lower_band"].iloc[-1]:
-            logger.info(f"銘柄 {code} ボリンジャーバンドのローワーバンドを下抜け")
+            logger.info(f"{name} ({code}) ボリンジャーバンドのローワーバンドを下抜け")
 
-    logger.info(f"銘柄 {code} の日足データ分析を完了")
+    logger.info(f"{name} ({code}) の日足データ分析を完了")
 
 
 if __name__ == "__main__":
