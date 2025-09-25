@@ -150,6 +150,8 @@ CREATE TABLE IF NOT EXISTS trading_signals (
         print("- portfolio_holdings (ポートフォリオ保有銘柄)")
 
     except PgError as e:
+        print(config.db_env)  # → 'local' であること
+        print(config.get_db_config())
         print(f"❌ データベース初期化エラー: {e}")
         if conn:
             conn.rollback()
@@ -172,6 +174,7 @@ def check_database_status():
         tables = [row[0] for row in cur.fetchall()]
 
         if not tables:
+
             print("❌ データベースにテーブルが見つかりません")
             return False
 
@@ -185,6 +188,8 @@ def check_database_status():
         return True
 
     except PgError as e:
+        print(config.db_env)  # → 'local' であること
+        print(config.get_db_config())
         print(f"❌ データベース確認エラー: {e}")
         return False
     finally:
@@ -193,6 +198,7 @@ def check_database_status():
 
 
 if __name__ == "__main__":
+
     print("データベース初期化開始...")
     init_database()
     print("\nデータベース状態確認...")

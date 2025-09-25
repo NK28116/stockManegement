@@ -71,10 +71,10 @@ class Config:
         else:  # default local
             return {
                 "host": os.getenv("LOCAL_PG_HOST", "localhost"),
-                "port": int(os.getenv("LOCAL_PG_PORT", "5432")),
+                "port": int(os.getenv("LOCAL_PG_PORT", "5433")),
                 "database": os.getenv("LOCAL_PG_DATABASE", "stock_db"),
                 "user": os.getenv("LOCAL_PG_USER", "stock_user"),
-                "password": os.getenv("LOCAL_PG_PASSWORD", ""),
+                "password": os.getenv("LOCAL_PG_PASSWORD", "stock_pass"),
             }
 
     def get_watch_config(self) -> Dict[str, Any]:
