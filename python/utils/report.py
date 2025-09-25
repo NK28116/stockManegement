@@ -12,7 +12,7 @@ from python.utils.monitor import api_call_count, get_db_size
 
 logger = get_logger("report", category="report")
 
-__all__ = ["send_daily_monitor_report", "send_daily_evening_report", "send_weekly_report", "send_monthly_report"]
+__all__ = ["send_daily_morning_report", "send_daily_evening_report", "send_weekly_report", "send_monthly_report"]
 
 MONITOR_INTERVAL = 60  # 秒
 
@@ -53,7 +53,7 @@ def _get_latest_report_file(report_type: str) -> str | None:
 
 
 # 平日の09:00(市場開場前)に前日のレポートを生成し、Slackに送信する
-def send_daily_monitor_report():
+def send_daily_morning_report():
     """前日の日次レポートをSlackに送信する"""
     logger.info("前日の日次レポートを生成し、Slackに送信します。")
 
@@ -216,7 +216,7 @@ if __name__ == "__main__":
     start_monitoring()
     # テスト実行
     print("--- 日次モニターレポート(前日) ---")
-    send_daily_monitor_report()
+    send_daily_morning_report()
     print("\n--- 日次イブニングレポート(当日) ---")
     send_daily_evening_report()
     print("\n--- 週次レポートテスト ---")

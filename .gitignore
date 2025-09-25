@@ -2,8 +2,6 @@
 .history
 *.code-workspace
 
-
-
 .idea
 
 */__pycache__/*
@@ -19,6 +17,9 @@ python/db/my_stock.db
 data/chartImg/*.png
 data/plots/*.*.png
 data/report/*
+.pytest_cache/
+cloud-sql-proxy
+venv/
 
 # 環境変数ファイル
 .env
