@@ -1,46 +1,58 @@
-import sqlite3
 from datetime import datetime, timedelta  # timedelta を追加
 
 import pandas as pd
+import psycopg2
+from psycopg2 import Error as PgError
 
 from python.config import config
+from python.db.database import get_db_connection
 from python.utils.logger import get_logger
 
 logger = get_logger("dailyAggregator", category="watch")
 
-DB_PATH = config.db_path
-
 __all__ = ["save_daily_data_to_db", "aggregate_intraday_to_daily"]
 
 
-def save_daily_data_to_db(code, date, open_price, high_price, low_price, close_price, volume):
+def save_daily_data_to_db(
+    code: str, date: str, open_price: float, high_price: float, low_price: float, close_price: float, volume: int
+):
     """日足データをDBに保存する"""
-    conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
+    conn = None
     try:
-        c.execute(
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
             """
             CREATE TABLE IF NOT EXISTS stock_data (
                 code TEXT,
-                date TEXT,
-                open REAL,
-                high REAL,
-                low REAL,
-                close REAL,
+                date DATE,
+                open DOUBLE PRECISION,
+                high DOUBLE PRECISION,
+                low DOUBLE PRECISION,
+                close DOUBLE PRECISION,
                 volume INTEGER,
                 PRIMARY KEY (code, date)
             )
         """
         )
-        c.execute(
-            "INSERT OR REPLACE INTO stock_data VALUES (?, ?, ?, ?, ?, ?, ?)",
+        cur.execute(
+            """
+            INSERT INTO stock_data (code, date, open, high, low, close, volume)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (code, date) DO UPDATE
+            SET open = EXCLUDED.open, high = EXCLUDED.high, low = EXCLUDED.low,
+                close = EXCLUDED.close, volume = EXCLUDED.volume
+            """,
             (code, date, open_price, high_price, low_price, close_price, volume),
         )
         conn.commit()
-    except Exception as e:
+    except PgError as e:
         logger.error(f"日足データのDB保存に失敗しました: {e}")
+        if conn:
+            conn.rollback()
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 def aggregate_intraday_to_daily(target_date: str):
@@ -51,14 +63,15 @@ def aggregate_intraday_to_daily(target_date: str):
         target_date (str): 集計対象の日付 (YYYY-MM-DD形式)
     """
     logger.info(f"{target_date} の日足データを集計開始")
-    conn = sqlite3.connect(DB_PATH)
+    conn = None
     try:
+        conn = get_db_connection()
         # その日の全銘柄の分足データを取得
         query = (
             f"SELECT code, timestamp, price, volume FROM intraday "
-            f"WHERE DATE(timestamp) = '{target_date}' ORDER BY timestamp ASC"
+            f"WHERE timestamp::date = %s ORDER BY timestamp ASC"
         )
-        df = pd.read_sql_query(query, conn)
+        df = pd.read_sql_query(query, conn, params=(target_date,))
 
         if df.empty:
             logger.warning(f"{target_date} の分足データが見つかりませんでした。")
@@ -83,10 +96,13 @@ def aggregate_intraday_to_daily(target_date: str):
             save_daily_data_to_db(code, target_date, open_price, high_price, low_price, close_price, total_volume)
             logger.info(f"銘柄 {code} の {target_date} 日足データを保存しました。")
 
-    except Exception as e:
+    except PgError as e:
         logger.error(f"日足データ集計中にエラーが発生しました: {e}")
+        if conn:
+            conn.rollback()
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 
 if __name__ == "__main__":
