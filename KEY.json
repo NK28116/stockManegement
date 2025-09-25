@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "stockmanagement-gce",
+  "private_key_id": "fffebcffc519b8eaecbbc9f1edca52cee3a7c114",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDPV4HriB2WoC7x\nxdckUjJ0caMYdJ8tlKgND3KGjlvWbsnD8K9+6sBzG55l+jbIE7aGjKL81JrCF44G\nbzh6M+ZgFoImr68uKg5VQ319g6j8UsOG1DilZ8CDGIZE0aUypcSXo/vkj0oVoHeX\n8TPZpE4YMFfVbBHwniD7LsxWRdpOAV93FXxw1T66qFH+sjSSrusN+dr0JO+IckFb\npkd9Vy9ee/WhBYyv6f3Gp1zmAR5hMLKnevFbJPrTb1ONZR8Ovz9n+X8+HBbFdTEu\nGWIXekzDeSxol6NKDjarPNjEuOktpJrWwWooq4iKzXiEaiRZkM5Dib5PHYxWo7xq\nbGW766elAgMBAAECggEAC543ZzN8FvPYVY9UqBIcBibU8Pqd7b+p7/to2y3QaxJP\np3VN3CJ60KhgRo4P8kOag20Pd/PQzSXlPSqPw1czpjg0qEbJXeCY54Gt3zHYrvTT\nRHORTgFjieT+pw4JP+6GdsnHRE4cJFyWvvKSyXP5tUTGMy0IT0+JARIk/IOTATJc\nFhRmxou4dbgqH+T13CHW6ERxNxUP4MP31LMHSJ3YDCXH1SaT6zGTqbxg6bwJdgGT\nQSh2UCRXZ+MMbX1qjtmdjQ8od0U8tF+iBwAm1ZZHa6gM4qLb8/M9OpncKIf6nTqg\nhsToo4zG27cre5m5liTD0tE11Hj7TycjsazgrnhWqQKBgQD6pC53hP8qTqQjdHP9\nOk3fVwlgGrXobUdbeepM7RMzE59bX/hVYkV4DJHfUAVAyEvWjuVZLzf80QYkijj+\nPlKZ1cHKU0mwIp9wmKNJvaER4ylz/RO8VHU4GzJW51HHNiNKEz9yljnd9s+Z3eqZ\nCQae7WC7dobfNZQGWVuS6KjquQKBgQDTxlZyUg1Bptyu8gnPVBPxBl6J+aOGEFIW\nO5pYCYnF89aXXahAMKkC6GwQAhNqJq+L9pWqiI/w1dnDmdS5L6ORvku/RkUYrEHm\nZK9tZoLE5KK1q7hsinjB7KE90Ooy1w4HYbBU/TJJfLksEG24QNAJ5T3lpDIY15+S\nmJ2iZ0Z+TQKBgQDaBdclwFr1wlKlRLdgn0b98AgHwTRbajOYLwTQxajd1UPZiDHM\nlB85vjVlu4XWRGUzzjlSyvA4yto9Dr9k6XGQv5BDHxAKVxO6LgxcKMfjd2anro1s\nVUth8sZnMfDBCSbJWNToKCVOH1OW1KMtW9yWgoaSixfnMgQBQdmWgSvugQKBgQC9\nGaWnf00HCpCURtwrndAQsLdKTPePhpNF9wLjCeFUOV+s2ZybdNf2GMQlpzTe3Jx0\nRkNue3LMgqho2LvygG92fI32xjB8z5Qovk9HSPoMBnyj7CpKAXvC7iEsqZf2vcFx\nJfHmchCtPgm7JxBSLs2ViHW00OFK/X8nz88ybTWtIQKBgFoisTTIcSZ+lHCMSjYh\nNm+T+pbwonxUdLk60dINbw5TGtKVVJVz6GROO4XJayjbt+UzXgnvE7wAm2HtNPGS\nM6RUlzF5DA9ROUwWoaNzAY7DyiwV5i7wASe1Q+A66A8jPGc0UlVp9IaLEjdzEYmL\nSRDKgHFIaTqxCMwB61Ig0oiA\n-----END PRIVATE KEY-----\n",
+  "client_email": "cloud-sql-proxy@stockmanagement-gce.iam.gserviceaccount.com",
+  "client_id": "108511921136023591750",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/cloud-sql-proxy%40stockmanagement-gce.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
