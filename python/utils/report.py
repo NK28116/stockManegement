@@ -337,6 +337,7 @@ def send_monthly_report():
     logger.info("月次レポートのSlack送信が完了しました。")
 
 
+# %%
 def send_startup_report():
     """起動確認レポートをSlackに送信する"""
     logger.info("起動確認レポートを生成し、Slackに送信します。")
@@ -348,6 +349,8 @@ def send_startup_report():
     send_alert(message, level="INFO")
     logger.info("起動確認レポートのSlack送信が完了しました。")
 
+
+# %%
 
 if __name__ == "__main__":
     start_monitoring()
