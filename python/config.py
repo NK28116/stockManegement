@@ -70,19 +70,19 @@ class Config:
         """DB接続設定を環境に応じて返す"""
         if self.db_env == "cloud":
             return {
-                "host": os.getenv("CLOUD_PG_HOST", "localhost"),
-                "port": int(os.getenv("CLOUD_PG_PORT", "5432")),
-                "database": os.getenv("CLOUD_PG_DATABASE", "stock_db"),
-                "user": os.getenv("CLOUD_PG_USER"),
-                "password": os.getenv("CLOUD_PG_PASSWORD"),
+                "host": os.getenv("CLOUD_PG_HOST", "{CLOUD_PG_HOST}"),
+                "port": int(os.getenv("CLOUD_PG_PORT", "{CLOUD_PG_PORT}")),
+                "database": os.getenv("CLOUD_PG_DATABASE", "{CLOUD_PG_DATABASE}"),
+                "user": os.getenv("CLOUD_PG_USER", "{CLOUD_PG_USER}"),
+                "password": os.getenv("CLOUD_PG_PASSWORD", "{CLOUD_PG_PASSWORD}"),
             }
         else:  # default local
             return {
-                "host": os.getenv("LOCAL_PG_HOST", "localhost"),
-                "port": int(os.getenv("LOCAL_PG_PORT", "5433")),
-                "database": os.getenv("LOCAL_PG_DATABASE", "stock_db"),
-                "user": os.getenv("LOCAL_PG_USER", "stock_user"),
-                "password": os.getenv("LOCAL_PG_PASSWORD", "stock_pass"),
+                "host": os.getenv("LOCAL_PG_HOST", "{LOCAL_PG_HOST}"),
+                "port": int(os.getenv("LOCAL_PG_PORT", "{LOCAL_PG_PORT}")),
+                "database": os.getenv("LOCAL_PG_DATABASE", "{LOCAL_PG_DATABASE}"),
+                "user": os.getenv("LOCAL_PG_USER", "{LOCAL_PG_USER}"),
+                "password": os.getenv("LOCAL_PG_PASSWORD", "{LOCAL_PG_PASSWORD}"),
             }
 
     def get_watch_config(self) -> Dict[str, Any]:
