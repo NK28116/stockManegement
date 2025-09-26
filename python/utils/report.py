@@ -339,7 +339,7 @@ def send_startup_report():
     logger.info("起動確認レポートを生成し、Slackに送信します。")
     message = (
         f"【システム起動通知】 Stock Management Always Task が起動しました。\n"
-        f"起動時刻: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        f"起動時刻: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
         f"バックグラウンドタスク (watch, monitor, analyze) が開始されました。\n"
     )
     send_alert(message, level="INFO")
