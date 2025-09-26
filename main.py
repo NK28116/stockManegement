@@ -10,12 +10,15 @@ import time
 from datetime import datetime
 from datetime import time as dt_time
 from datetime import timedelta
-
-# main.py の冒頭に追加
 from pathlib import Path
 
 import jpholiday  # 祝日判定ライブラリ
 import pandas as pd
+
+# .env ファイルを読み込む
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import python.analysis.data_collector
 from python.analysis.portfolio_analyzer import PortfolioAnalyzer
