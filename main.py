@@ -3,20 +3,18 @@
 日次 / 週次 / 月次 / 年次タスクをコマンドで実行
 """
 
+from dotenv import load_dotenv
+
 import shutil
 import sys
 import threading
 import time
-from datetime import datetime
-from datetime import time as dt_time
-from datetime import timedelta
+from datetime import datetime, time as dt_time, timedelta
 from pathlib import Path
 
 import jpholiday  # 祝日判定ライブラリ
 import pandas as pd
-
-# .env ファイルを読み込む
-from dotenv import load_dotenv
+import psutil  # run_always_test_taskで必要
 
 import python.analysis.data_collector
 from python.analysis.portfolio_analyzer import PortfolioAnalyzer
@@ -41,8 +39,7 @@ from python.watch.analyze import analyze_daily_data as run_analyze_daily_data
 from python.watch.dailyAggregator import aggregate_intraday_to_daily
 from python.watch.watch import run_once_with_crash_check  # watchタスク用
 
-load_dotenv()  # この行をここに移動する
-
+load_dotenv()
 FLAG_DIR = Path("data/crash_flags")
 
 
