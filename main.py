@@ -24,7 +24,12 @@ from python.config import config
 from python.db import dump_csv
 from python.trading import every_stock_buy_and_sell_timing
 from python.utils.logger import get_logger
-from python.utils.monitor import is_market_open, log_resource_usage  # monitorタスク用
+from python.utils.monitor import (  # monitorタスク用
+    api_call_count,
+    get_db_size,
+    is_market_open,
+    log_resource_usage,
+)
 from python.utils.report import (
     send_daily_evening_report,
     send_daily_morning_report,
@@ -279,6 +284,10 @@ def run_always_mode():
 
 
 def run_always_test_task():
+    import os
+
+    import psutil
+
     logger.info("=== always-testモード開始: バックグラウンドタスクを1回実行します ===")
     send_startup_report()  # 起動確認レポートを送信
 
@@ -289,7 +298,17 @@ def run_always_test_task():
         logger.info("市場閉場中: watchタスクはスキップします。")
 
     logger.info("monitorタスク (リソース使用率の監視) を1回実行します。")
-    log_resource_usage(1)  # 1秒間だけリソース使用率をログに記録
+    process = psutil.Process(os.getpid())
+    cpu_percent = psutil.cpu_percent(interval=1)
+    memory_usage = process.memory_info().rss / (1024 * 1024)  # MB
+    db_size = get_db_size()
+    logger.info(
+        "リソース使用状況 | CPU: %.1f%% | MEM: %.1fMB | DB: %.2fMB | API Calls: %d",
+        cpu_percent,
+        memory_usage,
+        db_size,
+        api_call_count,
+    )
 
     logger.info("analyzeタスク (急落検知とテクニカル指標に基づく警告) を1回実行します。")
     stock_df = pd.read_csv(config.codes_path)
