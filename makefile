@@ -1,8 +1,8 @@
 # Makefile for Stock Management System
 
 # Variables
-PYTHON = python3
-PYTHONPATH = ${PWD}
+PYTHON = venv/bin/python
+PYHTON_CRON={PYTHONPATH_GCE}/${PYTHON} 
 LOG_DIR = log
 
 # Default target
@@ -47,18 +47,18 @@ ifndef DATE
 	$(error Please specify a date with DATE=YYYYMMDD for development mode)
 endif
 	@echo "Starting watch in development mode for date: ${DATE}..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} python/watch/watch.py --dev ${DATE}
+	@PYTHONPATH_GCE=${PYTHONPATH_GCE}/${PYTHON} python/watch/watch.py --dev ${DATE}
 
 .PHONY: watch-realtime
 watch-realtime:
 	@echo "Starting real-time monitoring..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} python/watch/watch.py
+	@PYTHONPATH_GCE=${PYTHONPATH_GCE}/${PYTHON} python/watch/watch.py
 
 # Analysis
 .PHONY: analyze
 analyze:
 	@echo "Running analysis for all stocks..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} python/watch/analyze.py
+	@PYTHONPATH_GCE=${PYTHONPATH_GCE}/${PYTHON} python/watch/analyze.py
 
 .PHONY: analyze-stock
 analyze-stock:
@@ -66,19 +66,19 @@ ifndef CODE
 	$(error Please specify stock code with CODE=your_stock_code)
 endif
 	@echo "Running analysis for stock: ${CODE}"
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} -c "from python.watch.analyze import analyze_daily_data; analyze_daily_data('${CODE}')"
+	@PYTHONPATH_GCE=${PYTHONPATH_GCE}/${PYTHON} -c "from python.watch.analyze import analyze_daily_data; analyze_daily_data('${CODE}')"
 
 .PHONY: aggregate
 aggregate:
 	@echo "Running daily aggregation..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} python/watch/dailyAggregator.py
+	@PYTHONPATH_GCE=${PYTHONPATH_GCE}/${PYTHON} python/watch/dailyAggregator.py
 
 # Database
 .PHONY: init-db
 init-db:
 	@echo "Initializing database..."
 	@mkdir -p data/db
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} python/init_database.py
+	@PYTHONPATH_GCE=${PYTHONPATH_GCE}/${PYTHON} python/init_database.py
 
 .PHONY: backup-db
 backup-db:
@@ -121,25 +121,25 @@ clean:
 .PHONY: run-daily
 run-daily: backup-db
 	@echo "Running daily tasks..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} main.py daily > ${LOG_DIR}/cron_daily.log 2>&1
+	@PYTHONPATH_GCE=${PYTHONPATH_GCE}/${PYTHON} main.py daily > ${LOG_DIR}/cron_daily.log 2>&1
 	@echo "Daily tasks completed."
 
 .PHONY: run-weekly
 run-weekly: backup-db
 	@echo "Running weekly tasks..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} main.py weekly > ${LOG_DIR}/cron_weekly.log 2>&1
+	@PYTHONPATH_GCE=${PYTHONPATH_GCE}/${PYTHON} main.py weekly > ${LOG_DIR}/cron_weekly.log 2>&1
 	@echo "Weekly tasks completed."
 
 .PHONY: run-monthly
 run-monthly: backup-db
 	@echo "Running monthly tasks..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} main.py monthly > ${LOG_DIR}/cron_monthly.log 2>&1
+	@PYTHONPATH_GCE=${PYTHONPATH_GCE}/${PYTHON} main.py monthly > ${LOG_DIR}/cron_monthly.log 2>&1
 	@echo "Monthly tasks completed."
 
 .PHONY: run-yearly
 run-yearly: backup-db
 	@echo "Running yearly tasks..."
-	@PYTHONPATH=${PYTHONPATH} ${PYTHON} main.py yearly > ${LOG_DIR}/cron_yearly.log 2>&1
+	@PYTHONPATH_GCE=${PYTHONPATH_GCE}/${PYTHON} main.py yearly > ${LOG_DIR}/cron_yearly.log 2>&1
 	@echo "Yearly tasks completed."
 
 # スケジュール設定 (crontab用)
@@ -148,18 +148,18 @@ install-cron:
 	@echo "Installing cron jobs..."
 	@(crontab -l 2>/dev/null; \
 	  echo "# Stock Management System - Daily Monitor Report (9:00 AM on weekdays)"; \
-	  echo "0 9 * * 1-5 cd ${PWD} && ${PYTHON} main.py daily > ${LOG_DIR}/cron_daily_monitor.log 2>&1"; \
+	  echo "0 9 * * 1-5 cd ${PWD} && ${PYHTON_CRON} main.py daily > ${LOG_DIR}/cron_daily_morning.log 2>&1"; \
 	  echo ""; \
 	  echo "# Stock Management System - Daily Evening Report (5:00 PM on weekdays)"; \
-	  echo "0 17 * * 1-5 cd ${PWD} && PYTHONPATH=${PYTHONPATH} ${PYTHON} -c \"from python.utils.report import send_daily_evening_report; send_daily_evening_report()\" > ${LOG_DIR}/cron_daily_evening.log 2>&1"; \
+	  echo "0 17 * * 1-5 cd ${PWD} &&${PYHTON_CRON} main.py daily > ${LOG_DIR}/cron_daily_evening.log 2>&1"; \
 	  echo ""; \
 	  echo "# Weekly tasks (Saturday 10:00 AM)"; \
-	  echo "0 10 * * 6 cd ${PWD} && ${PYTHON} main.py weekly > ${LOG_DIR}/cron_weekly.log 2>&1"; \
+	  echo "0 10 * * 6 cd ${PWD} && ${PYHTON_CRON} main.py weekly > ${LOG_DIR}/cron_weekly.log 2>&1"; \
 	  echo ""; \
 	  echo "# Monthly tasks (1st day of month at 11:00 AM)"; \
-	  echo "0 11 1 * * cd ${PWD} && ${PYTHON} main.py monthly > ${LOG_DIR}/cron_monthly.log 2>&1"; \
+	  echo "0 11 1 * * cd ${PWD} && ${PYHTON_CRON} main.py monthly > ${LOG_DIR}/cron_monthly.log 2>&1"; \
 	  echo ""; \
 	  echo "# Yearly tasks (January 1st at 12:00 PM)"; \
-	  echo "0 12 1 1 * cd ${PWD} && ${PYTHON} main.py yearly > ${LOG_DIR}/cron_yearly.log 2>&1") | crontab -
+	  echo "0 12 1 1 * cd ${PWD} && ${PYHTON_CRON} main.py yearly > ${LOG_DIR}/cron_yearly.log 2>&1") | crontab -
 	@echo "Cron jobs installed. Current crontab:"
 	@crontab -l
