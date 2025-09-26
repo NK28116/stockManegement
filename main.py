@@ -18,8 +18,6 @@ import pandas as pd
 # .env ファイルを読み込む
 from dotenv import load_dotenv
 
-load_dotenv()
-
 import python.analysis.data_collector
 from python.analysis.portfolio_analyzer import PortfolioAnalyzer
 from python.config import config
@@ -37,6 +35,8 @@ from python.visualization import generate_all_charts
 from python.watch.analyze import analyze_daily_data as run_analyze_daily_data
 from python.watch.dailyAggregator import aggregate_intraday_to_daily
 from python.watch.watch import run_once_with_crash_check  # watchタスク用
+
+load_dotenv()  # この行をここに移動する
 
 FLAG_DIR = Path("data/crash_flags")
 
