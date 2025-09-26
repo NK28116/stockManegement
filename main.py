@@ -251,7 +251,7 @@ def analyze_background_task():
 
 def run_always_mode():
     logger.info("=== alwaysモード開始: バックグラウンドタスクを起動します ===")
-    send_startup_report()  # 起動確認レポートを送信
+    send_startup_report(is_test_mode=False)  # 起動確認レポートを送信
 
     # watchタスク (市場開閉に合わせて株価を監視)
     watch_thread = threading.Thread(target=watch_task, daemon=True)
@@ -274,7 +274,7 @@ def run_always_mode():
 def run_always_test_task():
 
     logger.info("=== always-testモード開始: バックグラウンドタスクを1回実行します ===")
-    send_startup_report()  # 起動確認レポートを送信
+    send_startup_report(is_test_mode=True)  # 起動確認レポートを送信
 
     logger.info("watchタスク (株価監視) を1回実行します。")
     if is_market_open():
