@@ -146,9 +146,11 @@ def _monitor_stock(code, current_dt, price, volume, history, last_price, name=No
     """
     if not is_test_mode:
         save_data_to_db(code, current_dt, price, volume)
-        logger.info("\n DB保存成功: intraday にデータ追加")
+        logger.info(f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - DB保存成功: intraday にデータ追加")
     else:
-        logger.info("\n テストモードのため、DB保存はスキップ: intraday にデータ追加")
+        logger.info(
+            f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - テストモードのため、DB保存はスキップ: intraday にデータ追加"
+        )
     history.append(float(price))
 
     logs = []
@@ -163,9 +165,7 @@ def _monitor_stock(code, current_dt, price, volume, history, last_price, name=No
         header = f"\n### {code} ###"
     logs.append(header)
 
-    logs.append(f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - 株価取得成功: {code} -> {price}")
-
-    logs.append(f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - DB保存成功: intraday にデータ追加\n")
+    logs.append(f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - 株価取得成功: {code} -> {price}\n")
 
     # === 警告系 ===
     if len(history) >= 3 and history[-1] < history[-2] < history[-3]:
