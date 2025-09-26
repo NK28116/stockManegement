@@ -247,7 +247,10 @@ class StockChartVisualizer:
         print(f"対象ポートフォリオ: {portfolio_file}")
 
         # --- 出力ディレクトリ作成 ---
-        os.makedirs(self.plot_image_dir, exist_ok=True)
+        if not self.is_test_mode:
+            os.makedirs(self.plot_image_dir, exist_ok=True)
+        else:
+            print("テストモードのため、MACD & ボリンジャーバンドチャートの出力ディレクトリ作成はスキップします。")
 
         # --- ポートフォリオ読み込み ---
         stocks = self.load_portfolio_stocks(portfolio_file)
@@ -296,9 +299,15 @@ class StockChartVisualizer:
 
         # --- プロット呼び出し ---
         if price_data and indicators:
-            plot_macd_bollinger(price_data, stock_names, indicators, self.plot_image_dir)
-            print("\n=== 全銘柄のMACD & ボリンジャーバンドチャート作成完了 ===")
-            print(f"保存先: {os.path.abspath(self.plot_image_dir)}")
+            plot_macd_bollinger(
+                price_data, stock_names, indicators, self.plot_image_dir, is_test_mode=self.is_test_mode
+            )
+            if not self.is_test_mode:
+                print("\n=== 全銘柄のMACD & ボリンジャーバンドチャート作成完了 ===")
+                print(f"保存先: {os.path.abspath(self.plot_image_dir)}")
+            else:
+                print("\n=== 全銘柄のMACD & ボリンジャーバンドチャート作成完了 (テストモード) ===")
+                print("テストモードのため、チャートは保存されませんでした。")
         else:
             print("チャート作成対象データがありませんでした")
 
