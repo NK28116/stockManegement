@@ -53,7 +53,7 @@ def save_daily_data_to_db(
             conn.close()
 
 
-def aggregate_intraday_to_daily(target_date: str):
+def aggregate_intraday_to_daily(target_date: str, is_test_mode: bool = False):
     """
     指定された日付の分足データから日足データを集計し、DBに保存する
 
@@ -90,8 +90,11 @@ def aggregate_intraday_to_daily(target_date: str):
             close_price = float(stock_df["price"].iloc[-1])
             total_volume = int(stock_df["volume"].sum())  # numpy.int64をintに変換
 
-            save_daily_data_to_db(code, target_date, open_price, high_price, low_price, close_price, total_volume)
-            logger.info(f"銘柄 {code} の {target_date} 日足データを保存しました。")
+            if not is_test_mode:
+                save_daily_data_to_db(code, target_date, open_price, high_price, low_price, close_price, total_volume)
+                logger.info(f"銘柄 {code} の {target_date} 日足データを保存しました。")
+            else:
+                logger.info(f"テストモードのため、銘柄 {code} の {target_date} 日足データの保存はスキップします。")
 
     except PgError as e:
         logger.error(f"日足データ集計中にエラーが発生しました: {e}")
