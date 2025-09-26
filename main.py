@@ -15,6 +15,7 @@ from pathlib import Path
 import jpholiday  # 祝日判定ライブラリ
 import pandas as pd
 import psutil  # run_always_test_taskで必要
+import os
 
 import python.analysis.data_collector
 from python.analysis.portfolio_analyzer import PortfolioAnalyzer
@@ -281,9 +282,6 @@ def run_always_mode():
 
 
 def run_always_test_task():
-    import os
-
-    import psutil
 
     logger.info("=== always-testモード開始: バックグラウンドタスクを1回実行します ===")
     send_startup_report()  # 起動確認レポートを送信
