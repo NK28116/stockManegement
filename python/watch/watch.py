@@ -269,10 +269,43 @@ def run_once_with_crash_check():
 
 
 def run_realtime_mode():
-    """ローカル実行: 2分ごとの無限ループ"""
+    """ローカル実行: 2分ごとの無限ループ (市場の開場時間と昼休みを考慮)"""
     while True:
-        run_once()
-        time.sleep(120)
+        now = datetime.now()
+        current_time = now.time()
+
+        # 市場の開場時間 (9:00 - 11:30, 12:30 - 15:00)
+        market_open_morning_start = time.fromisoformat("09:00:00")
+        market_open_morning_end = time.fromisoformat("11:30:00")
+        market_open_afternoon_start = time.fromisoformat("12:30:00")
+        market_open_afternoon_end = time.fromisoformat("15:00:00")
+
+        if (market_open_morning_start <= current_time <= market_open_morning_end) or (
+            market_open_afternoon_start <= current_time <= market_open_afternoon_end
+        ):
+            # 市場開場中
+            logger.info("市場開場中: 株価監視を実行します。")
+            run_once()
+            time.sleep(120)  # 2分待機
+        elif market_open_morning_end < current_time < market_open_afternoon_start:
+            # 昼休み中
+            logger.info("昼休み中: 監視を一時停止し、後場開始まで待機します。")
+            # 後場開始までの残り時間を計算
+            wait_seconds = (datetime.combine(now.date(), market_open_afternoon_start) - now).total_seconds()
+            if wait_seconds > 0:
+                time.sleep(wait_seconds)
+            else:
+                time.sleep(60)  # 念のため1分待機
+        else:
+            # 市場閉場中 (15:00以降または9:00以前)
+            logger.info("市場閉場中: 翌日の開場まで待機します。")
+            # 翌日の市場開場までの残り時間を計算
+            tomorrow_morning_open = datetime.combine(now.date() + timedelta(days=1), market_open_morning_start)
+            wait_seconds = (tomorrow_morning_open - now).total_seconds()
+            if wait_seconds > 0:
+                time.sleep(wait_seconds)
+            else:
+                time.sleep(3600)  # 念のため1時間待機 (エラー防止)
 
 
 if __name__ == "__main__":
