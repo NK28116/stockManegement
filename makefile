@@ -2,7 +2,7 @@
 
 # Variables
 PYTHON = venv/bin/python
-PYHTON_CRON={PYTHONPATH_GCE}/${PYTHON} 
+PYTHON_CRON={PYTHONPATH_GCE}/${PYTHON} 
 LOG_DIR = log
 
 # Default target
@@ -146,20 +146,21 @@ run-yearly: backup-db
 .PHONY: install-cron
 install-cron:
 	@echo "Installing cron jobs..."
+	@(crontab -r)
 	@(crontab -l 2>/dev/null; \
 	  echo "# Stock Management System - Daily Monitor Report (9:00 AM on weekdays)"; \
-	  echo "0 9 * * 1-5 cd ${PWD} && ${PYHTON_CRON} main.py daily > ${LOG_DIR}/cron_daily_morning.log 2>&1"; \
+	  echo "0 9 * * 1-5 cd ${PYTHONPATH_GCE} && source venv/bin/activate && ${PYTHON_CRON} main.py daily > ${LOG_DIR}/cron_daily_morning.log 2>&1"; \
 	  echo ""; \
 	  echo "# Stock Management System - Daily Evening Report (5:00 PM on weekdays)"; \
-	  echo "0 17 * * 1-5 cd ${PWD} &&${PYHTON_CRON} main.py daily > ${LOG_DIR}/cron_daily_evening.log 2>&1"; \
+	  echo "0 17 * * 1-5 cd ${PYTHONPATH_GCE} && source venv/bin/activate && ${PYTHON_CRON} main.py daily > ${LOG_DIR}/cron_daily_evening.log 2>&1"; \
 	  echo ""; \
 	  echo "# Weekly tasks (Saturday 10:00 AM)"; \
-	  echo "0 10 * * 6 cd ${PWD} && ${PYHTON_CRON} main.py weekly > ${LOG_DIR}/cron_weekly.log 2>&1"; \
+	  echo "0 10 * * 6 cd ${PYTHONPATH_GCE} && source venv/bin/activate && ${PYTHON_CRON} main.py weekly > ${LOG_DIR}/cron_weekly.log 2>&1"; \
 	  echo ""; \
 	  echo "# Monthly tasks (1st day of month at 11:00 AM)"; \
-	  echo "0 11 1 * * cd ${PWD} && ${PYHTON_CRON} main.py monthly > ${LOG_DIR}/cron_monthly.log 2>&1"; \
+	  echo "0 11 1 * * cd ${PYTHONPATH_GCE} && source venv/bin/activate && ${PYTHON_CRON} main.py monthly > ${LOG_DIR}/cron_monthly.log 2>&1"; \
 	  echo ""; \
 	  echo "# Yearly tasks (January 1st at 12:00 PM)"; \
-	  echo "0 12 1 1 * cd ${PWD} && ${PYHTON_CRON} main.py yearly > ${LOG_DIR}/cron_yearly.log 2>&1") | crontab -
+	  echo "0 12 1 1 * cd ${PYTHONPATH_GCE} && source venv/bin/activate && ${PYTHON_CRON} main.py yearly > ${LOG_DIR}/cron_yearly.log 2>&1") | crontab -
 	@echo "Cron jobs installed. Current crontab:"
 	@crontab -l
