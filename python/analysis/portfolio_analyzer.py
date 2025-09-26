@@ -18,15 +18,18 @@ logger = get_logger("PortfolioAnalyzer", category="analysis")
 
 RESULT_DIR = config.root_dir / "data"
 PLOT_DIR = RESULT_DIR / "plots"
-os.makedirs(PLOT_DIR, exist_ok=True)
+# os.makedirs(PLOT_DIR, exist_ok=True) # is_test_modeで制御するためコメントアウト
 
 __all__ = ["PortfolioAnalyzer"]
 
 
 class PortfolioAnalyzer:
-    def __init__(self, result_dir=RESULT_DIR):
+    def __init__(self, result_dir=RESULT_DIR, is_test_mode: bool = False):
         self.result_dir = result_dir
-        os.makedirs(self.result_dir, exist_ok=True)
+        self.is_test_mode = is_test_mode
+        if not self.is_test_mode:
+            os.makedirs(self.result_dir, exist_ok=True)
+            os.makedirs(PLOT_DIR, exist_ok=True)
 
     def get_portfolio(self, portfolio_name="my_stock") -> pd.DataFrame:
         """DBから保有株式情報を全取得"""
@@ -86,14 +89,24 @@ class PortfolioAnalyzer:
         ax[1].legend()
 
         plt.tight_layout()
-        plot_file = PLOT_DIR / f"{code}-{name}_plot.png"
-        fig.savefig(plot_file)
-        logger.info(f"{code}-{name} のプロットを保存: {plot_file}")
+        if not self.is_test_mode:
+            plot_file = PLOT_DIR / f"{code}-{name}_plot.png"
+            fig.savefig(plot_file)
+            logger.info(f"{code}-{name} のプロットを保存: {plot_file}")
+        else:
+            logger.info(f"テストモードのため、{code}-{name} のプロット保存はスキップします。")
         plt.close(fig)
 
     def save_analysis(self, portfolio_df: pd.DataFrame, indicators_dict: Dict[str, pd.DataFrame]):
         """ポートフォリオ分析結果を保存"""
         output_file = self.result_dir / "my_portfolio_analysis.txt"
+
+        if self.is_test_mode:
+            logger.info("テストモードのため、ポートフォリオ分析結果の保存はスキップします。")
+            report_content = self._generate_analysis_report_content(portfolio_df, indicators_dict)
+            logger.debug(f"ポートフォリオ分析レポート (テストモード):\n{report_content}")
+            return
+
         with open(output_file, "w", encoding="utf-8") as f:
             f.write("=" * 60 + "\n")
             f.write("ポートフォリオ分析レポート\n")
@@ -113,8 +126,32 @@ class PortfolioAnalyzer:
                 f.write(f"  ウェイト: {weight:.2f}%\n\n")
         logger.info(f"ポートフォリオ分析結果を保存: {output_file}")
 
-    def analyze_portfolio(self, portfolio_name="my_stock"):
+    def _generate_analysis_report_content(
+        self, portfolio_df: pd.DataFrame, indicators_dict: Dict[str, pd.DataFrame]
+    ) -> str:
+        """分析レポートの内容を生成するヘルパー関数"""
+        report_lines = []
+        report_lines.append("=" * 60)
+        report_lines.append("ポートフォリオ分析レポート")
+        report_lines.append("=" * 60)
+        report_lines.append(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        report_lines.append(f"対象銘柄数: {len(portfolio_df)}\n")
+        report_lines.append("【ポートフォリオ概要】")
+        total_investment = (portfolio_df["quantity"] * portfolio_df["purchase_price"]).sum()
+        report_lines.append(f"総投資額: {int(total_investment)}円\n")
+        report_lines.append("【銘柄別詳細】")
+        for _, row in portfolio_df.iterrows():
+            report_lines.append(f"{row['code']} ({row['name']})")
+            report_lines.append(f"  数量: {row['quantity']}株")
+            report_lines.append(f"  購入価格: {row['purchase_price']}円")
+            report_lines.append(f"  投資額: {row['quantity']*row['purchase_price']}円")
+            weight = row["quantity"] * row["purchase_price"] / total_investment * 100
+            report_lines.append(f"  ウェイト: {weight:.2f}%\n")
+        return "\n".join(report_lines)
+
+    def analyze_portfolio(self, portfolio_name="my_stock", is_test_mode: bool = False):
         """ポートフォリオ全体を分析"""
+        self.is_test_mode = is_test_mode  # インスタンス変数に設定
         portfolio_df = self.get_portfolio(portfolio_name)
         if portfolio_df.empty:
             logger.warning("分析対象のポートフォリオがありません")
@@ -134,9 +171,12 @@ class PortfolioAnalyzer:
         self.save_analysis(portfolio_df, indicators_dict)
         logger.info("✅ ポートフォリオ分析完了")
         # 週次レポートとしてSlackに通知
-        from python.utils.report import send_weekly_report
+        if not self.is_test_mode:
+            from python.utils.report import send_weekly_report
 
-        send_weekly_report()
+            send_weekly_report()
+        else:
+            logger.info("テストモードのため、週次レポートのSlack通知はスキップします。")
 
 
 if __name__ == "__main__":
