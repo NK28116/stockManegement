@@ -346,7 +346,7 @@ def send_startup_report(is_test_mode: bool = False):
         f"起動時刻: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
         f"バックグラウンドタスク (watch, monitor, analyze) が開始されました。\n"
     )
-    send_alert(message, level="INFO")
+    send_alert(message, level="INFO", is_test_mode=is_test_mode)
     logger.info("起動確認レポートのSlack送信が完了しました。")
 
 
