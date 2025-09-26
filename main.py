@@ -38,6 +38,7 @@ from python.utils.report import (
 )
 from python.visualization import generate_all_charts
 from python.watch.analyze import analyze_daily_data as run_analyze_daily_data
+from python.watch.analyze import analyze_minute_data as run_analyze_intraday_data
 from python.watch.dailyAggregator import aggregate_intraday_to_daily
 from python.watch.watch import run_once_with_crash_check  # watchタスク用
 
@@ -147,30 +148,6 @@ def run_yearly_task():
     logger.info("=== 年次タスク完了 ===")
 
 
-# main.py 内の is_market_open 関数を削除し、python.utils.monitor.is_market_open を使用
-# def is_market_open(current_datetime: datetime) -> bool:
-#     """日本市場が開いているか判定する (土日祝日、時間帯を考慮)"""
-#     # 土日判定
-#     if current_datetime.weekday() >= 5:  # 0=月, 5=土, 6=日
-#         return False
-
-#     # 祝日判定
-#     if jpholiday.is_holiday(current_datetime.date()):
-#         return False
-
-#     current_time = current_datetime.time()
-#     # 前場: 9:00 - 11:30
-#     morning_open = dt_time(9, 0)
-#     morning_close = dt_time(11, 30)
-#     # 後場: 12:30 - 15:00
-#     afternoon_open = dt_time(12, 30)
-#     afternoon_close = dt_time(15, 0)
-
-#     if (morning_open <= current_time <= morning_close) or (afternoon_open <= current_time <= afternoon_close):
-#         return True
-#     return False
-
-
 def get_next_open_datetime(now: datetime) -> datetime:
     """次の営業日の9:00を返す（土日祝を考慮）"""
     next_day = now.date()
@@ -192,61 +169,49 @@ def watch_task():
             run_once_with_crash_check()  # 分足取得と急落検知
             time.sleep(config.watch_interval_seconds)  # configで監視間隔を設定できるようにする
         else:
-            next_open = None
-            for start_hour in [9, 12]:  # 午前9時と午後12時半の両方をチェック
-                if now.time() < dt_time(start_hour, 0):
-                    next_open = datetime.combine(now.date(), dt_time(start_hour, 0))
-                    break
-            if not next_open:
-                next_open = get_next_open_datetime(now)
-
+            next_open = get_next_open_datetime(now)
             rest_all_seconds = (next_open - now).total_seconds()
 
-            # 閉場中の待機ロジック
-            # 2時間ごとに市場開閉をチェックするように変更
-            wait_interval = 2 * 3600  # 2時間 (秒)
-            while not is_market_open():  # monitor.py の is_market_open を使用
-                now = datetime.now()
-                next_open = None
-                for start_hour in [9, 12]:
-                    if now.time() < dt_time(start_hour, 0):
-                        next_open = datetime.combine(now.date(), dt_time(start_hour, 0))
-                        break
-                if not next_open:
-                    next_open = get_next_open_datetime(now)
+            # 次の開場までの全時間に基づいて待機時間を計算
+            total_wait_hours = int(rest_all_seconds // 3600)
+            total_wait_minutes = int((rest_all_seconds % 3600) // 60)
+            total_wait_seconds = int(rest_all_seconds - total_wait_hours * 3600 - total_wait_minutes * 60)
 
-                rest_all_seconds = (next_open - now).total_seconds()
-
-                # 次の開場までの時間が2時間以上ある場合は、2時間待機
-                # そうでない場合は、次の開場までの時間待機
-                sleep_duration = min(rest_all_seconds, wait_interval)
-
-                # 次の開場までの全時間に基づいて待機時間を計算
-                total_wait_hours = int(rest_all_seconds // 3600)
-                total_wait_minutes = int((rest_all_seconds % 3600) // 60)
-                total_wait_seconds = int(rest_all_seconds - total_wait_hours * 3600 - total_wait_minutes * 60)
-
-                logger.info(
-                    f"市場閉場中: 開場まで{total_wait_hours}時間{total_wait_minutes}分{total_wait_seconds}秒です。"
-                )
-                time.sleep(sleep_duration)
+            logger.info(
+                f"市場閉場中: 開場まで{total_wait_hours}時間{total_wait_minutes}分{total_wait_seconds}秒です。"
+            )
+            time.sleep(rest_all_seconds - 300)
 
 
-def analyze_background_task():
-    """バックグラウンドで日足データを分析し、急落を知らせるタスク"""
-    logger.info("=== analyzeバックグラウンドタスク開始 ===")
+def analyze_intraday_task():
+    """市場開場中に15分足を分析して速報アラート"""
+    logger.info("=== 分足監視タスク開始 ===")
     stock_df = pd.read_csv(config.codes_path)
     while True:
-        if is_market_open():  # 市場が開いている場合のみ実行
-            logger.info("日足データ分析を実行します。")
-            # 'code'と'name'カラムが存在することを前提とする
-            for index, row in stock_df.iterrows():
-                code = row["code"]
-                name = row["name"]
-                run_analyze_daily_data(code, name)
+        if is_market_open():
+            for _, row in stock_df.iterrows():
+                code, name = row["code"], row["name"]
+                run_analyze_intraday_data(code, name)  # 15分足
         else:
-            logger.info("市場閉場中: 日足データ分析はスキップします。")
-        time.sleep(config.analyze_interval_seconds)  # configで分析間隔を設定できるようにする
+            logger.info("市場は閉場中。分足監視は休止。")
+        time.sleep(config.watch_interval_seconds)  # 例: 300秒
+
+
+def analyze_daily_task():
+    """終値確定後に日足データを分析"""
+    logger.info("=== 日足分析タスク開始 ===")
+    stock_df = pd.read_csv(config.codes_path)
+    while True:
+        now = datetime.now()
+        # 平日 15:15 頃に実行（終値確定後を想定）
+        if now.weekday() < 5 and now.time() >= dt_time(15, 15):
+            for _, row in stock_df.iterrows():
+                code, name = row["code"], row["name"]
+                run_analyze_daily_data(code, name)  # 日足
+            logger.info("日足分析を完了しました。次の日まで待機します。")
+            time.sleep(24 * 3600)  # 翌日まで待機
+        else:
+            time.sleep(600)  # 10分ごとにチェック
 
 
 def run_always_mode():
@@ -261,9 +226,13 @@ def run_always_mode():
     monitor_thread = threading.Thread(target=log_resource_usage, args=(config.monitor_interval_seconds,), daemon=True)
     monitor_thread.start()
 
-    # analyzeタスク (急落検知とテクニカル指標に基づく警告)
-    analyze_thread = threading.Thread(target=analyze_background_task, daemon=True)
-    analyze_thread.start()
+    # 分足監視スレッド
+    intraday_thread = threading.Thread(target=analyze_intraday_task, daemon=True)
+    intraday_thread.start()
+
+    # 日足監視スレッド
+    daily_thread = threading.Thread(target=analyze_daily_task, daemon=True)
+    daily_thread.start()
 
     logger.info("すべてのバックグラウンドタスクが起動しました。メインスレッドは待機します。")
     # メインスレッドはバックグラウンドタスクが終了しないように待機
