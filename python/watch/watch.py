@@ -185,10 +185,8 @@ def _monitor_stock(code, current_dt, price, volume, history, last_price, name=No
             )
 
     if warnings:
-        logs.append(f"WARNING: {code}\n" + "\n".join(warnings))
-
-    # === 出力 ===
-    print("\n".join(logs))
+        for warning_msg in warnings:
+            logger.warning(f"WARNING: {code} - {warning_msg}")
 
     return float(price)
 
