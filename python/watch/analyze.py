@@ -107,7 +107,7 @@ def analyze_minute_data(code: str, name: str, is_test_mode: bool = False):
             logger.warning(message)
             from python.utils.alert import send_alert
 
-            send_alert(message, level="WARNING", is_test_mode=is_test_mode)
+            send_alert(message, level="WARNING")
 
             # 🚨 フラグ保存（当日分足急落あり）
             save_intraday_crash_flag(code, df.index[-1], is_test_mode=is_test_mode)
@@ -179,7 +179,7 @@ def analyze_daily_data(code: str, name: str, is_test_mode: bool = False):
                     f"{name} ({code}) 終値で急落確定！（日中にも急落発生）: "
                     f"{prev_close:.1f} -> {current_close:.1f} ({drop_pct:.2f}%)"
                 )
-                send_alert(message, level="CRITICAL", is_test_mode=is_test_mode)
+                send_alert(message, level="CRITICAL")
                 logger.error(message)
             else:
                 # 日足だけ急落 → 通常警告
@@ -187,7 +187,7 @@ def analyze_daily_data(code: str, name: str, is_test_mode: bool = False):
                     f"{name} ({code}) 日足で {config.crash_threshold}%以上下落: "
                     f"{prev_close:.1f} -> {current_close:.1f} ({drop_pct:.2f}%)"
                 )
-                send_alert(message, level="WARNING", is_test_mode=is_test_mode)
+                send_alert(message, level="WARNING")
                 logger.warning(message)
 
     # --- MACD分析 ---
