@@ -65,9 +65,12 @@ def _get_latest_report_file(report_type: str) -> str | None:
 
 
 # 平日の09:00(市場開場前)に前日のレポートを生成し、Slackに送信する
-def send_daily_morning_report():
+def send_daily_morning_report(is_test_mode: bool = False):
     """前日の日次レポートをSlackに送信する"""
-    logger.info("前日の日次レポートを生成し、Slackに送信します。")
+    if is_test_mode:
+        logger.info("テストモード: 前日の日次レポートを生成しますが、Slackには送信しません。")
+    else:
+        logger.info("前日の日次レポートを生成し、Slackに送信します。")
 
     # 前日の日付を取得
     yesterday = datetime.now() - timedelta(days=1)
@@ -131,14 +134,21 @@ def send_daily_morning_report():
     message += "市場全体の動向や、注目すべきニュースなどをここに含めます。\n"
     message += "詳細な日足分析結果はログまたは別途生成される詳細レポートをご確認ください。\n"
 
-    send_alert(message, level="INFO")
-    logger.info("前日の日次レポートのSlack送信が完了しました。")
+    if not is_test_mode:
+        send_alert(message, level="INFO")
+        logger.info("前日の日次レポートのSlack送信が完了しました。")
+    else:
+        logger.info("テストモードのため、前日の日次レポートのSlack送信はスキップしました。")
+        logger.debug(f"テストモードでの日次朝レポート:\n{message}")
 
 
 # 平日の17:00にその日のレポートを生成し、Slackに送信する
-def send_daily_evening_report():
+def send_daily_evening_report(is_test_mode: bool = False):
     """その日の日次レポートをSlackに送信する"""
-    logger.info("その日の日次レポートを生成し、Slackに送信します。")
+    if is_test_mode:
+        logger.info("テストモード: その日の日次レポートを生成しますが、Slackには送信しません。")
+    else:
+        logger.info("その日の日次レポートを生成し、Slackに送信します。")
 
     # 今日の日付を取得
     today = datetime.now()
@@ -205,14 +215,21 @@ def send_daily_evening_report():
     message += "市場全体の動向や、注目すべきニュースなどをここに含めます。\n"
     message += "詳細な日足分析結果はログまたは別途生成される詳細レポートをご確認ください。\n"
 
-    send_alert(message, level="INFO")
-    logger.info("その日の日次レポートのSlack送信が完了しました。")
+    if not is_test_mode:
+        send_alert(message, level="INFO")
+        logger.info("その日の日次レポートのSlack送信が完了しました。")
+    else:
+        logger.info("テストモードのため、その日の日次レポートのSlack送信はスキップしました。")
+        logger.debug(f"テストモードでの日次夜レポート:\n{message}")
 
 
 # 土曜日の13：00に週次レポートを生成し、Slackに送信する
-def send_weekly_report():
+def send_weekly_report(is_test_mode: bool = False):
     """週次レポートをSlackに送信する"""
-    logger.info("週次レポートを生成し、Slackに送信します。")
+    if is_test_mode:
+        logger.info("テストモード: 週次レポートを生成しますが、Slackには送信しません。")
+    else:
+        logger.info("週次レポートを生成し、Slackに送信します。")
 
     message = f"【週次レポート】 {datetime.now().strftime('%Y-%m-%d')} 週次分析\n\n"
 
@@ -270,14 +287,21 @@ def send_weekly_report():
     message += "【週間の市場トレンドと注目銘柄】\n"
     message += "週間での市場全体のトレンドやセクターごとの動向、特にパフォーマンスが良かった/悪かった銘柄のハイライトなどをここに含めます。\n"
 
-    send_alert(message, level="INFO")
-    logger.info("週次レポートのSlack送信が完了しました。")
+    if not is_test_mode:
+        send_alert(message, level="INFO")
+        logger.info("週次レポートのSlack送信が完了しました。")
+    else:
+        logger.info("テストモードのため、週次レポートのSlack送信はスキップしました。")
+        logger.debug(f"テストモードでの週次レポート:\n{message}")
 
 
 # 月末の17:00に月次レポートを生成し、Slackに送信する
-def send_monthly_report():
+def send_monthly_report(is_test_mode: bool = False):
     """月次レポートをSlackに送信する"""
-    logger.info("月次レポートを生成し、Slackに送信します。")
+    if is_test_mode:
+        logger.info("テストモード: 月次レポートを生成しますが、Slackには送信しません。")
+    else:
+        logger.info("月次レポートを生成し、Slackに送信します。")
 
     message = f"【月次レポート】 {datetime.now().strftime('%Y-%m-%d')} 月次評価\n\n"
 
@@ -333,21 +357,32 @@ def send_monthly_report():
     else:
         message += "【個別銘柄の月間パフォーマンス】\nポートフォリオに銘柄がありません。\n\n"
 
-    send_alert(message, level="INFO")
-    logger.info("月次レポートのSlack送信が完了しました。")
+    if not is_test_mode:
+        send_alert(message, level="INFO")
+        logger.info("月次レポートのSlack送信が完了しました。")
+    else:
+        logger.info("テストモードのため、月次レポートのSlack送信はスキップしました。")
+        logger.debug(f"テストモードでの月次レポート:\n{message}")
 
 
 # %%
-def send_startup_report():
+def send_startup_report(is_test_mode: bool = False):
     """起動確認レポートをSlackに送信する"""
-    logger.info("起動確認レポートを生成し、Slackに送信します。")
+    if is_test_mode:
+        logger.info("テストモード: 起動確認レポートを生成しますが、Slackには送信しません。")
+    else:
+        logger.info("起動確認レポートを生成し、Slackに送信します。")
     message = (
         f"【システム起動通知】 Stock Management Always Task が起動しました。\n"
         f"起動時刻: {datetime.now().strftime('%Y-%m-%d %H:%M')}\n"
         f"バックグラウンドタスク (watch, monitor, analyze) が開始されました。\n"
     )
-    send_alert(message, level="INFO")
-    logger.info("起動確認レポートのSlack送信が完了しました。")
+    if not is_test_mode:
+        send_alert(message, level="INFO")
+        logger.info("起動確認レポートのSlack送信が完了しました。")
+    else:
+        logger.info("テストモードのため、起動確認レポートのSlack送信はスキップしました。")
+        logger.debug(f"テストモードでの起動確認レポート:\n{message}")
 
 
 # %%

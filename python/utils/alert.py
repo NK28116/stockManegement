@@ -14,17 +14,22 @@ class AlertManager:
     def __init__(self):
         self.alert_config = config.get_alert_config()
 
-    def send_alert(self, message: str, level: str = "INFO") -> bool:
+    def send_alert(self, message: str, level: str = "INFO", is_test_mode: bool = False) -> bool:
         """
         アラートを送信する
 
         Args:
             message: 送信メッセージ
             level: 重要度レベル
+            is_test_mode: テストモードかどうか
 
         Returns:
             bool: 送信が成功したかどうか
         """
+        if is_test_mode:
+            logger.info(f"テストモード: アラートをログに出力します。レベル: {level}, メッセージ: {message}")
+            return True
+
         if not self.alert_config["enabled"]:
             logger.warning("アラート機能が無効です")
             return False
@@ -64,6 +69,6 @@ class AlertManager:
 alert_manager = AlertManager()
 
 
-def send_alert(message: str, level: str = "INFO") -> bool:
+def send_alert(message: str, level: str = "INFO", is_test_mode: bool = False) -> bool:
     """アラート送信の簡易関数"""
-    return alert_manager.send_alert(message, level)
+    return alert_manager.send_alert(message, level, is_test_mode)
