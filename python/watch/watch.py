@@ -241,14 +241,14 @@ def run_once():
     return results
 
 
-def detect_intraday_crash(code, current_price, last_price, is_test_mode: bool = False):
+def detect_intraday_crash(code, current_price, last_price):
     if last_price is None or last_price == 0:
         return None
 
     drop_pct = (current_price - last_price) / last_price * 100
     if drop_pct <= config.crash_threshold:
         message = f"[分足急落] {code}: {last_price:.1f} -> {current_price:.1f} " f"({drop_pct:.2f}%)"
-        send_alert(message, level="WARNING", is_test_mode=is_test_mode)  # Slack に送信
+        send_alert(message, level="WARNING")  # Slack に送信
         return message
     return None
 
@@ -265,7 +265,7 @@ def run_once_with_crash_check(is_test_mode: bool = False):
         last_price = history[-1] if history else None
 
         _monitor_stock(code, current_dt, price, volume, history, last_price, is_test_mode=is_test_mode)
-        alert = detect_intraday_crash(code, price, last_price, is_test_mode=is_test_mode)
+        alert = detect_intraday_crash(code, price, last_price)
         if alert:
             alerts.append(alert)
 
