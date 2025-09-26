@@ -1,7 +1,5 @@
 # python/utils/indicator.py
 # MACD, Bollinger Bands を計算する
-from typing import Tuple
-
 import pandas as pd
 
 
@@ -30,7 +28,7 @@ def calculate_macd(
     return df
 
 
-__all__ = ["calculate_bollinger_bands"]
+__all__ = ["calculate_bollinger_bands", "detect_sharp_decline"]
 
 
 def calculate_bollinger_bands(prices: pd.Series, period: int = 20, num_std: float = 2.0) -> pd.DataFrame:
@@ -51,13 +49,49 @@ def calculate_bollinger_bands(prices: pd.Series, period: int = 20, num_std: floa
     return df
 
 
+def detect_sharp_decline(prices: pd.Series, decline_threshold: float = 0.05, period: int = 1) -> pd.DataFrame:
+    """
+    急落を検出する
+    Args:
+        prices: 株価シリーズ（終値）
+        decline_threshold: 急落と判断する下落率 (例: 0.05 = 5%)
+        period: 比較対象とする期間 (例: 1 = 前日比)
+    Returns:
+        DataFrame: 急落した日付と下落率
+    """
+    if len(prices) <= period:
+        return pd.DataFrame(columns=["Date", "DeclineRate"])
+
+    # 期間ごとの変化率を計算
+    # prices.shift(period) は period 日前の価格
+    # (prices - prices.shift(period)) / prices.shift(period) で変化率
+    decline_rates = (prices.diff(period) / prices.shift(period)).dropna()
+
+    # 急落を検出
+    sharp_declines = decline_rates[decline_rates < -decline_threshold]
+
+    if sharp_declines.empty:
+        return pd.DataFrame(columns=["Date", "DeclineRate"])
+
+    # 結果をDataFrameに整形
+    result_df = pd.DataFrame(
+        {
+            "Date": sharp_declines.index.strftime("%Y-%m-%d"),
+            "DeclineRate": sharp_declines.apply(lambda x: f"{x:.2%}"),
+        }
+    )
+    return result_df
+
+
 # --- テスト用 ---
 if __name__ == "__main__":
     import numpy as np
 
     # ダミー終値データ
     np.random.seed(0)
-    prices = pd.Series(100 + np.random.randn(50).cumsum())
+    prices = pd.Series(
+        100 + np.random.randn(50).cumsum(), index=pd.to_datetime(pd.date_range(start="2023-01-01", periods=50))
+    )
 
     macd_df = calculate_macd(prices)
     print("=== MACD ===")
@@ -66,3 +100,7 @@ if __name__ == "__main__":
     bb_df = calculate_bollinger_bands(prices)
     print("\n=== Bollinger Bands ===")
     print(bb_df.tail())
+
+    sharp_decline_df = detect_sharp_decline(prices, decline_threshold=0.02)
+    print("\n=== Sharp Declines ===")
+    print(sharp_decline_df)
