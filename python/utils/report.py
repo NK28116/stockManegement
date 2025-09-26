@@ -12,7 +12,13 @@ from python.utils.monitor import api_call_count, get_db_size
 
 logger = get_logger("report", category="report")
 
-__all__ = ["send_daily_morning_report", "send_daily_evening_report", "send_weekly_report", "send_monthly_report"]
+__all__ = [
+    "send_daily_morning_report",
+    "send_daily_evening_report",
+    "send_weekly_report",
+    "send_monthly_report",
+    "send_startup_report",
+]
 
 MONITOR_INTERVAL = 60  # 秒
 
@@ -212,9 +218,23 @@ def send_monthly_report():
     logger.info("月次レポートのSlack送信が完了しました。")
 
 
+def send_startup_report():
+    """起動確認レポートをSlackに送信する"""
+    logger.info("起動確認レポートを生成し、Slackに送信します。")
+    message = (
+        f"【システム起動通知】 Stock Management Always Task が起動しました。\n"
+        f"起動時刻: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        f"バックグラウンドタスク (watch, monitor, analyze) が開始されました。\n"
+    )
+    send_alert(message, level="INFO")
+    logger.info("起動確認レポートのSlack送信が完了しました。")
+
+
 if __name__ == "__main__":
     start_monitoring()
     # テスト実行
+    print("--- 起動確認レポートテスト ---")
+    send_startup_report()
     print("--- 日次モニターレポート(前日) ---")
     send_daily_morning_report()
     print("\n--- 日次イブニングレポート(当日) ---")

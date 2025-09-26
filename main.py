@@ -31,6 +31,7 @@ from python.utils.report import (
     send_daily_evening_report,
     send_daily_morning_report,
     send_monthly_report,
+    send_startup_report,
 )
 from python.visualization import generate_all_charts
 from python.watch.analyze import analyze_daily_data as run_analyze_daily_data
@@ -52,71 +53,94 @@ logger = get_logger("main_task", category="task")
 analyzer = PortfolioAnalyzer()
 
 
-def run_daily_task():
-    logger.info("=== 日次タスク開始 ===")
+def run_daily_task(is_test_mode: bool = False):
+    logger.info(f"=== 日次タスク開始 (テストモード: {is_test_mode}) ===")
 
     # 🚨 日足分析前にフラグをリセット
     clear_old_flags()
 
     if datetime.now().time() < dt_time(9, 0):
         logger.info("=== 日次タスク: 市場開場前モード ===")
-        send_daily_morning_report()
+        if not is_test_mode:
+            send_daily_morning_report()
+        else:
+            logger.info("テストモードのため、日次朝レポートの送信はスキップします。")
     else:
         logger.info("=== 日次タスク: 市場閉場後モード ===")
         # 1. 日足データ集計
         today_str = datetime.now().strftime("%Y-%m-%d")
+        # テストモードでは集計処理は実行するが、永続的な保存は行わない（aggregate_intraday_to_dailyの内部実装による）
         aggregate_intraday_to_daily(today_str)
+        logger.info("日足データ集計が実行されました。")
 
         # 2. 全銘柄売買タイミング分析 (直近1ヶ月)
-        every_stock_buy_and_sell_timing.run_analysis(period="1mo")
+        every_stock_buy_and_sell_timing.run_analysis(period="1mo", is_test_mode=is_test_mode)
+        logger.info("全銘柄売買タイミング分析が実行されました。")
 
         # 3. 全銘柄チャート一括生成
-        generate_all_charts.main(period="1mo")  # 日次レポート用として3ヶ月期間を指定
+        generate_all_charts.main(period="1mo", is_test_mode=is_test_mode)  # 日次レポート用として3ヶ月期間を指定
+        logger.info("全銘柄チャート一括生成が実行されました。")
 
         # 4. 日次モニターレポートのSlack通知 (市場開場前)
-        send_daily_evening_report()
+        if not is_test_mode:
+            send_daily_evening_report()
+        else:
+            logger.info("テストモードのため、日次夜レポートの送信はスキップします。")
 
         # 5. 全銘柄の急落検知とテクニカル指標に基づく警告
         try:
             stock_df = pd.read_csv(config.codes_path)
-            # 'code'と'name'カラムが存在することを前提とする
             for index, row in stock_df.iterrows():
                 code = row["code"]
                 name = row["name"]
                 run_analyze_daily_data(code, name)
+            logger.info("全銘柄の急落検知とテクニカル指標に基づく警告が実行されました。")
         except Exception as e:
             logger.error(f"急落検知処理中にエラーが発生しました: {e}")
 
-    logger.info("=== 日次タスク完了 ===")
+    logger.info(f"=== 日次タスク完了 (テストモード: {is_test_mode}) ===")
 
 
-def run_weekly_task():
-    logger.info("=== 週次タスク開始 ===")
+def run_weekly_task(is_test_mode: bool = False):
+    logger.info(f"=== 週次タスク開始 (テストモード: {is_test_mode}) ===")
     # 1. 全銘柄売買タイミング分析 (直近3ヶ月)
-    every_stock_buy_and_sell_timing.run_analysis(period="3mo")
-    generate_all_charts.main(period="3mo")  # 週次レポート用として3ヶ月期間を指定
+    every_stock_buy_and_sell_timing.run_analysis(period="3mo", is_test_mode=is_test_mode)
+    logger.info("全銘柄売買タイミング分析 (週次) が実行されました。")
+    generate_all_charts.main(period="3mo", is_test_mode=is_test_mode)  # 週次レポート用として3ヶ月期間を指定
+    logger.info("全銘柄チャート一括生成 (週次) が実行されました。")
 
     # 2. ポートフォリオ分析
-    analyzer.analyze_portfolio()
+    analyzer.analyze_portfolio(is_test_mode=is_test_mode)
+    logger.info("ポートフォリオ分析が実行されました。")
 
     # 3. 週次レポートのSlack通知 (analyzer.analyze_portfolio()内で既に呼び出されるため、ここでは不要)
-    # send_weekly_report()
+    if not is_test_mode:
+        # send_weekly_report() # analyzer.analyze_portfolio()内で既に呼び出されるため、ここでは不要
+        pass
+    else:
+        logger.info("テストモードのため、週次レポートの送信はスキップします。")
 
-    logger.info("=== 週次タスク完了 ===")
+    logger.info(f"=== 週次タスク完了 (テストモード: {is_test_mode}) ===")
 
 
-def run_monthly_task():
-    logger.info("=== 月次タスク開始 ===")
+def run_monthly_task(is_test_mode: bool = False):
+    logger.info(f"=== 月次タスク開始 (テストモード: {is_test_mode}) ===")
     # 1. 四半期データ収集・分析
-    python.analysis.data_collector.main()
+    python.analysis.data_collector.main(is_test_mode=is_test_mode)
+    logger.info("四半期データ収集・分析が実行されました。")
 
     # 2. 全銘柄売買タイミング分析 (直近6ヶ月)
-    every_stock_buy_and_sell_timing.run_analysis(period="6mo")
-    generate_all_charts.main(period="6mo")
+    every_stock_buy_and_sell_timing.run_analysis(period="6mo", is_test_mode=is_test_mode)
+    logger.info("全銘柄売買タイミング分析 (月次) が実行されました。")
+    generate_all_charts.main(period="6mo", is_test_mode=is_test_mode)
+    logger.info("全銘柄チャート一括生成 (月次) が実行されました。")
 
     # 3. 月次レポートのSlack通知
-    send_monthly_report()
-    logger.info("=== 月次タスク完了 ===")
+    if not is_test_mode:
+        send_monthly_report()
+    else:
+        logger.info("テストモードのため、月次レポートの送信はスキップします。")
+    logger.info(f"=== 月次タスク完了 (テストモード: {is_test_mode}) ===")
 
 
 def run_yearly_task():
@@ -234,6 +258,7 @@ def analyze_background_task():
 
 def run_always_mode():
     logger.info("=== alwaysモード開始: バックグラウンドタスクを起動します ===")
+    send_startup_report()  # 起動確認レポートを送信
 
     # watchタスク (市場開閉に合わせて株価を監視)
     watch_thread = threading.Thread(target=watch_task, daemon=True)
@@ -253,9 +278,37 @@ def run_always_mode():
         time.sleep(1)
 
 
+def run_always_test_task():
+    logger.info("=== always-testモード開始: バックグラウンドタスクを1回実行します ===")
+    send_startup_report()  # 起動確認レポートを送信
+
+    logger.info("watchタスク (株価監視) を1回実行します。")
+    if is_market_open():
+        run_once_with_crash_check()
+    else:
+        logger.info("市場閉場中: watchタスクはスキップします。")
+
+    logger.info("monitorタスク (リソース使用率の監視) を1回実行します。")
+    log_resource_usage(1)  # 1秒間だけリソース使用率をログに記録
+
+    logger.info("analyzeタスク (急落検知とテクニカル指標に基づく警告) を1回実行します。")
+    stock_df = pd.read_csv(config.codes_path)
+    if is_market_open():
+        for index, row in stock_df.iterrows():
+            code = row["code"]
+            name = row["name"]
+            run_analyze_daily_data(code, name)
+    else:
+        logger.info("市場閉場中: analyzeタスクはスキップします。")
+
+    logger.info("=== always-testモード完了 ===")
+
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        logger.error("実行モードを指定してください: daily / weekly / monthly / yearly / always")
+        logger.error(
+            "実行モードを指定してください: daily / weekly / monthly / yearly / always / always-test / daily-test / weekly-test / monthly-test"
+        )
         sys.exit(1)
 
     mode = sys.argv[1].lower()
@@ -269,6 +322,16 @@ if __name__ == "__main__":
         run_yearly_task()
     elif mode == "always":
         run_always_mode()
+    elif mode == "always-test":
+        run_always_test_task()
+    elif mode == "daily-test":
+        run_daily_task(is_test_mode=True)
+    elif mode == "weekly-test":
+        run_weekly_task(is_test_mode=True)
+    elif mode == "monthly-test":
+        run_monthly_task(is_test_mode=True)
     else:
-        logger.error("不明なモードです: daily / weekly / monthly / yearly / always を指定してください")
+        logger.error(
+            "不明なモードです: daily / weekly / monthly / yearly / always / always-test / daily-test / weekly-test / monthly-test を指定してください"
+        )
         sys.exit(1)

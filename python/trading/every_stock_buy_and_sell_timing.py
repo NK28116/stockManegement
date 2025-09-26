@@ -321,8 +321,17 @@ class EveryStockAnalyzer:
 
         return "\n".join(report)
 
-    def save_reports(self, results: List[Dict]) -> None:
+    def save_reports(self, results: List[Dict], is_test_mode: bool = False) -> None:
         """レポートを保存"""
+        if is_test_mode:
+            loggerBuySellTiming.info("テストモードのため、レポートの保存はスキップします。")
+            # テストモードではレポート内容をログに出力するなどで確認できるようにする
+            summary_report = self.generate_summary_report(results)
+            detailed_report = self.generate_detailed_report(results)
+            loggerBuySellTiming.debug(f"サマリーレポート (テストモード):\n{summary_report}")
+            loggerBuySellTiming.debug(f"詳細レポート (テストモード):\n{detailed_report}")
+            return
+
         try:
             # サマリーレポート
             summary_report = self.generate_summary_report(results)
@@ -524,7 +533,7 @@ def run():
     analyzer.save_reports(results)
 
 
-def run_analysis(period: str = "3mo"):
+def run_analysis(period: str = "3mo", is_test_mode: bool = False):
     """
     指定された期間で全銘柄の売買タイミング分析を実行し、レポートを保存する。
     main.pyからの定期タスク実行用。
@@ -532,7 +541,7 @@ def run_analysis(period: str = "3mo"):
     csv_file = config.codes_path
     analyzer = EveryStockAnalyzer(csv_file)
     results = analyzer.analyze_all_stocks(period=period)
-    analyzer.save_reports(results)
+    analyzer.save_reports(results, is_test_mode=is_test_mode)
 
 
 def main():

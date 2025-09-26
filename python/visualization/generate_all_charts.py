@@ -9,13 +9,13 @@ from python.visualization.stock_chart_visualizer import StockChartVisualizer
 __all__ = ["main"]
 
 
-def main(period="3mo"):
+def main(period="3mo", is_test_mode: bool = False):
     """全銘柄のチャートを一括生成"""
 
-    print("=== 全銘柄チャート一括生成 ===")
+    print(f"=== 全銘柄チャート一括生成 (テストモード: {is_test_mode}) ===")
 
     # Create visualizer
-    visualizer = StockChartVisualizer(period=period)
+    visualizer = StockChartVisualizer(period=period, is_test_mode=is_test_mode)
 
     # Generate charts for actual portfolio (my_stock.csv)
     portfolio_file = "my_stock.csv"
