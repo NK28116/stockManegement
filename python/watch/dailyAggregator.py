@@ -1,10 +1,8 @@
 from datetime import datetime, timedelta  # timedelta を追加
 
 import pandas as pd
-import psycopg2
 from psycopg2 import Error as PgError
 
-from python.config import config
 from python.db.database import get_db_connection
 from python.utils.logger import get_logger
 
@@ -68,8 +66,7 @@ def aggregate_intraday_to_daily(target_date: str):
         conn = get_db_connection()
         # その日の全銘柄の分足データを取得
         query = (
-            f"SELECT code, timestamp, price, volume FROM intraday "
-            f"WHERE timestamp::date = %s ORDER BY timestamp ASC"
+            "SELECT code, timestamp, price, volume FROM intraday " "WHERE timestamp::date = %s ORDER BY timestamp ASC"
         )
         df = pd.read_sql_query(query, conn, params=(target_date,))
 
@@ -91,7 +88,7 @@ def aggregate_intraday_to_daily(target_date: str):
             high_price = stock_df["price"].max()
             low_price = stock_df["price"].min()
             close_price = stock_df["price"].iloc[-1]
-            total_volume = stock_df["volume"].sum()
+            total_volume = int(stock_df["volume"].sum())  # numpy.int64をintに変換
 
             save_daily_data_to_db(code, target_date, open_price, high_price, low_price, close_price, total_volume)
             logger.info(f"銘柄 {code} の {target_date} 日足データを保存しました。")
