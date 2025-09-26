@@ -28,7 +28,6 @@ venv/
 KEY.json
 
 # 設定ファイル (機密情報を含む場合)
-python/config.py
 
 # API設定ファイル
 data/API/kabu_STATION_API.yaml
