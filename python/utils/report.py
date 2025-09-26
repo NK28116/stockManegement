@@ -3,14 +3,20 @@ import threading
 import time
 from datetime import datetime, timedelta
 
+import pandas as pd  # detect_sharp_declineで必要
 import psutil
 
+from python.analysis.portfolio_analyzer import PortfolioAnalyzer  # ポートフォリオ分析用
 from python.config import config
 from python.utils.alert import send_alert
+from python.utils.indicators import detect_sharp_decline  # 急落アラート用
 from python.utils.logger import get_logger
 from python.utils.monitor import api_call_count, get_db_size
 
 logger = get_logger("report", category="report")
+
+# PortfolioAnalyzerのインスタンスを生成
+analyzer = PortfolioAnalyzer()
 
 __all__ = [
     "send_daily_morning_report",
@@ -95,8 +101,34 @@ def send_daily_morning_report():
     else:
         message += "全銘柄売買タイミング分析サマリーレポートが見つかりませんでした。\n\n"
 
+    # 日足での急落アラート
+    # ポートフォリオ内の全銘柄の株価データを取得し、急落を検出
+    portfolio_df = analyzer.get_portfolio()
+    sharp_declines_messages = []
+    for _, holding in portfolio_df.iterrows():
+        ticker = holding["code"]
+        price_df = analyzer.fetch_stock_data(ticker, period="5d")  # 過去数日間のデータ
+        if not price_df.empty:
+            # インデックスを日付型に変換
+            price_df.index = pd.to_datetime(price_df.index)
+            # 前日のデータのみを対象
+            yesterday_prices = price_df[price_df.index.date == yesterday.date()]["Close"]
+            if not yesterday_prices.empty:
+                # detect_sharp_declineはSeriesを期待
+                sharp_declines = detect_sharp_decline(yesterday_prices, decline_threshold=0.05)
+                if not sharp_declines.empty:
+                    for _, row in sharp_declines.iterrows():
+                        sharp_declines_messages.append(
+                            f"・{holding['name']} ({ticker}): {row['DeclineRate']} の急落 ({row['Date']})"
+                        )
+
+    if sharp_declines_messages:
+        message += "【前日の日足急落アラート】\n" + "\n".join(sharp_declines_messages) + "\n\n"
+    else:
+        message += "【前日の日足急落アラート】\n該当する銘柄はありませんでした。\n\n"
+
     message += "【今日の市場の動き】\n"
-    message += "市場全体の動向や、注目すべきニュース、日足での急落アラートなどをここに含めます。\n"
+    message += "市場全体の動向や、注目すべきニュースなどをここに含めます。\n"
     message += "詳細な日足分析結果はログまたは別途生成される詳細レポートをご確認ください。\n"
 
     send_alert(message, level="INFO")
@@ -140,8 +172,37 @@ def send_daily_evening_report():
     else:
         message += "全銘柄売買タイミング分析サマリーレポートが見つかりませんでした。\n\n"
 
+    # 日足での急落アラート (当日)
+    portfolio_df = analyzer.get_portfolio()
+    sharp_declines_messages = []
+    for _, holding in portfolio_df.iterrows():
+        ticker = holding["code"]
+        price_df = analyzer.fetch_stock_data(ticker, period="5d")  # 過去数日間のデータ
+        if not price_df.empty:
+            price_df.index = pd.to_datetime(price_df.index)
+            today_prices = price_df[price_df.index.date == today.date()]["Close"]
+            if not today_prices.empty:
+                sharp_declines = detect_sharp_decline(today_prices, decline_threshold=0.05)
+                if not sharp_declines.empty:
+                    for _, row in sharp_declines.iterrows():
+                        sharp_declines_messages.append(
+                            f"・{holding['name']} ({ticker}): {row['DeclineRate']} の急落 ({row['Date']})"
+                        )
+
+    if sharp_declines_messages:
+        message += "【今日の日足急落アラート】\n" + "\n".join(sharp_declines_messages) + "\n\n"
+    else:
+        message += "【今日の日足急落アラート】\n該当する銘柄はありませんでした。\n\n"
+
+    # ポートフォリオ全体の当日の損益
+    daily_pnl = analyzer.get_portfolio_pnl(today - timedelta(days=1), today)  # 前日終値から当日終値までの損益
+    message += "【ポートフォリオ日次損益】\n"
+    message += f"・総損益: {daily_pnl['total_pnl']:.2f}円\n"
+    message += f"・実現損益: {daily_pnl['realized_pnl']:.2f}円\n"
+    message += f"・評価損益: {daily_pnl['unrealized_pnl']:.2f}円\n\n"
+
     message += "【今日の市場の動き】\n"
-    message += "市場全体の動向や、注目すべきニュース、日足での急落アラートなどをここに含めます。\n"
+    message += "市場全体の動向や、注目すべきニュースなどをここに含めます。\n"
     message += "詳細な日足分析結果はログまたは別途生成される詳細レポートをご確認ください。\n"
 
     send_alert(message, level="INFO")
@@ -181,7 +242,32 @@ def send_weekly_report():
         else:
             message += "最新のチャート画像が見つかりませんでした。\n"
 
-    message += "\n【週間の市場トレンドと注目銘柄】\n"
+    # 週間のポートフォリオ損益
+    last_week = datetime.now() - timedelta(weeks=1)
+    weekly_pnl = analyzer.get_portfolio_pnl(last_week, datetime.now())
+    message += "【ポートフォリオ週次損益】\n"
+    message += f"・総損益: {weekly_pnl['total_pnl']:.2f}円\n"
+    message += f"・実現損益: {weekly_pnl['realized_pnl']:.2f}円\n"
+    message += f"・評価損益: {weekly_pnl['unrealized_pnl']:.2f}円\n\n"
+
+    # 資産配分
+    asset_allocation = analyzer.get_portfolio_asset_allocation()
+    message += "【ポートフォリオ資産配分】\n"
+    message += "・セクター別:\n"
+    if asset_allocation["sector_allocation"]:
+        for sector, percentage in asset_allocation["sector_allocation"].items():
+            message += f"  - {sector}: {percentage:.2f}%\n"
+    else:
+        message += "  - データなし\n"
+    message += "・銘柄別:\n"
+    if asset_allocation["stock_allocation"]:
+        for stock, percentage in asset_allocation["stock_allocation"].items():
+            message += f"  - {stock}: {percentage:.2f}%\n"
+    else:
+        message += "  - データなし\n"
+    message += "\n"
+
+    message += "【週間の市場トレンドと注目銘柄】\n"
     message += "週間での市場全体のトレンドやセクターごとの動向、特にパフォーマンスが良かった/悪かった銘柄のハイライトなどをここに含めます。\n"
 
     send_alert(message, level="INFO")
@@ -203,16 +289,46 @@ def send_monthly_report():
     else:
         message += "詳細レポートが見つかりませんでした。\n"
 
-    message += "\n【月間のポートフォリオパフォーマンス】\n"
-    message += (
-        "月間の総投資額、総リターン、年率リターン、シャープレシオなどの詳細なパフォーマンス分析をここに含めます。\n"
-    )
-    message += "\n【ポートフォリオの再構築検討事項】\n"
-    message += "月間のパフォーマンスに基づいたポートフォリオの見直しや、今後の戦略に関する提案をここに含めます。\n"
-    message += "\n【市場の長期トレンド分析と経済指標の影響】\n"
+    # 月間のポートフォリオパフォーマンス
+    last_month_start = datetime.now().replace(day=1)
+    monthly_performance = analyzer.get_portfolio_monthly_performance(datetime.now())
+    message += "【月間のポートフォリオパフォーマンス】\n"
+    message += f"・総投資額: {monthly_performance['total_investment']:.2f}円\n"
+    message += f"・総リターン: {monthly_performance['total_return']:.2f}円\n"
+    message += f"・年率リターン: {monthly_performance['annualized_return']:.2%}\n"
+    message += f"・シャープレシオ: {monthly_performance['sharpe_ratio']:.2f}\n"
+    message += f"・月間損益: {monthly_performance['monthly_pnl']:.2f}円\n"
+    message += f"・月間資産配分変化: {monthly_performance['asset_allocation_change']:.2%}\n\n"
+
+    # ポートフォリオの再構築検討事項
+    rebalancing_suggestions = analyzer.get_portfolio_rebalancing_suggestions()
+    message += "【ポートフォリオの再構築検討事項】\n"
+    message += rebalancing_suggestions + "\n\n"
+
+    message += "【市場の長期トレンド分析と経済指標の影響】\n"
     message += "月間を通じた市場全体の長期的なトレンド分析、主要な経済指標やイベントがポートフォリオに与えた影響の分析をここに含めます。\n"
-    message += "\n【個別銘柄の月間パフォーマンス】\n"
-    message += "各銘柄の月間での損益、売買履歴、今後の見通しをここに含めます。\n"
+
+    # 個別銘柄の月間パフォーマンス (ポートフォリオ内の全銘柄)
+    portfolio_df = analyzer.get_portfolio()
+    if not portfolio_df.empty:
+        message += "【個別銘柄の月間パフォーマンス】\n"
+        for _, holding in portfolio_df.iterrows():
+            code = holding["code"]
+            individual_performance = analyzer.get_individual_stock_performance(code, last_month_start, datetime.now())
+            if "error" not in individual_performance:
+                message += f"・{individual_performance['name']} ({individual_performance['code']}):\n"
+                message += f"  - 月間損益: {individual_performance['pnl']:.2f}円\n"
+                message += f"  - 最新価格: {individual_performance['latest_price']:.2f}円\n"
+                message += f"  - 今後の見通し: {individual_performance['outlook']}\n"
+                if individual_performance["transactions"]:
+                    message += "  - 最近の取引:\n"
+                    for tx in individual_performance["transactions"]:
+                        message += f"    - {tx['trade_date'].strftime('%Y-%m-%d')} {tx['trade_type']} {tx['quantity']}株 @ {tx['price']}円\n"
+                message += "\n"
+            else:
+                message += f"・{code}: パフォーマンスデータの取得に失敗しました ({individual_performance['error']})\n"
+    else:
+        message += "【個別銘柄の月間パフォーマンス】\nポートフォリオに銘柄がありません。\n\n"
 
     send_alert(message, level="INFO")
     logger.info("月次レポートのSlack送信が完了しました。")
