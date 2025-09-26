@@ -384,7 +384,7 @@ class StockChartVisualizer:
                     figSignal.savefig(chart_path, dpi=150, bbox_inches="tight")
                     print(f"  チャート保存: {chart_path}")
                 else:
-                    print(f"  テストモードのため、チャートの保存はスキップします。")
+                    print("テストモードのため、チャートの保存はスキップします。")
                 plt.close(figSignal)
 
                 # Generate summary
