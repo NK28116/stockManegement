@@ -1,17 +1,19 @@
+import json
+from pathlib import Path
+
 import pandas as pd
 import psycopg2
 from psycopg2 import Error as PgError
 
 from python.config import config
 from python.db.database import get_db_connection
-from ..utils.alert import send_alert
 from python.utils.indicators import (  # インジケーター計算関数をインポート
     calculate_bollinger_bands,
     calculate_macd,
 )
 from python.utils.logger import get_logger
-from pathlib import Path
-import json
+
+from ..utils.alert import send_alert
 
 logger = get_logger("analyze", category="watch")
 
@@ -23,11 +25,14 @@ FLAG_DIR = Path("data/crash_flags")
 FLAG_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def save_intraday_crash_flag(code: str, date: pd.Timestamp):
+def save_intraday_crash_flag(code: str, date: pd.Timestamp, is_test_mode: bool = False):
     """分足急落フラグを保存"""
-    flag_file = FLAG_DIR / f"{code}_{date.strftime('%Y%m%d')}.json"
-    with open(flag_file, "w") as f:
-        json.dump({"crash": True}, f)
+    if not is_test_mode:
+        flag_file = FLAG_DIR / f"{code}_{date.strftime('%Y%m%d')}.json"
+        with open(flag_file, "w") as f:
+            json.dump({"crash": True}, f)
+    else:
+        logger.info(f"テストモードのため、分足急落フラグの保存はスキップします: {code}_{date.strftime('%Y%m%d')}")
 
 
 def check_intraday_crash_flag(code: str, date: pd.Timestamp) -> bool:
@@ -60,7 +65,7 @@ def get_intraday_price_data(code, limit_minutes=60):  # 15分足作成に必要�
             conn.close()
 
 
-def analyze_minute_data(code: str, name: str):
+def analyze_minute_data(code: str, name: str, is_test_mode: bool = False):
     """指定された銘柄の15分足データを分析し急落検知やテクニカル指標に基づく警告を行う
 
     Args:
@@ -102,10 +107,10 @@ def analyze_minute_data(code: str, name: str):
             logger.warning(message)
             from python.utils.alert import send_alert
 
-            send_alert(message, level="WARNING")
+            send_alert(message, level="WARNING", is_test_mode=is_test_mode)
 
             # 🚨 フラグ保存（当日分足急落あり）
-            save_intraday_crash_flag(code, df.index[-1])
+            save_intraday_crash_flag(code, df.index[-1], is_test_mode=is_test_mode)
 
     # --- MACD分析 ---
     if len(df) >= config.macd_long_period:  # MACD計算に必要な期間
@@ -147,7 +152,7 @@ def get_daily_price_data(code, limit=config.volatility_period + 20):  # MACD/BB�
             conn.close()
 
 
-def analyze_daily_data(code: str, name: str):
+def analyze_daily_data(code: str, name: str, is_test_mode: bool = False):
     """
     指定された銘柄の日足データを分析し、急落検知やテクニカル指標に基づく警告を行う
 
@@ -174,7 +179,7 @@ def analyze_daily_data(code: str, name: str):
                     f"{name} ({code}) 終値で急落確定！（日中にも急落発生）: "
                     f"{prev_close:.1f} -> {current_close:.1f} ({drop_pct:.2f}%)"
                 )
-                send_alert(message, level="CRITICAL")
+                send_alert(message, level="CRITICAL", is_test_mode=is_test_mode)
                 logger.error(message)
             else:
                 # 日足だけ急落 → 通常警告
@@ -182,7 +187,7 @@ def analyze_daily_data(code: str, name: str):
                     f"{name} ({code}) 日足で {config.crash_threshold}%以上下落: "
                     f"{prev_close:.1f} -> {current_close:.1f} ({drop_pct:.2f}%)"
                 )
-                send_alert(message, level="WARNING")
+                send_alert(message, level="WARNING", is_test_mode=is_test_mode)
                 logger.warning(message)
 
     # --- MACD分析 ---

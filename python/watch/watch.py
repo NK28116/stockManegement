@@ -140,11 +140,15 @@ def get_stock_price(symbol: str) -> float:
 
 
 # --- 共通処理 ---
-def _monitor_stock(code, current_dt, price, volume, history, last_price, name=None):
+def _monitor_stock(code, current_dt, price, volume, history, last_price, name=None, is_test_mode: bool = False):
     """
     監視処理共通化（銘柄ごとにまとめてログ出力）
     """
-    save_data_to_db(code, current_dt, price, volume)
+    if not is_test_mode:
+        save_data_to_db(code, current_dt, price, volume)
+        logger.info("\n DB保存成功: intraday にデータ追加")
+    else:
+        logger.info("\n テストモードのため、DB保存はスキップ: intraday にデータ追加")
     history.append(float(price))
 
     logs = []
@@ -237,19 +241,19 @@ def run_once():
     return results
 
 
-def detect_intraday_crash(code, current_price, last_price):
+def detect_intraday_crash(code, current_price, last_price, is_test_mode: bool = False):
     if last_price is None or last_price == 0:
         return None
 
     drop_pct = (current_price - last_price) / last_price * 100
     if drop_pct <= config.crash_threshold:
         message = f"[分足急落] {code}: {last_price:.1f} -> {current_price:.1f} " f"({drop_pct:.2f}%)"
-        send_alert(message, level="WARNING")  # Slack に送信
+        send_alert(message, level="WARNING", is_test_mode=is_test_mode)  # Slack に送信
         return message
     return None
 
 
-def run_once_with_crash_check():
+def run_once_with_crash_check(is_test_mode: bool = False):
     """分足1回取得＋急落検知"""
     codes = load_stock_codes()
     current_dt = datetime.now()
@@ -260,8 +264,8 @@ def run_once_with_crash_check():
         history = get_price_history(code, limit=3)
         last_price = history[-1] if history else None
 
-        _monitor_stock(code, current_dt, price, volume, history, last_price)
-        alert = detect_intraday_crash(code, price, last_price)
+        _monitor_stock(code, current_dt, price, volume, history, last_price, is_test_mode=is_test_mode)
+        alert = detect_intraday_crash(code, price, last_price, is_test_mode=is_test_mode)
         if alert:
             alerts.append(alert)
 
