@@ -68,7 +68,7 @@ def run_daily_task():
         every_stock_buy_and_sell_timing.run_analysis(period="1mo")
 
         # 3. 全銘柄チャート一括生成
-        generate_all_charts.main(period="3mo")  # 日次レポート用として3ヶ月期間を指定
+        generate_all_charts.main(period="1mo")  # 日次レポート用として3ヶ月期間を指定
 
         # 4. 日次モニターレポートのSlack通知 (市場開場前)
         send_daily_evening_report()
@@ -91,6 +91,7 @@ def run_weekly_task():
     logger.info("=== 週次タスク開始 ===")
     # 1. 全銘柄売買タイミング分析 (直近3ヶ月)
     every_stock_buy_and_sell_timing.run_analysis(period="3mo")
+    generate_all_charts.main(period="3mo")  # 週次レポート用として3ヶ月期間を指定
 
     # 2. ポートフォリオ分析
     analyzer.analyze_portfolio()
@@ -108,6 +109,7 @@ def run_monthly_task():
 
     # 2. 全銘柄売買タイミング分析 (直近6ヶ月)
     every_stock_buy_and_sell_timing.run_analysis(period="6mo")
+    generate_all_charts.main(period="6mo")
 
     # 3. 月次レポートのSlack通知
     send_monthly_report()
