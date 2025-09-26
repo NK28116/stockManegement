@@ -7,6 +7,9 @@
 import os
 from pathlib import Path
 from typing import Any, Dict
+import dotenv
+
+dotenv.load_dotenv()  # .envファイルの読み込み
 
 
 class Config:
@@ -51,7 +54,7 @@ class Config:
         self.default_portfolio_file = self.root_dir / "data" / "my_stock.csv"
 
         # アラート設定
-        self.slack_webhook = os.getenv("SLACK_WEBHOOK", "")
+        self.slack_webhook = os.getenv("SLACK_WEBHOOK", "{SLACK_WEBHOOK}")
 
         # 証券会社API
         self.XXXX_API_KEY = os.getenv("XXXX_API_KEY", "")
