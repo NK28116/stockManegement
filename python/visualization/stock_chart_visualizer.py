@@ -46,15 +46,22 @@ __all__ = ["StockChartVisualizer", "main"]
 class StockChartVisualizer:
     """株価チャート可視化クラス"""
 
-    def __init__(self, period="3mo"):
+    def __init__(self, period="3mo", is_test_mode: bool = False):
         self.period = period
+        self.is_test_mode = is_test_mode
         self.trading_rules = ImprovedTradingRules()
         self.data_dir = f"{config.data_dir}/chartImg"  # 出力先を変更
         self.plot_image_dir = f"{config.data_dir}/plots"  # 銘柄ごとのMACDとボリンジャーバンドグラフ
-        os.makedirs(self.data_dir, exist_ok=True)
+        if not self.is_test_mode:
+            os.makedirs(self.data_dir, exist_ok=True)
+            os.makedirs(self.plot_image_dir, exist_ok=True)
 
     def clean_data_dir(self):
         """出力先の既存PNGを削除"""
+        if self.is_test_mode:
+            print("テストモードのため、既存PNGの削除はスキップします。")
+            return
+
         removed = 0
         for name in os.listdir(self.data_dir):
             if name.lower().endswith(".png"):
@@ -373,10 +380,12 @@ class StockChartVisualizer:
                 # Save chart
                 chart_filename = f"{stock_info['code'].replace('.', '_')}_{stock_info['name']}.png"
                 chart_path = os.path.join(self.data_dir, chart_filename)
-                figSignal.savefig(chart_path, dpi=150, bbox_inches="tight")
+                if not self.is_test_mode:
+                    figSignal.savefig(chart_path, dpi=150, bbox_inches="tight")
+                    print(f"  チャート保存: {chart_path}")
+                else:
+                    print(f"  テストモードのため、チャートの保存はスキップします。")
                 plt.close(figSignal)
-
-                print(f"  チャート保存: {chart_path}")
 
                 # Generate summary
                 summary = self.generate_trading_summary(stock_info, trades, metrics)
@@ -396,31 +405,42 @@ class StockChartVisualizer:
 
         print("\n=== 処理完了 ===")
         print(f"成功: {successful_charts}/{len(stocks)} 銘柄")
-        print(f"チャート保存先: {os.path.abspath(self.data_dir)}")
+        if not self.is_test_mode:
+            print(f"チャート保存先: {os.path.abspath(self.data_dir)}")
+        else:
+            print("テストモードのため、チャートは保存されませんでした。")
 
-    def save_summary_report(self, summaries: List[str], portfolio_file: str):
-        """サマリーレポートを保存"""
-        print(f"\n=== サマリーレポート保存開始: {portfolio_file} ===")  # デバッグ用
-        print(f"  保存されるサマリー数: {len(summaries)}")  # デバッグ用
-        for i, s in enumerate(summaries):  # デバッグ用
-            print(f"  サマリー {i+1}:\n{s}")  # デバッグ用
-        try:
-            report_filename = f"trading_summary_{portfolio_file.replace('.csv', '')}.txt"
-            report_path = os.path.join(self.data_dir, report_filename)
 
-            with open(report_path, "w", encoding="utf-8") as f:
-                f.write("=== 全銘柄売買タイミング分析レポート ===\n")
-                f.write(f"作成日時: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"対象ポートフォリオ: {portfolio_file}\n")
-                f.write("=" * 60 + "\n")
+def save_summary_report(self, summaries: List[str], portfolio_file: str):
+    """サマリーレポートを保存"""
+    print(f"\n=== サマリーレポート保存開始: {portfolio_file} ===")  # デバッグ用
+    print(f"  保存されるサマリー数: {len(summaries)}")  # デバッグ用
+    for i, s in enumerate(summaries):  # デバッグ用
+        print(f"  サマリー {i+1}:\n{s}")  # デバッグ用
 
-                for summary in summaries:
-                    f.write(summary + "\n\n")
+    if self.is_test_mode:
+        print("テストモードのため、サマリーレポートの保存はスキップします。")
+        for summary in summaries:
+            print(f"サマリーレポート (テストモード):\n{summary}")
+        return
 
-            print(f"サマリーレポート保存: {report_path}")
+    try:
+        report_filename = f"trading_summary_{portfolio_file.replace('.csv', '')}.txt"
+        report_path = os.path.join(self.data_dir, report_filename)
 
-        except Exception as e:
-            print(f"レポート保存エラー: {e}")
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write("=== 全銘柄売買タイミング分析レポート ===\n")
+            f.write(f"作成日時: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"対象ポートフォリオ: {portfolio_file}\n")
+            f.write("=" * 60 + "\n")
+
+            for summary in summaries:
+                f.write(summary + "\n\n")
+
+        print(f"サマリーレポート保存: {report_path}")
+
+    except Exception as e:
+        print(f"レポート保存エラー: {e}")
 
 
 def main():

@@ -167,24 +167,32 @@ def get_stock_list_from_db() -> list:
             conn.close()
 
 
-def main():
+def main(is_test_mode: bool = False):
     collector = StockDataCollector()
     results = []
     codes = get_stock_list_from_db()
     logger.info(f"DBから取得した銘柄数: {len(codes)}")
 
     for code in codes:
-        collector.fetch_and_store_prices(code, collector.four_quarter_start, collector.four_quarter_end)
+        if not is_test_mode:
+            collector.fetch_and_store_prices(code, collector.four_quarter_start, collector.four_quarter_end)
+        else:
+            logger.info(f"テストモードのため、{code}の日次データ取得・保存はスキップします。")
+
         stock_data = collector.collect_stock_data(code)
         if stock_data:
             stock_data["コード"] = code
             results.append(stock_data)
 
     if results:
-        output_path = os.path.join(config.data_dir, "quarterly_data_collection.csv")
-        os.makedirs(config.data_dir, exist_ok=True)
-        pd.DataFrame(results).to_csv(output_path, index=False, encoding="utf-8")
-        logger.info(f"分析結果を保存しました: {output_path}")
+        if not is_test_mode:
+            output_path = os.path.join(config.data_dir, "quarterly_data_collection.csv")
+            os.makedirs(config.data_dir, exist_ok=True)
+            pd.DataFrame(results).to_csv(output_path, index=False, encoding="utf-8")
+            logger.info(f"分析結果を保存しました: {output_path}")
+        else:
+            logger.info("テストモードのため、分析結果のCSV保存はスキップします。")
+            logger.debug(f"分析結果 (テストモード):\n{pd.DataFrame(results).to_string()}")
     else:
         logger.warning("分析可能な銘柄データがありません")
 

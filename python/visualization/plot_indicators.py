@@ -23,12 +23,16 @@ def plot_macd_bollinger(
     stock_names: Dict[str, str],
     indicators: Dict[str, Dict[str, pd.DataFrame]],
     save_dir: str,
+    is_test_mode: bool = False,
 ) -> None:
     """
     銘柄ごとにMACDとボリンジャーバンドをグラフ化して保存
     """
-    os.makedirs(save_dir, exist_ok=True)
-    logging.info(f"保存先ディレクトリ: {save_dir}")
+    if not is_test_mode:
+        os.makedirs(save_dir, exist_ok=True)
+        logging.info(f"保存先ディレクトリ: {save_dir}")
+    else:
+        logging.info("テストモードのため、グラフの保存はスキップします。")
 
     for code, df in price_data.items():
         if df.empty or code not in indicators:
@@ -71,7 +75,10 @@ def plot_macd_bollinger(
         logging.info(f"グラフ作成完了: {code}")
 
         plt.tight_layout()
-        filepath = os.path.join(save_dir, f"{code}_{stock_name}_indicators.png")
-        plt.savefig(filepath)
+        if not is_test_mode:
+            filepath = os.path.join(save_dir, f"{code}_{stock_name}_indicators.png")
+            plt.savefig(filepath)
+            logging.info(f"グラフ保存完了: {filepath}")
+        else:
+            logging.info(f"テストモードのため、{code}のグラフ保存はスキップします。")
         plt.close()
-        logging.info(f"グラフ保存完了: {filepath}")
