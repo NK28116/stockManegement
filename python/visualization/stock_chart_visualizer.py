@@ -409,38 +409,38 @@ class StockChartVisualizer:
             print(f"チャート保存先: {os.path.abspath(self.data_dir)}")
         else:
             print("テストモードのため、チャートは保存されませんでした。")
+        print("テストモードのため、チャートは保存されませんでした。")
 
+    def save_summary_report(self, summaries: List[str], portfolio_file: str):
+        """サマリーレポートを保存"""
+        print(f"\n=== サマリーレポート保存開始: {portfolio_file} ===")  # デバッグ用
+        print(f"  保存されるサマリー数: {len(summaries)}")  # デバッグ用
+        for i, s in enumerate(summaries):  # デバッグ用
+            print(f"  サマリー {i+1}:\n{s}")  # デバッグ用
 
-def save_summary_report(self, summaries: List[str], portfolio_file: str):
-    """サマリーレポートを保存"""
-    print(f"\n=== サマリーレポート保存開始: {portfolio_file} ===")  # デバッグ用
-    print(f"  保存されるサマリー数: {len(summaries)}")  # デバッグ用
-    for i, s in enumerate(summaries):  # デバッグ用
-        print(f"  サマリー {i+1}:\n{s}")  # デバッグ用
-
-    if self.is_test_mode:
-        print("テストモードのため、サマリーレポートの保存はスキップします。")
-        for summary in summaries:
-            print(f"サマリーレポート (テストモード):\n{summary}")
-        return
-
-    try:
-        report_filename = f"trading_summary_{portfolio_file.replace('.csv', '')}.txt"
-        report_path = os.path.join(self.data_dir, report_filename)
-
-        with open(report_path, "w", encoding="utf-8") as f:
-            f.write("=== 全銘柄売買タイミング分析レポート ===\n")
-            f.write(f"作成日時: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"対象ポートフォリオ: {portfolio_file}\n")
-            f.write("=" * 60 + "\n")
-
+        if self.is_test_mode:
+            print("テストモードのため、サマリーレポートの保存はスキップします。")
             for summary in summaries:
-                f.write(summary + "\n\n")
+                print(f"サマリーレポート (テストモード):\n{summary}")
+            return
 
-        print(f"サマリーレポート保存: {report_path}")
+        try:
+            report_filename = f"trading_summary_{portfolio_file.replace('.csv', '')}.txt"
+            report_path = os.path.join(self.data_dir, report_filename)
 
-    except Exception as e:
-        print(f"レポート保存エラー: {e}")
+            with open(report_path, "w", encoding="utf-8") as f:
+                f.write("=== 全銘柄売買タイミング分析レポート ===\n")
+                f.write(f"作成日時: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"対象ポートフォリオ: {portfolio_file}\n")
+                f.write("=" * 60 + "\n")
+
+                for summary in summaries:
+                    f.write(summary + "\n\n")
+
+            print(f"サマリーレポート保存: {report_path}")
+
+        except Exception as e:
+            print(f"レポート保存エラー: {e}")
 
 
 def main():
