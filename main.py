@@ -326,7 +326,9 @@ def run_always_test_task():
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         logger.error(
-            "実行モードを指定してください: daily / weekly / monthly / yearly / always / always-test / daily-test / weekly-test / monthly-test"
+            "実行モードを指定してください: \
+            daily / weekly / monthly / yearly / always / \
+            always-test / daily-test / weekly-test / monthly-test"
         )
         sys.exit(1)
 
@@ -351,6 +353,9 @@ if __name__ == "__main__":
         run_monthly_task(is_test_mode=True)
     else:
         logger.error(
-            "不明なモードです: daily / weekly / monthly / yearly / always / always-test / daily-test / weekly-test / monthly-test を指定してください"
+            "不明なモードです:\
+            daily / weekly / monthly / yearly / always / \
+            always-test / daily-test / weekly-test / monthly-test \
+            を指定してください"
         )
         sys.exit(1)

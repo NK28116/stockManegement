@@ -323,7 +323,10 @@ def send_monthly_report():
                 if individual_performance["transactions"]:
                     message += "  - 最近の取引:\n"
                     for tx in individual_performance["transactions"]:
-                        message += f"    - {tx['trade_date'].strftime('%Y-%m-%d')} {tx['trade_type']} {tx['quantity']}株 @ {tx['price']}円\n"
+                        message += f"    - {tx['trade_date'].strftime('%Y-%m-%d')} \
+                                            {tx['trade_type']} \
+                                            {tx['quantity']}株 \
+                                            @ {tx['price']}円\n"
                 message += "\n"
             else:
                 message += f"・{code}: パフォーマンスデータの取得に失敗しました ({individual_performance['error']})\n"
