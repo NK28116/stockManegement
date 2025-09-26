@@ -31,19 +31,18 @@ class AlertManager:
             if not self.alert_config["slack_webhook"]:
                 logger.warning("slack WEBHOOK が設定されていません")
                 return True  # テストモードなので成功として扱う
+            else:
+                # SLACK_WEBHOOKが設定されている場合、テストモードでも実際にSlack通知を送信
+                return self._send_slack(message, level)
 
-        if not self.alert_config["enabled"] and not is_test_mode:
+        if not self.alert_config["enabled"]:
             logger.warning("アラート機能が無効です")
             return False
 
-        success = True
-
         # Slack通知
         if self.alert_config["slack_webhook"]:
-            if not self._send_slack(message, level):
-                success = False
-
-        return success
+            return self._send_slack(message, level)
+        return False  # Slack webhookが設定されていない場合
 
     def _send_slack(self, message: str, level: str) -> bool:
         """Slackに通知を送信"""
