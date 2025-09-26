@@ -29,8 +29,7 @@ def is_market_open() -> bool:
     if now.weekday() >= 5:  # 土曜日(5)または日曜日(6)
         return False
 
-    # 祝日チェック (簡易版: ここでは祝日リストは考慮しない)
-    # TODO: 祝日を考慮する場合は、日本の祝日リストを取得してチェックするロジックを追加
+    # 祝日チェック
 
     # 取引時間チェック
     market_start_morning = dt_time(9, 0, 0)

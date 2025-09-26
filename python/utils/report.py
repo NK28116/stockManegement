@@ -13,6 +13,9 @@ from python.utils.indicators import detect_sharp_decline  # 急落アラート�
 from python.utils.logger import get_logger
 from python.utils.monitor import api_call_count, get_db_size
 
+import yfinance as yf
+
+
 logger = get_logger("report", category="report")
 
 # PortfolioAnalyzerのインスタンスを生成
@@ -62,6 +65,80 @@ def _get_latest_report_file(report_type: str) -> str | None:
     # ファイル名パターン: summary_report_YYYYMMDD_HHMMSS.txt または detailed_report_YYYYMMDD_HHMMSS.txt
     files = sorted(report_dir.glob(f"{report_type}_report_*.txt"), reverse=True)
     return str(files[0]) if files else None
+
+
+# TODO:以下のチェックリストを作成
+# 市場動向を効率よく把握・解釈できるように、日次チェックリスト（テンプレート）。
+
+# 市場動向チェックリスト
+# 1. 全体の方向感
+# 	•日経平均：📈 / 📉 （前日比 ○○円、△%）
+# 	•TOPIX：📈 / 📉 （前日比 ○○ポイント、△%）
+# 	•（参考）米国市場（ダウ / S&P500 / NASDAQ の動き）
+# 市場全体が上げているのか / 一部だけ動いているのかを確認
+
+# 2. 売買エネルギー
+# 	•	出来高（東証プライム）：○○億株（前日比 +△% / -△%）
+# 	•	売買代金：○兆円（活況 or 薄商い）
+# 出来高を伴った上昇/下落かどうかで本気度を判断
+
+# 3. セクター別動向
+# 	•	強い業種：例）半導体、銀行、不動産
+# 	•	弱い業種：例）輸送用機器、食品
+# テーマ性のある動きが出ているかチェック
+
+# 4. 指数間比較
+# 	•	日経平均 vs TOPIX
+# 	•	日経だけ↑ → 一部の大型株主導（ファストリ、ソフトバンクGなど）
+# 	•	TOPIXも↑ → 市場全体に買いが広がっている
+# 	•	NASDAQ vs S&P500
+# 	•	NASDAQ↑↑ → ハイテク中心
+# 	•	S&P500安定 → 米国市場全体は堅調
+
+# 5. テクニカル視点（日足ベース）
+# 	•	25日移動平均線より上 / 下？
+# 	•	RSI（相対力指数）：買われすぎ（70超） / 売られすぎ（30割れ）
+# 	•	急落アラート：前日比 -3%以上の下げ銘柄が多いか
+
+# 6. 注目ニュース
+# 	•	国内ニュース（金融政策、為替、企業決算）
+# 	•	海外ニュース（米国金利、FRB発言、地政学リスク、中国経済）
+# 数字の動きとニュースをセットで確認することが大事
+
+# #7. まとめコメント
+# 	•	「市場全体が堅調/軟調」
+# 	•	「一部の大型株主導 / 広範囲に買いが広がった」
+# 	•	「米国市場の影響を強く受けた / 国内材料主導」
+
+
+def _get_market_news_for_period(period: str) -> str:
+    # 各指数データ取得
+    nikkei = yf.Ticker("^N225").history(period=period)
+    topix = yf.Ticker("^TOPX").history(period=period)
+    nasdaq = yf.Ticker("^IXIC").history(period=period)
+    sp500 = yf.Ticker("^GSPC").history(period=period)
+
+    def summarize_index(df, name):
+        if df.empty:
+            return f"{name}のデータは取得できませんでした。"
+        start = df["Close"].iloc[0]
+        end = df["Close"].iloc[-1]
+        change = end - start
+        pct_change = (change / start) * 100
+        direction = "上昇" if change > 0 else "下落" if change < 0 else "横ばい"
+        return f"{name}は{direction}しました（前日比 {change:.2f}円 / {pct_change:.2f}%）。"
+
+    # 各指数の要約作成
+    summary = [
+        summarize_index(nikkei, "日経平均"),
+        summarize_index(topix, "TOPIX"),
+        summarize_index(nasdaq, "NASDAQ"),
+        summarize_index(sp500, "S&P500"),
+    ]
+
+    # 市場全体のコメントをまとめる
+    overall_comment = f"{period}の市場の動きです:\n" + "\n".join(summary)
+    return overall_comment
 
 
 # 平日の09:00(市場開場前)に前日のレポートを生成し、Slackに送信する
@@ -126,11 +203,6 @@ def send_daily_morning_report(is_test_mode: bool = False):
         message += "【前日の日足急落アラート】\n" + "\n".join(sharp_declines_messages) + "\n\n"
     else:
         message += "【前日の日足急落アラート】\n該当する銘柄はありませんでした。\n\n"
-
-    message += "【今日の市場の動き】\n"
-    message += "市場全体の動向や、注目すべきニュースなどをここに含めます。\n"
-    message += "詳細な日足分析結果はログまたは別途生成される詳細レポートをご確認ください。\n"
-
     send_alert(message, level="INFO")
     logger.info("前日の日次レポートのSlack送信が完了しました。")
 
@@ -202,7 +274,7 @@ def send_daily_evening_report(is_test_mode: bool = False):
     message += f"・評価損益: {daily_pnl['unrealized_pnl']:.2f}円\n\n"
 
     message += "【今日の市場の動き】\n"
-    message += "市場全体の動向や、注目すべきニュースなどをここに含めます。\n"
+    message += _get_market_news_for_period("1d") + "\n\n"
     message += "詳細な日足分析結果はログまたは別途生成される詳細レポートをご確認ください。\n"
 
     send_alert(message, level="INFO")
@@ -268,6 +340,7 @@ def send_weekly_report(is_test_mode: bool = False):
     message += "\n"
 
     message += "【週間の市場トレンドと注目銘柄】\n"
+    message += _get_market_news_for_period("7d") + "\n"
     message += "週間での市場全体のトレンドやセクターごとの動向、特にパフォーマンスが良かった/悪かった銘柄のハイライトなどをここに含めます。\n"
 
     send_alert(message, level="INFO")
@@ -306,6 +379,7 @@ def send_monthly_report(is_test_mode: bool = False):
     message += rebalancing_suggestions + "\n\n"
 
     message += "【市場の長期トレンド分析と経済指標の影響】\n"
+    message += _get_market_news_for_period("1m") + "\n"
     message += "月間を通じた市場全体の長期的なトレンド分析、主要な経済指標やイベントがポートフォリオに与えた影響の分析をここに含めます。\n"
 
     # 個別銘柄の月間パフォーマンス (ポートフォリオ内の全銘柄)
