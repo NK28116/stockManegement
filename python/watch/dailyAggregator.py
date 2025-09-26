@@ -84,10 +84,10 @@ def aggregate_intraday_to_daily(target_date: str):
                 continue
 
             # 日足のOHLCVを計算
-            open_price = stock_df["price"].iloc[0]
-            high_price = stock_df["price"].max()
-            low_price = stock_df["price"].min()
-            close_price = stock_df["price"].iloc[-1]
+            open_price = float(stock_df["price"].iloc[0])
+            high_price = float(stock_df["price"].max())
+            low_price = float(stock_df["price"].min())
+            close_price = float(stock_df["price"].iloc[-1])
             total_volume = int(stock_df["volume"].sum())  # numpy.int64をintに変換
 
             save_daily_data_to_db(code, target_date, open_price, high_price, low_price, close_price, total_volume)
