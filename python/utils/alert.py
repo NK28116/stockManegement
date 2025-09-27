@@ -1,3 +1,4 @@
+import json
 import os
 
 import requests
@@ -52,33 +53,65 @@ class AlertManager:
         """Slackに通知を送信"""
         try:
             if file_path and os.path.exists(file_path):
-                # ファイルを添付して送信する場合 (files.upload APIを使用)
-                # Slack Bot Token (xoxb-...) が必要
+                # ファイルを添付して送信する場合 (files.getUploadURLExternal & files.completeUploadExternal APIを使用)
                 slack_token = self.alert_config.get("slack_bot_token")
-                if not slack_token:
-                    logger.error("Slack Bot Token が設定されていません。ファイルを送信できません。")
+                slack_channel = self.alert_config.get("slack_channel")
+                if not slack_token or not slack_channel:
+                    logger.error(
+                        "Slack Bot Token または Slack Channel が設定されていません。ファイルを送信できません。"
+                    )
                     return False
 
-                # ファイル名を取得
                 file_name = os.path.basename(file_path)
+                file_size = os.path.getsize(file_path)
 
-                # files.upload API のエンドポイント
-                upload_url = "https://slack.com/api/files.upload"
-                headers = {"Authorization": f"Bearer {slack_token}"}
-                data = {
-                    "channels": self.alert_config["slack_channel"],  # 送信先のチャンネルID
-                    "initial_comment": f"[{level}] {message}",
-                    "title": file_name,
+                # 1. files.getUploadURLExternal を呼び出してアップロードURLを取得
+                get_upload_url = "https://slack.com/api/files.getUploadURLExternal"
+                get_upload_headers = {"Authorization": f"Bearer {slack_token}"}
+                get_upload_data = {
+                    "filename": file_name,
+                    "length": file_size,
                 }
-                with open(file_path, "rb") as f:
-                    files = {"file": (file_name, f, "application/octet-stream")}
-                    response = requests.post(upload_url, headers=headers, data=data, files=files, timeout=30)
+                get_upload_response = requests.post(
+                    get_upload_url, headers=get_upload_headers, data=get_upload_data, timeout=10
+                )
+                get_upload_json = get_upload_response.json()
 
-                if response.status_code == 200 and response.json().get("ok"):
+                if not get_upload_json.get("ok"):
+                    logger.error(f"SlackファイルアップロードURL取得失敗: {get_upload_json.get('error')}")
+                    return False
+
+                upload_url = get_upload_json["upload_url"]
+                file_id = get_upload_json["file_id"]
+
+                # 2. 取得したURLにファイルを直接アップロード (HTTP PUTリクエスト)
+                with open(file_path, "rb") as f:
+                    put_response = requests.put(upload_url, data=f, timeout=60)
+
+                if not put_response.ok:
+                    logger.error(
+                        f"Slackファイルアップロード失敗 (PUT): {put_response.status_code} - {put_response.text}"
+                    )
+                    return False
+
+                # 3. files.completeUploadExternal を呼び出してアップロード完了を通知
+                complete_upload_url = "https://slack.com/api/files.completeUploadExternal"
+                complete_upload_headers = {"Authorization": f"Bearer {slack_token}"}
+                complete_upload_data = {
+                    "files": json.dumps([{"id": file_id, "title": file_name}]),
+                    "channel_id": slack_channel,
+                    "initial_comment": f"[{level}] {message}",
+                }
+                complete_upload_response = requests.post(
+                    complete_upload_url, headers=complete_upload_headers, data=complete_upload_data, timeout=10
+                )
+                complete_upload_json = complete_upload_response.json()
+
+                if complete_upload_json.get("ok"):
                     logger.info(f"Slackにファイル '{file_name}' を送信成功")
                     return True
                 else:
-                    logger.error(f"Slackにファイル '{file_name}' 送信失敗: {response.status_code} - {response.text}")
+                    logger.error(f"Slackにファイル '{file_name}' 送信失敗: {complete_upload_json.get('error')}")
                     return False
             else:
                 # テキストメッセージのみ送信する場合 (Incoming Webhookを使用)
