@@ -7,6 +7,7 @@
 import os
 from pathlib import Path
 from typing import Any, Dict
+
 import dotenv
 
 dotenv.load_dotenv()  # .envファイルの読み込み
@@ -55,6 +56,8 @@ class Config:
 
         # アラート設定
         self.slack_webhook = os.getenv("SLACK_WEBHOOK", "{SLACK_WEBHOOK}")
+        self.slack_bot_token = os.getenv("SLACK_BOT_TOKEN", "")
+        self.slack_channel = os.getenv("SLACK_CHANNEL", "")
 
         # 証券会社API
         self.XXXX_API_KEY = os.getenv("XXXX_API_KEY", "")
@@ -93,7 +96,12 @@ class Config:
         }
 
     def get_alert_config(self) -> Dict[str, Any]:
-        return {"slack_webhook": self.slack_webhook, "enabled": bool(self.slack_webhook)}
+        return {
+            "slack_webhook": self.slack_webhook,
+            "slack_bot_token": self.slack_bot_token,
+            "slack_channel": self.slack_channel,
+            "enabled": bool(self.slack_webhook),  # webhookが設定されていれば有効とみなす
+        }
 
     def get_trade_config(self) -> Dict[str, Any]:
         return {"risk_per_trade": self.risk_per_trade, "max_loss_percent": self.max_loss_percent}
