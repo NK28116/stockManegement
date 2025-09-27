@@ -112,7 +112,7 @@ def _get_latest_report_file(report_type: str) -> str | None:
 def _get_market_news_for_period(period: str) -> str:
     # 各指数データ取得
     nikkei = yf.Ticker("^N225").history(period=period)
-    topix = yf.Ticker("^TOPX").history(period=period)
+    topix = yf.Ticker("998405.T").history(period=period)
     nasdaq = yf.Ticker("^IXIC").history(period=period)
     sp500 = yf.Ticker("^GSPC").history(period=period)
 
