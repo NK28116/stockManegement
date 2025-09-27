@@ -3,11 +3,9 @@ import os
 
 import requests
 from dotenv import load_dotenv
-
-load_dotenv()  # .envファイルの読み込み
-
 from python.utils.logger import get_logger
 
+load_dotenv()
 logger = get_logger("upload_file", category="system")
 
 
@@ -20,8 +18,8 @@ class Slack:
         Slackにファイルまたはメッセージを投稿する関数
         :param channel_id: 投稿先のチャンネルID
         :param message: メッセージ（任意）
-        :param file_name: ファイル名（任意）
-        :param file_path: ファイルパス（任意）
+        :param file_name: ファイル名(変数)
+        :param file_path: ファイルパス（変数）
         :return: API応答のJSONデータ
         :raises FileNotFoundError: ファイルが見つからない場合
         :raises ValueError: メッセージもファイルも指定されていない場合
@@ -126,6 +124,6 @@ if __name__ == "__main__":
     slack.upload_file_to_slack(
         channel_id=os.environ.get("SLACK_CHANNEL"),  # "{SLACK_CHANNEL}"をos.environ.get("SLACK_CHANNEL")に変更
         message="ファイルをアップロードします",
-        file_name="sample.png",
-        file_path="path/to/sample.png",  # 実際のファイルパスに変更
+        file_name="",  # 送信するファイル名
+        file_path="",  # 保存されたファイルパスに変更
     )

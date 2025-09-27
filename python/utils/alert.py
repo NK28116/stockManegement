@@ -17,7 +17,12 @@ class AlertManager:
         self.alert_config = config.get_alert_config()
 
     def send_alert(
-        self, message: str, level: str = "INFO", file_path: str | None = None, is_test_mode: bool = False
+        self,
+        message: str,
+        level: str = "INFO",
+        file_path: str | None = None,
+        file_name: str | None = None,  # file_name引数を追加
+        is_test_mode: bool = False,
     ) -> bool:
         """
         アラートを送信する
@@ -37,7 +42,7 @@ class AlertManager:
                 return True  # テストモードなので成功として扱う
             else:
                 # SLACK_WEBHOOKが設定されている場合、テストモードでも実際にSlack通知を送信
-                return self._send_slack(message, level, file_path)
+                return self._send_slack(message, level, file_path, file_name)  # file_nameを渡す
 
         if not self.alert_config["enabled"]:
             logger.warning("アラート機能が無効です")
@@ -45,10 +50,12 @@ class AlertManager:
 
         # Slack通知
         if self.alert_config["slack_webhook"]:
-            return self._send_slack(message, level, file_path)
+            return self._send_slack(message, level, file_path, file_name)  # file_nameを渡す
         return False  # Slack webhookが設定されていない場合
 
-    def _send_slack(self, message: str, level: str, file_path: str | None = None) -> bool:
+    def _send_slack(
+        self, message: str, level: str, file_path: str | None = None, file_name: str | None = None
+    ) -> bool:  # file_name引数を追加
         """Slackに通知を送信"""
         try:
             if file_path and os.path.exists(file_path):
@@ -61,7 +68,8 @@ class AlertManager:
                     )
                     return False
 
-                file_name = os.path.basename(file_path)
+                # file_nameが指定されていればそれを使用、なければfile_pathから抽出
+                actual_file_name = file_name if file_name else os.path.basename(file_path)
                 file_size = os.path.getsize(file_path)
 
                 # 1. files.getUploadURLExternal を呼び出してアップロードURLを取得
@@ -100,7 +108,7 @@ class AlertManager:
                     "Content-Type": "application/json",
                 }  # Content-Typeを追加
                 complete_upload_payload = {  # dataではなくjsonパラメータを使用
-                    "files": [{"id": file_id, "title": file_name}],  # json.dumpsを削除
+                    "files": [{"id": file_id, "title": actual_file_name}],  # actual_file_nameを使用
                     "channel_id": slack_channel,
                     "initial_comment": f"[{level}] {message}",
                 }
@@ -113,10 +121,12 @@ class AlertManager:
                 complete_upload_json = complete_upload_response.json()
 
                 if complete_upload_json.get("ok"):
-                    logger.info(f"Slackにファイル '{file_name}' を送信成功")
+                    logger.info(f"Slackにファイル '{actual_file_name}' を送信成功")  # actual_file_nameを使用
                     return True
                 else:
-                    logger.error(f"Slackにファイル '{file_name}' 送信失敗: {complete_upload_json.get('error')}")
+                    logger.error(
+                        f"Slackにファイル '{actual_file_name}' 送信失敗: {complete_upload_json.get('error')}"
+                    )  # actual_file_nameを使用
                     return False
             else:
                 # テキストメッセージのみ送信する場合 (Incoming Webhookを使用)
@@ -142,6 +152,12 @@ class AlertManager:
 alert_manager = AlertManager()
 
 
-def send_alert(message: str, level: str = "INFO", file_path: str | None = None, is_test_mode: bool = False) -> bool:
+def send_alert(
+    message: str,
+    level: str = "INFO",
+    file_path: str | None = None,
+    file_name: str | None = None,  # file_name引数を追加
+    is_test_mode: bool = False,
+) -> bool:
     """アラート送信の簡易関数"""
-    return alert_manager.send_alert(message, level, file_path, is_test_mode)
+    return alert_manager.send_alert(message, level, file_path, file_name, is_test_mode)  # file_nameを渡す

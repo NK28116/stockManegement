@@ -300,7 +300,9 @@ def send_weekly_report(is_test_mode: bool = False):
                 if "総投資額" in line or "総リターン" in line or "年率リターン" in line or "シャープレシオ" in line:
                     message += f"{line}\n"
             message += "\n"
-        send_alert("週次サマリーレポート", level="INFO", file_path=summary_report_path)
+        send_alert(
+            "週次サマリーレポート", level="INFO", file_path=summary_report_path, file_name="weekly_summary_report.txt"
+        )  # file_nameを追加
     else:
         message += "ポートフォリオサマリーレポートが見つかりませんでした。\n"
 
@@ -312,7 +314,12 @@ def send_weekly_report(is_test_mode: bool = False):
             message += "\n【最新のプロット画像】\n"
             for img_file in plot_image_files[:3]:  # 最新の3枚を例として
                 message += f"- {os.path.basename(img_file)}\n"
-                send_alert(f"プロット画像: {os.path.basename(img_file)}", level="INFO", file_path=str(img_file))
+                send_alert(
+                    f"プロット画像: {os.path.basename(img_file)}",
+                    level="INFO",
+                    file_path=str(img_file),
+                    file_name=os.path.basename(img_file),  # file_nameを追加
+                )
         else:
             message += "最新のプロット画像が見つかりませんでした。\n"
 
@@ -324,7 +331,12 @@ def send_weekly_report(is_test_mode: bool = False):
             message += "\n【最新のチャート画像】\n"
             for img_file in chart_image_files[:3]:  # 最新の3枚を例として
                 message += f"- {os.path.basename(img_file)}\n"
-                send_alert(f"チャート画像: {os.path.basename(img_file)}", level="INFO", file_path=str(img_file))
+                send_alert(
+                    f"チャート画像: {os.path.basename(img_file)}",
+                    level="INFO",
+                    file_path=str(img_file),
+                    file_name=os.path.basename(img_file),  # file_nameを追加
+                )
         else:
             message += "最新のチャート画像が見つかりませんでした。\n"
 
