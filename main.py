@@ -33,6 +33,7 @@ from python.utils.monitor import (  # monitorタスク用
 from python.utils.report import (
     send_daily_evening_report,
     send_daily_morning_report,
+    send_weekly_report,
     send_monthly_report,
     send_startup_report,
 )
@@ -114,7 +115,7 @@ def run_weekly_task(is_test_mode: bool = False):
 
     # 3. 週次レポートのSlack通知 (analyzer.analyze_portfolio()内で既に呼び出されるため、ここでは不要)
     # analyzer.analyze_portfolio()内で既に呼び出されるため、ここでは不要
-    # send_weekly_report(is_test_mode=is_test_mode)
+    send_weekly_report(is_test_mode=is_test_mode)
     pass
 
     logger.info(f"=== 週次タスク完了 (テストモード: {is_test_mode}) ===")
