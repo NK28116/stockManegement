@@ -1,4 +1,3 @@
-import json
 import os
 
 import requests
@@ -96,14 +95,20 @@ class AlertManager:
 
                 # 3. files.completeUploadExternal を呼び出してアップロード完了を通知
                 complete_upload_url = "https://slack.com/api/files.completeUploadExternal"
-                complete_upload_headers = {"Authorization": f"Bearer {slack_token}"}
-                complete_upload_data = {
-                    "files": json.dumps([{"id": file_id, "title": file_name}]),
+                complete_upload_headers = {
+                    "Authorization": f"Bearer {slack_token}",
+                    "Content-Type": "application/json",
+                }  # Content-Typeを追加
+                complete_upload_payload = {  # dataではなくjsonパラメータを使用
+                    "files": [{"id": file_id, "title": file_name}],  # json.dumpsを削除
                     "channel_id": slack_channel,
                     "initial_comment": f"[{level}] {message}",
                 }
                 complete_upload_response = requests.post(
-                    complete_upload_url, headers=complete_upload_headers, data=complete_upload_data, timeout=10
+                    complete_upload_url,
+                    headers=complete_upload_headers,
+                    json=complete_upload_payload,
+                    timeout=10,  # dataをjsonに変更
                 )
                 complete_upload_json = complete_upload_response.json()
 
