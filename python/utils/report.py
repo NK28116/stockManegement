@@ -304,13 +304,25 @@ def send_weekly_report(is_test_mode: bool = False):
     else:
         message += "ポートフォリオサマリーレポートが見つかりませんでした。\n"
 
-    # グラフ画像の取得と送信
+    # グラフ画像の取得と送信 (plotsディレクトリ)
     plot_dir = config.root_dir / "data" / "plots"
     if plot_dir.exists():
-        image_files = sorted(plot_dir.glob("*.png"), reverse=True)
-        if image_files:
+        plot_image_files = sorted(plot_dir.glob("*.png"), reverse=True)
+        if plot_image_files:
+            message += "\n【最新のプロット画像】\n"
+            for img_file in plot_image_files[:3]:  # 最新の3枚を例として
+                message += f"- {os.path.basename(img_file)}\n"
+                send_alert(f"プロット画像: {os.path.basename(img_file)}", level="INFO", file_path=str(img_file))
+        else:
+            message += "最新のプロット画像が見つかりませんでした。\n"
+
+    # グラフ画像の取得と送信 (chartImgディレクトリ)
+    chart_img_dir = config.root_dir / "data" / "chartImg"
+    if chart_img_dir.exists():
+        chart_image_files = sorted(chart_img_dir.glob("*.png"), reverse=True)
+        if chart_image_files:
             message += "\n【最新のチャート画像】\n"
-            for img_file in image_files[:3]:  # 最新の3枚を例として
+            for img_file in chart_image_files[:3]:  # 最新の3枚を例として
                 message += f"- {os.path.basename(img_file)}\n"
                 send_alert(f"チャート画像: {os.path.basename(img_file)}", level="INFO", file_path=str(img_file))
         else:
