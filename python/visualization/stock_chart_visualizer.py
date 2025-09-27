@@ -418,7 +418,6 @@ class StockChartVisualizer:
             print(f"チャート保存先: {os.path.abspath(self.data_dir)}")
         else:
             print("テストモードのため、チャートは保存されませんでした。")
-        print("テストモードのため、チャートは保存されませんでした。")
 
     def save_summary_report(self, summaries: List[str], portfolio_file: str):
         """サマリーレポートを保存"""
