@@ -105,9 +105,9 @@ def run_weekly_task(is_test_mode: bool = False):
     logger.info(f"=== 週次タスク開始 (テストモード: {is_test_mode}) ===")
     # 1. 全銘柄売買タイミング分析 (直近3ヶ月)
     every_stock_buy_and_sell_timing.run_analysis(period="3mo", is_test_mode=is_test_mode)
-    logger.info("全銘柄売買タイミング分析 (週次) が実行されました。")
+    logger.info("\n 全銘柄売買タイミング分析 (週次) が実行されました。 \n")
     generate_all_charts.main(period="3mo", is_test_mode=is_test_mode)  # 週次レポート用として3ヶ月期間を指定
-    logger.info("全銘柄チャート一括生成 (週次) が実行されました。")
+    logger.info("\n 全銘柄チャート一括生成 (週次) が実行されました。\n")
 
     # 2. ポートフォリオ分析
     analyzer.analyze_portfolio(is_test_mode=is_test_mode)

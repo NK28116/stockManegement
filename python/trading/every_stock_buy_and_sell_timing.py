@@ -5,6 +5,7 @@ CSVファイルから銘柄を読み込んで一括分析
 """
 import os
 from datetime import datetime, timedelta
+from turtle import up
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
@@ -13,6 +14,7 @@ from psycopg2 import Error as PgError  # PgErrorはget_db_connection内で使わ
 
 from python.config import config
 from python.db.database import get_db_connection
+from python.utils import upload_file
 from python.utils.logger import get_logger
 
 from .trading_rules import ImprovedTradingRules
@@ -541,7 +543,8 @@ def run_analysis(period: str = "3mo", is_test_mode: bool = False):
     csv_file = config.codes_path
     analyzer = EveryStockAnalyzer(csv_file)
     results = analyzer.analyze_all_stocks(period=period)
-    analyzer.save_reports(results, is_test_mode=is_test_mode)
+    reports = analyzer.save_reports(results, is_test_mode=is_test_mode)
+    upload_file(reports)
 
 
 def main():
@@ -590,6 +593,7 @@ def main():
         print("=" * 60)
         summary_report = analyzer.generate_summary_report(results)
         print(summary_report)
+        upload_file(summary_report)
 
     if args.output in ["detailed", "both"]:
         print("\n" + "=" * 60)

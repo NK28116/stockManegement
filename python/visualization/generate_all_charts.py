@@ -4,6 +4,8 @@
 コマンドライン用の簡単版
 """
 
+from calendar import c
+from python.utils import upload_file
 from python.visualization.stock_chart_visualizer import StockChartVisualizer
 
 __all__ = ["main"]
@@ -24,7 +26,8 @@ def main(period="3mo", is_test_mode: bool = False):
     print(f"期間: {period}")
 
     # Generate all charts
-    visualizer.visualize_all_stocks(portfolio_file)
+    charts_img = visualizer.visualize_all_stocks(portfolio_file)
+    upload_file(charts_img)
 
     print("\n=== チャート生成完了 ===")
     print("チャートファイルは data/chartImg フォルダに保存されました")
