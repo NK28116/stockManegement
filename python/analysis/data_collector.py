@@ -78,15 +78,7 @@ class StockDataCollector:
                 get_logger(f"警告: {code}の必要な価格データが不足しています")
                 return None
 
-            # テクニカル指標を計算してからパフォーマンス分析
-            # self.calculate_indicators(df) と self.analyze_performance(df_with_indicators) は
-            # このファイルには定義されていないため、ここではコメントアウトまたは修正が必要です。
-            # 現在のタスクはDB移行なので、ここではDB関連の修正に集中します。
-            # df_with_indicators = self.calculate_indicators(df)
-            # if df_with_indicators is None:
-            #     return None
-            # return self.analyze_performance(df_with_indicators)
-            return None  # 一時的にNoneを返す
+            return df  # 取得したDataFrameを返す
 
         except Exception as e:
             # より詳細なエラーハンドリング
@@ -179,20 +171,21 @@ def main(is_test_mode: bool = False):
         else:
             logger.info(f"テストモードのため、{code}の日次データ取得・保存はスキップします。")
 
-        stock_data = collector.collect_stock_data(code)
-        if stock_data:
-            stock_data["コード"] = code
-            results.append(stock_data)
+        stock_df = collector.collect_stock_data(code)
+        if stock_df is not None and not stock_df.empty:
+            stock_df["コード"] = code
+            results.append(stock_df)
 
     if results:
+        final_df = pd.concat(results, ignore_index=True)
         if not is_test_mode:
             output_path = os.path.join(config.data_dir, "quarterly_data_collection.csv")
             os.makedirs(config.data_dir, exist_ok=True)
-            pd.DataFrame(results).to_csv(output_path, index=False, encoding="utf-8")
+            final_df.to_csv(output_path, index=False, encoding="utf-8")
             logger.info(f"分析結果を保存しました: {output_path}")
         else:
             logger.info("テストモードのため、分析結果のCSV保存はスキップします。")
-            logger.debug(f"分析結果 (テストモード):\n{pd.DataFrame(results).to_string()}")
+            logger.debug(f"分析結果 (テストモード):\n{final_df.to_string()}")
     else:
         logger.warning("分析可能な銘柄データがありません")
 
