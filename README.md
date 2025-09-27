@@ -1,359 +1,159 @@
-# 株式管理・分析システム（Stock Management System）
+# Stock Management System
 
-個人投資家向けの株式データ収集・監視・分析・レポーティングを一体化したツール群です。日次/週次/月次/年次の定期タスクや、リアルタイム監視（擬似含む）を実行できます。
+このプロジェクトは、株価データの収集、分析、監視、およびポートフォリオ管理を自動化するためのシステムです。Pythonで実装されており、日次、週次、月次、年次の各タスクを自動実行し、市場の動向に基づいた洞察を提供します。
 
-- 監視（リアルタイム/開発用の擬似）: `python/watch/`
-- 集計（日足化）: `python/watch/dailyAggregator.py`
-- 分析（MACD, ボリンジャーバンド, 急落検知）: `python/watch/analyze.py`
-- タスク実行: `main.py` と `makefile`
-- 設定: `python/config.py`
-- ログ: `log/` 配下（カテゴリ/モジュール/日付で自動出力）
+## 主な機能
 
-## 必要条件
+- **株価データ収集**: `yfinance`などのライブラリを使用して、最新の株価データを収集します。
+- **テクニカル分析**: 移動平均線、RSI、MACDなどのテクニカル指標を用いて株価を分析し、売買タイミングを特定します。
+- **急落検知とアラート**: 市場開場中にリアルタイムで株価を監視し、急落を検知した際にアラートを送信します。
+- **ポートフォリオ分析**: 保有銘柄のパフォーマンスを分析し、最適化のためのレポートを生成します。
+- **チャート生成**: 分析結果を視覚的に理解しやすいように、様々な種類の株価チャートを自動生成します。
+- **レポート機能**: 日次、週次、月次で分析結果や市場の状況をまとめたレポートを生成し、Slackなどのチャネルに通知します。
+- **自動タスク実行**: `cron`ジョブと連携し、日次、週次、月次、年次の各タスクを自動で実行します。
 
-- Python 3.10+ を推奨
-- pip が利用可能であること
+## プロジェクト構造
+
+```
+.
+├── main.py                     # メインスクリプト (タスク実行エントリポイント)
+├── requirements.txt            # 依存関係ライブラリ
+├── makefile                    # ビルド・実行コマンド定義
+├── python/
+│   ├── analysis/               # データ分析関連
+│   │   ├── data_collector.py   # データ収集
+│   │   ├── portfolio_analyzer.py # ポートフォリオ分析
+│   │   └── ...
+│   ├── db/                     # データベース関連
+│   │   ├── database.py         # DB接続・操作
+│   │   └── ...
+│   ├── trading/                # 売買ロジック関連
+│   │   ├── every_stock_buy_and_sell_timing.py # 売買タイミング分析
+│   │   └── ...
+│   ├── utils/                  # ユーティリティ関数
+│   │   ├── alert.py            # アラート通知
+│   │   ├── logger.py           # ロギング
+│   │   ├── monitor.py          # システム監視
+│   │   ├── report.py           # レポート生成・送信
+│   │   └── ...
+│   ├── visualization/          # データ可視化関連
+│   │   ├── generate_all_charts.py # チャート一括生成
+│   │   └── ...
+│   └── watch/                  # リアルタイム監視関連
+│       ├── analyze.py          # 分足・日足分析
+│       ├── dailyAggregator.py  # 日次データ集計
+│       └── watch.py            # 株価リアルタイム監視
+├── data/                       # データ保存ディレクトリ
+│   ├── db/                     # データベースファイル
+│   ├── chartImg/               # 生成されたチャート画像
+│   └── ...
+└── tests/                      # テストコード
+```
 
 ## セットアップ
 
-1) 仮想環境（任意）
-
-```bash
-python3 -m venv venv
-source venv/bin/activate  # Windows: venv\\Scripts\\activate
-```
-
-2) 依存関係をインストール
+### 1. 依存関係のインストール
 
 ```bash
 pip install -r requirements.txt
 ```
 
-注: `make install` は `requirements-dev.txt` もインストールする前提ですが、当該ファイルが無い環境では上記 `pip install -r requirements.txt` を利用してください。
+### 2. 環境変数の設定
 
-3) 初期化（任意）
+`.env` ファイルを作成し、必要なAPIキーや設定を記述します。
+例:
+```
+SLACK_WEBHOOK_URL=YOUR_SLACK_WEBHOOK_URL
+API_KEY=YOUR_API_KEY
+```
+
+### 3. データベースの初期化
 
 ```bash
-# DB 初期化（必要に応じて）
 make init-db
 ```
 
-## クイックスタート
+## 使い方
 
-- 擬似リアルタイム監視（開発用）
+`main.py` を直接実行するか、`makefile` を使用してタスクを実行します。
 
-```bash
-make watch-dev       # 指定日付を用いた擬似リアルタイム（watch.pyの--devを使用）
-```
-
-- リアルタイム監視（本番運用想定）
+### 手動実行
 
 ```bash
-make watch-realtime  # 2分周期で監視しDBに保存・アラート
-```
-
-- 日足集計（分足→日足）
-
-```bash
-make aggregate
-```
-
-- 個別銘柄の分析
-
-```bash
-make analyze-stock CODE=7203
-```
-
-- 一括分析（監視リスト全体）
-
-```bash
-make analyze
-```
-
-## 主なコマンド（makefile）
-
-- 監視
-  - `make watch-dev`        開発モードの擬似リアルタイム監視
-  - `make watch-realtime`   リアルタイム監視（2分周期）
-
-- 分析/集計
-  - `make analyze`          監視対象全銘柄の分析
-  - `make analyze-stock CODE=xxxx`  指定銘柄の分析
-  - `make aggregate`        分足データを日足に集計
-
-- データベース
-  - `make init-db`          DB初期化
-  - `make backup-db`        DBバックアップ
-
-- 定期実行タスク
-  - `make run-daily`        日次タスク
-  - `make run-weekly`       週次タスク
-  - `make run-monthly`      月次タスク
-  - `make run-yearly`       年次タスク
-  - `make install-cron`     cron 登録（macOS/Linux）
-
-- 開発補助
-  - `make install`          依存関係インストール（dev要件ファイルが無い場合は手動インストール推奨）
-  - `make test`             テスト実行（tests/想定）
-  - `make lint`             Lint（flake8）
-  - `make format`           整形（black/isort）
-  - `make clean`            ビルドアーチファクト/キャッシュ削除
-
-- Windows 補助
-  - `make create-win-batch`  自動起動用バッチ `run_watch.bat` を生成
-  - `make run-win-batch`     バッチの動作確認
-
-## 直接実行（main.py）
-
-`main.py` からも定期タスクを直接実行できます。
-
-```bash
+# 日次タスクの実行
 python main.py daily
+
+# 週次タスクの実行
 python main.py weekly
+
+# 月次タスクの実行
 python main.py monthly
+
+# 年次タスクの実行
 python main.py yearly
+
+# リアルタイム監視モード (バックグラウンドで実行)
+python main.py always
+
+# リアルタイム監視モードのテスト実行 (1回のみ実行)
+python main.py always-test
 ```
 
-## 設定（`python/config.py`）
+### Makefile を使用した実行
 
-- パス設定
-  - DB: `python/db/my_stock.db`
-  - 監視対象CSV: `data/my_stock.csv`
-  - ログ: `log/`
-
-- 監視・分析パラメータ（一部）
-  - `crash_threshold`: 急落判定（%）。例: `-3.0`
-  - `volatility_threshold`: ボラティリティ閾値
-  - `ma_short`, `ma_long`, `volatility_period` など
-
-- Slack 通知
-  - 環境変数 `SLACK_WEBHOOK` を設定することで通知が有効化されます
-  - 機密情報は環境変数で上書きすることを推奨
-
-- 任意の外部API
-  - `XXXX_API_KEY`, `XXXX_API_SECRET`, `XXXX_API_URL` を環境変数で指定
-  - 未設定時は `yfinance` で価格取得（`python/watch/watch.py` の `get_stock_price()` 参照）
-
-## データとログ
-
-- 入出力
-  - 監視対象リスト: `data/my_stock.csv`（ヘッダに `code` 列が必要）
-  - 分足保存: DB テーブル `intraday`
-  - 日足保存: DB テーブル `stock_data`
-
-- ログ
-  - 出力先は `log/<category>/<module>/<YYYY-MM-DD>.log`
-  - ロガーは `python/utils/logger.py` の `get_logger()` を使用
-
-## Windows での実行・自動起動
-
-### 1) 環境準備
-
-- Python をインストール（3.10+）
-- 仮想環境（任意）
-
-```powershell
-python -m venv .\venv
-.\venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-Make が無い環境では次節「Make なしでの実行」を参照してください。
-
-### 2) 実行方法
-
-- Git Bash / Make 利用時（推奨）
+`makefile` には、開発や運用に便利なコマンドが定義されています。
 
 ```bash
-# 開発用の擬似リアルタイム
-make watch-dev
+# 全ての依存関係をインストール
+make install
 
-# 本番想定のリアルタイム監視（2分周期）
+# データベースを初期化
+make init-db
+
+# リアルタイム監視を開始
 make watch-realtime
 
-# 分足→日足集計
-make aggregate
+# 全銘柄の分析を実行
+make analyze
 
-# 個別分析
-make analyze-stock CODE=7203
+# 特定の銘柄を分析 (例: コード1234)
+make analyze-stock CODE=1234
+
+# 日次タスクを実行
+make run-daily
+
+# 週次タスクを実行
+make run-weekly
+
+# 月次タスクを実行
+make run-monthly
+
+# cronジョブをインストール
+make install-cron
+
+# ヘルプを表示
+make help
 ```
 
-- Make なしでの実行（PowerShell / cmd）
+## 開発
 
-```powersershell
-# 監視（開発モード）
-python -m python.watch.watch --dev 20250115
-
-# 監視（リアルタイム）
-python -m python.watch.watch
-
-# 日足集計
-python -m python.watch.dailyAggregator
-
-# 個別分析
-python -c "from python.watch.analyze import analyze_daily_data; analyze_daily_data('7203')"
-```
-
-### 3) バックグラウンド実行（ウィンドウを出さない）
-
-PowerShell の `Start-Process` を使うと、バックグラウンド実行が簡単です。
-
-```powershell
-# 例: リアルタイム監視をバックグラウンドで起動
-$command = "python"
-$args    = "-m python.watch.watch"
-Start-Process -FilePath $command -ArgumentList $args -NoNewWindow -PassThru | Out-Null
-```
-
-停止はタスク マネージャー、または PowerShell からプロセスを停止してください。
-
-```powershell
-# プロセス一覧から確認（必要に応じて条件を調整）
-Get-Process | Where-Object {$_.Path -like "*python*" -and $_.StartInfo.Arguments -like "*python.watch.watch*"}
-
-# 強制停止（プロセスID指定）
-Stop-Process -Id <PID>
-```
-
-### 4) 自動起動（スタートアップ）
-
-`make create-win-batch` で `run_watch.bat` を生成できます。生成後、下記のいずれかの方法で自動起動に登録します。
-
-1. スタートアップ フォルダにショートカットを配置
-   - Win + R → `shell:startup` → フォルダが開いたら `run_watch.bat` のショートカットを配置
-2. タスク スケジューラに登録（ログオン時起動）
-   - 「タスクの作成」→ トリガー「ログオン時」→ 操作「プログラムの開始」
-   - プログラム/スクリプト: `cmd.exe`
-   - 引数: `/c "<プロジェクトのフルパス>\run_watch.bat"`
-
-`run_watch.bat` の中身は以下のように生成されます（makefile 定義）。必要に応じて実パスに調整してください。
-
-```bat
-@echo off
-cd /d C:\Users\%USERNAME%\your_project\watch
-python watch.py
-```
-
-### 5) 定期実行（タスク スケジューラ）
-
-日次/週次などを自動実行する場合はタスク スケジューラを利用します。
-
-- プログラム/スクリプト: Python 実行ファイル（例: `C:\Python311\python.exe` または 仮想環境の `...\venv\Scripts\python.exe`）
-- 引数: `-m python.watch.dailyAggregator` や `main.py` のモード（例: `main.py daily`）
-- 「開始（作業ディレクトリ）」: プロジェクト ルート
-
-PowerShell でログ監視（Linux の `tail -f` 相当）
-
-```powershell
-Get-Content -Path ".\log\watch\watch\$(Get-Date -Format 'yyyy-MM-dd').log" -Wait -Tail 50
-```
-
-### 6) 代替: WSL 利用
-
-WSL 上にプロジェクトを置く/マウントして、Linux と同様に `make`、`screen`、`tmux` 等を利用できます。
-（例）
+### テストの実行
 
 ```bash
-nohup make watch-realtime > watch.log 2>&1 &
+make test
 ```
 
-## macOS / Linux の定期実行
+### コードのフォーマットとリンティング
 
-`make install-cron` で cron に以下のジョブが登録されます（時間は makefile を参照して調整可能）。
-
-- 平日 9:00 日次タスク
-- 土曜 10:00 週次タスク
-- 毎月 1 日 11:00 月次タスク
-- 1/1 12:00 年次タスク
-
-## プロジェクト構成（抜粋）
-
-```text
-stockManegement/
-├─ data/
-├─ log/
-├─ python/
-│  ├─ watch/               # 監視と日足化/分析
-│  ├─ analysis/            # ポートフォリオ等の分析（main.py 内から利用）
-│  ├─ db/
-│  ├─ utils/
-│  ├─ visualization/
-│  └─ config.py
-├─ main.py
-├─ makefile
-└─ requirements.txt
+```bash
+make format
+make lint
 ```
 
-## トラブルシューティング
+## 貢献
 
-- `make watch-realtime` で引数に関するエラーが出る場合
-  - `python -m python.watch.watch` を直接実行してください（開発モードは `--dev YYYYMMDD`）。
-- `requirements-dev.txt` が無い
-  - `pip install -r requirements.txt` を利用してください。
-- `data/my_stock.csv` が無い/列が不足
-  - `code` 列を含む CSV を用意してください。
+このプロジェクトへの貢献を歓迎します。バグ報告、機能提案、プルリクエストなど、お気軽にお寄せください。
 
 ## ライセンス
 
-本リポジトリのライセンスが未指定の場合は、クローズド運用を前提とします。公開・配布を行う場合はライセンスの明示を行ってください。
-
----
-
-### 定期タスクの直接実行コマンド (Pythonスクリプト)
-
-以下は、`python/`ディレクトリ内のスクリプトを直接実行する形式での定期タスクコマンドです。
-
-#### Daily Tasks
-
-- **日足データ集計**: 分足データから日足データを集計し、DBに保存します。
-
-  ```bash
-  python -m python.watch.dailyAggregator
-  ```
-
-- **全銘柄売買タイミング分析 (直近1ヶ月)**: `data/my_stock.csv`に記載された全銘柄について、直近1ヶ月のデータを用いて売買タイミングを分析し、レポートを生成します。
-
-  ```bash
-  python -m python.trading.every_stock_buy_and_sell_timing data/my_stock.csv --period 1mo
-  ```
-
-- **全銘柄チャート一括生成**: 日足データと分析結果に基づき、全銘柄のチャートを生成し、`data/chartImg`フォルダに保存します。
-
-  ```bash
-  python -m python.visualization.generate_all_charts
-  ```
-
-#### Weekly Tasks
-
-- **全銘柄売買タイミング分析 (直近3ヶ月)**: `data/my_stock.csv`に記載された全銘柄について、直近3ヶ月のデータを用いて売買タイミングを分析し、レポートを生成します。
-
-  ```bash
-  python -m python.trading.every_stock_buy_and_sell_timing data/my_stock.csv --period 3mo
-  ```
-
-- **ポートフォリオ分析**: 保有銘柄のポートフォリオ全体を分析し、結果を保存し、週次レポートをSlackに通知します。
-
-  ```bash
-  python -m python.analysis.portfolio_analyzer
-  ```
-
-#### Monthly Tasks
-
-- **四半期データ収集・分析**: 前四半期および直近4四半期の株価データを収集し、分析結果をCSVに保存します。
-
-  ```bash
-  python -m python.analysis.data_collector
-  ```
-
-- **全銘柄売買タイミング分析 (直近6ヶ月)**: `data/my_stock.csv`に記載された全銘柄について、直近6ヶ月のデータを用いて売買タイミングを分析し、レポートを生成します。
-
-  ```bash
-  python -m python.trading.every_stock_buy_and_sell_timing data/my_stock.csv --period 6mo
-  ```
-
-#### Yearly Tasks
-
-- **全銘柄売買タイミング分析 (直近1年)**: `data/my_stock.csv`に記載された全銘柄について、直近1年のデータを用いて売買タイミングを分析し、レポートを生成します。
-
-  ```bash
-  python -m python.trading.every_stock_buy_and_sell_timing data/my_stock.csv --period 1y
+このプロジェクトは [MIT License](LICENSE) の下でライセンスされています。

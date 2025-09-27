@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 import pandas as pd  # detect_sharp_declineで必要
 import psutil
+import yfinance as yf
 
 from python.analysis.portfolio_analyzer import PortfolioAnalyzer  # ポートフォリオ分析用
 from python.config import config
@@ -12,9 +13,6 @@ from python.utils.alert import send_alert
 from python.utils.indicators import detect_sharp_decline  # 急落アラート用
 from python.utils.logger import get_logger
 from python.utils.monitor import api_call_count, get_db_size
-
-import yfinance as yf
-
 
 logger = get_logger("report", category="report")
 
@@ -290,6 +288,8 @@ def send_weekly_report(is_test_mode: bool = False):
 
     # ポートフォリオ分析サマリーレポートの取得
     summary_report_path = _get_latest_report_file("summary")
+    # ポートフォリオ分析サマリーレポートの取得と送信
+    summary_report_path = _get_latest_report_file("summary")
     if summary_report_path and os.path.exists(summary_report_path):
         with open(summary_report_path, "r", encoding="utf-8") as f:
             summary_content = f.read()
@@ -299,18 +299,20 @@ def send_weekly_report(is_test_mode: bool = False):
             for line in summary_content.splitlines():
                 if "総投資額" in line or "総リターン" in line or "年率リターン" in line or "シャープレシオ" in line:
                     message += f"{line}\n"
-            message += f"\n詳細レポート: file://{summary_report_path}\n"
+            message += "\n"
+        send_alert("週次サマリーレポート", level="INFO", file_path=summary_report_path)
     else:
         message += "ポートフォリオサマリーレポートが見つかりませんでした。\n"
 
-    # グラフ画像へのリンク
+    # グラフ画像の取得と送信
     plot_dir = config.root_dir / "data" / "plots"
     if plot_dir.exists():
         image_files = sorted(plot_dir.glob("*.png"), reverse=True)
         if image_files:
             message += "\n【最新のチャート画像】\n"
             for img_file in image_files[:3]:  # 最新の3枚を例として
-                message += f"- file://{img_file}\n"
+                message += f"- {os.path.basename(img_file)}\n"
+                send_alert(f"チャート画像: {os.path.basename(img_file)}", level="INFO", file_path=str(img_file))
         else:
             message += "最新のチャート画像が見つかりませんでした。\n"
 
@@ -354,11 +356,12 @@ def send_monthly_report(is_test_mode: bool = False):
 
     message = f"【月次レポート】 {datetime.now().strftime('%Y-%m-%d')} 月次評価\n\n"
 
-    # 詳細レポートへのリンク
+    # 詳細レポートの取得と送信
     detailed_report_path = _get_latest_report_file("detailed")
     if detailed_report_path and os.path.exists(detailed_report_path):
         message += "【詳細レポート】\n"
-        message += f"file://{detailed_report_path}\n"
+        message += f"{os.path.basename(detailed_report_path)}\n"
+        send_alert("月次詳細レポート", level="INFO", file_path=detailed_report_path)
     else:
         message += "詳細レポートが見つかりませんでした。\n"
 
