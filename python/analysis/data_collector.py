@@ -181,7 +181,9 @@ def main(is_test_mode: bool = False):
         if not is_test_mode:
             output_path = os.path.join(config.data_dir, "quarterly_data_collection.csv")
             os.makedirs(config.data_dir, exist_ok=True)
-            final_df.to_csv(output_path, index=False, encoding="utf-8")
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write("# -*- coding: utf-8 -*-\n") # 文字コード宣言を追加
+                final_df.to_csv(f, index=False, encoding="utf-8")
             logger.info(f"分析結果を保存しました: {output_path}")
         else:
             logger.info("テストモードのため、分析結果のCSV保存はスキップします。")

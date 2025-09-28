@@ -8,12 +8,19 @@ import logging
 import os
 from typing import Dict
 
+import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
+
+from python.config import config
 
 # プロジェクトルートを sys.path に追加
 # ログ設定
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+
+# Matplotlib フォント設定
+matplotlib.rcParams["font.family"] = config.matplotlib_font_family  # 日本語対応（configから取得）
+matplotlib.rcParams["axes.unicode_minus"] = False  # マイナス記号の文字化け対策
 
 __all__ = ["plot_macd_bollinger"]
 

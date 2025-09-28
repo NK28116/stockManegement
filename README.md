@@ -62,6 +62,7 @@ pip install -r requirements.txt
 
 `.env` ファイルを作成し、必要なAPIキーや設定を記述します。
 例:
+
 ```
 SLACK_WEBHOOK_URL=YOUR_SLACK_WEBHOOK_URL
 API_KEY=YOUR_API_KEY
@@ -81,22 +82,64 @@ make init-db
 
 ```bash
 # 日次タスクの実行
-python main.py daily
+`python main.py daily`
+市場開場前（午前9時前）と閉場後（午前9時以降）で異なる処理を実行します。
+- **市場開場前**: 前日の日次レポートを生成し、Slackに送信します。
+- **市場閉場後**: 日足データの集計、全銘柄の売買タイミング分析（直近1ヶ月）、全銘柄チャートの一括生成（1ヶ月）、当日の日次レポートのSlack送信、全銘柄の急落検知とテクニカル指標に基づく警告を行います。
+  - **生成されるファイル**:
+    - `data/report/daily/summary/summary_report_YYYYMMDD_HHMMSS.txt` (サマリーレポート)
+    - `data/report/daily/detailed/detailed_report_YYYYMMDD_HHMMSS.txt` (詳細レポート)
+    - `data/chartImg/1mo/*.png` (全銘柄チャート画像)
+    - `data/plots/1mo/*.png` (テクニカル指標プロット画像)
 
 # 週次タスクの実行
-python main.py weekly
+`python main.py weekly`
+週次タスクを実行します。
+- 全銘柄の売買タイミング分析（直近3ヶ月）、全銘柄チャートの一括生成(3ヶ月)、ポートフォリオ分析、週次レポートのSlack送信を行います。
+  - **生成されるファイル**:
+    - `data/report/weekly/summary/summary_report_YYYYMMDD_HHMMSS.txt` (サマリーレポート)
+    - `data/report/weekly/detailed/detailed_report_YYYYMMDD_HHMMSS.txt` (詳細レポート)
+    - `data/chartImg/3mo/*.png` (全銘柄チャート画像)
+    - `data/plots/3mo/*.png` (テクニカル指標プロット画像)
 
 # 月次タスクの実行
-python main.py monthly
+`python main.py monthly`
+月次タスクを実行します。
+- 四半期データの収集・分析、全銘柄の売買タイミング分析（直近6ヶ月）、全銘柄チャートの一括生成(6ヶ月)、trading ruleの見直し,月次レポートのSlack送信を行います。
+  - **生成されるファイル**:
+    - `data/report/monthly/detailed/detailed_report_YYYYMMDD_HHMMSS.txt` (詳細レポート)
+    - `data/report/monthly/trading_rules/trading_rules_YYYYMMDD_HHMMSS.txt` (トレーディングルール見直しレポート)
+    - `data/chartImg/6mo/*.png` (全銘柄チャート画像)
+    - `data/plots/6mo/*.png` (テクニカル指標プロット画像)
 
 # 年次タスクの実行
-python main.py yearly
+`python main.py yearly`
+年次タスクを実行します。
+- 全銘柄の売買タイミング分析（直近1年）、`my_stock.db` のアーカイブ（CSV形式でのダンプ）を行います。
+  - **生成されるファイル**:
+    - `data/archive/my_stock_YYYYMMDD_HHMMSS.csv` (データベースのCSVダンプ)
 
 # リアルタイム監視モード (バックグラウンドで実行)
-python main.py always
+`python main.py always`
+システムをリアルタイム監視モードで起動し、以下のバックグラウンドタスクを常時実行します。
+- **watchタスク**: 市場開閉に合わせて株価をリアルタイムで監視し、分足データを取得します。
+- **monitorタスク**: システムのリソース使用率（CPU、メモリ、DBサイズ、APIコール数）を定期的にログに記録します。
+- **分足監視タスク**: 市場開場中に15分足データを分析し、速報アラートを送信します。
+- **日足分析タスク**: 終値確定後に日足データを分析し、急落検知やテクニカル指標に基づく警告を行います。
+このモードは、システムを継続的に稼働させる運用環境向けです。
+  - **生成されるファイル**:
+    - `data/crash_flags/*.flag` (急落検知フラグファイル)
+    - `log/*.log` (システムログファイル)
+    - (データベースに分足・日足データが保存されますが、ファイルとしては直接生成されません)
 
 # リアルタイム監視モードのテスト実行 (1回のみ実行)
-python main.py always-test
+`python main.py always-test`
+`always` モードで実行される各バックグラウンドタスク（watch, monitor, analyze）をそれぞれ1回だけ実行し、動作確認を行います。
+市場が閉場している場合は、watchタスクとanalyzeタスクはスキップされます。
+  - **生成されるファイル**:
+    - `data/crash_flags/*.flag` (急落検知フラグファイル - テスト実行時)
+    - `log/*.log` (システムログファイル - テスト実行時)
+    - (データベースへのデータ保存はテストモードではスキップされる場合があります)
 ```
 
 ### Makefile を使用した実行
