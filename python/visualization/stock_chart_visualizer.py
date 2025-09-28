@@ -30,7 +30,7 @@ sys.path.append(os.path.join(parent_dir, "trading"))
 # Set font with fallbacks - suppress font warnings
 
 
-matplotlib.rcParams["font.family"] = "Hiragino Sans"  # 日本語対応（macOS標準）
+matplotlib.rcParams["font.family"] = config.matplotlib_font_family  # 日本語対応（configから取得）
 matplotlib.rcParams["axes.unicode_minus"] = False  # マイナス記号の文字化け対策
 # Suppress font warning messages
 
@@ -50,8 +50,9 @@ class StockChartVisualizer:
         self.period = period
         self.is_test_mode = is_test_mode
         self.trading_rules = ImprovedTradingRules()
-        self.data_dir = f"{config.data_dir}/chartImg"  # 出力先を変更
-        self.plot_image_dir = f"{config.data_dir}/plots"  # 銘柄ごとのMACDとボリンジャーバンドグラフ
+        # 出力先を期間ごとに変更
+        self.data_dir = os.path.join(config.data_dir, "chartImg", self.period)
+        self.plot_image_dir = os.path.join(config.data_dir, "plots", self.period)
         if not self.is_test_mode:
             os.makedirs(self.data_dir, exist_ok=True)
             os.makedirs(self.plot_image_dir, exist_ok=True)
@@ -63,13 +64,14 @@ class StockChartVisualizer:
             return
 
         removed = 0
-        for name in os.listdir(self.data_dir):
-            if name.lower().endswith(".png"):
-                try:
-                    os.remove(os.path.join(self.data_dir, name))
-                    removed += 1
-                except Exception:
-                    pass
+        if os.path.exists(self.data_dir): # ディレクトリが存在するかチェック
+            for name in os.listdir(self.data_dir):
+                if name.lower().endswith(".png"):
+                    try:
+                        os.remove(os.path.join(self.data_dir, name))
+                        removed += 1
+                    except Exception:
+                        pass
         print(f"既存PNGを削除: {removed}件")
 
     def load_portfolio_stocks(self, portfolio_file: str) -> List[Dict]:
@@ -437,6 +439,7 @@ class StockChartVisualizer:
             report_path = os.path.join(self.data_dir, report_filename)
 
             with open(report_path, "w", encoding="utf-8") as f:
+                f.write("# -*- coding: utf-8 -*-\n\n") # 文字コード宣言を追加
                 f.write("=== 全銘柄売買タイミング分析レポート ===\n")
                 f.write(f"作成日時: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write(f"対象ポートフォリオ: {portfolio_file}\n")

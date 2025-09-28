@@ -171,38 +171,54 @@ class ImprovedTradingRules:
         return metrics
 
 
-def generate_trading_report(comparison: Dict) -> str:
-    """取引ルール比較レポートを生成"""
-    report = []
-    report.append("=" * 60)
-    report.append("売買ルール比較レポート")
-    report.append("=" * 60)
-    report.append(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    report.append("")
+def generate_trading_report(comparison: Dict, is_test_mode: bool = False) -> str:
+    """取引ルール比較レポートを生成し、ファイルに保存する"""
+    report_content = []
+    report_content.append("# -*- coding: utf-8 -*-\n") # 文字コード宣言を追加
+    report_content.append("=" * 60)
+    report_content.append("売買ルール見直しレポート")
+    report_content.append("=" * 60)
+    report_content.append(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    report_content.append("")
 
     # ルール
-    report.append("ルール")
+    report_content.append("ルール")
     new_metrics = comparison["new_rules"]["metrics"]
-    report.append("総取引数: {new_metrics.get('total_trades', 0)}")
-    report.append("完了取引数: {new_metrics.get('completed_trades', 0)}")
-    report.append("勝率: {new_metrics.get('win_rate', 0):.2%}")
-    report.append("平均損益: {new_metrics.get('average_profit', 0):.2%}")
-    report.append("総リターン: {new_metrics.get('total_return', 0):.2%}")
-    report.append("最大利益: {new_metrics.get('max_profit', 0):.2%}")
-    report.append("最大損失: {new_metrics.get('max_loss', 0):.2%}")
-    report.append("プロフィットファクター: {new_metrics.get('profit_factor', 0):.2f}")
-    report.append("")
+    report_content.append(f"総取引数: {new_metrics.get('total_trades', 0)}")
+    report_content.append(f"完了取引数: {new_metrics.get('completed_trades', 0)}")
+    report_content.append(f"勝率: {new_metrics.get('win_rate', 0):.2%}")
+    report_content.append(f"平均損益: {new_metrics.get('average_profit', 0):.2%}")
+    report_content.append(f"総リターン: {new_metrics.get('total_return', 0):.2%}")
+    report_content.append(f"最大利益: {new_metrics.get('max_profit', 0):.2%}")
+    report_content.append(f"最大損失: {new_metrics.get('max_loss', 0):.2%}")
+    report_content.append(f"プロフィットファクター: {new_metrics.get('profit_factor', 0):.2f}")
+    report_content.append("")
 
     # 推奨事項
-    report.append("【推奨事項】")
+    report_content.append("【推奨事項】")
     if new_metrics.get("win_rate", 0) < 0.4:
-        report.append("• エントリー条件の見直しを検討")
+        report_content.append("• エントリー条件の見直しを検討")
     if new_metrics.get("max_loss", 0) < -0.1:
-        report.append("• ストップロス幅の調整を検討")
+        report_content.append("• ストップロス幅の調整を検討")
     if new_metrics.get("profit_factor", 0) < 1.5:
-        report.append("• 利確・損切りのバランス調整を検討")
+        report_content.append("• 利確・損切りのバランス調整を検討")
 
-    return "\n".join(report)
+    report_str = "\n".join(report_content)
+
+    if not is_test_mode:
+        report_dir = config.root_dir / "data" / "report" / "monthly" / "trading_rules"
+        os.makedirs(report_dir, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_filename = f"trading_rules_{timestamp}.txt"
+        report_path = report_dir / report_filename
+
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write(report_str)
+        print(f"トレーディングルール見直しレポートを保存しました: {report_path}")
+    else:
+        print("テストモードのため、トレーディングルール見直しレポートの保存はスキップします。")
+
+    return report_str
 
 
 if __name__ == "__main__":
@@ -218,4 +234,4 @@ if __name__ == "__main__":
 
     comparison = {"new_rules": {"metrics": metrics}}
 
-    report = generate_trading_report(comparison)
+    report = generate_trading_report(comparison, is_test_mode=False) # テストモードを明示的に指定

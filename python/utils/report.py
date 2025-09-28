@@ -56,8 +56,24 @@ def start_monitoring():
 
 def _get_latest_report_file(report_type: str) -> str | None:
     """指定された種類の最新レポートファイルパスを取得する"""
-    report_dir = config.root_dir / "data" / "report" / report_type
+    # レポートタイプに応じてサブディレクトリを決定
+    if report_type == "summary":
+        report_dir = config.root_dir / "data" / "report" / "daily" / report_type
+    elif report_type == "detailed":
+        report_dir = config.root_dir / "data" / "report" / "daily" / report_type
+    elif report_type == "weekly_summary": # 週次サマリーレポート用
+        report_dir = config.root_dir / "data" / "report" / "weekly" / "summary"
+    elif report_type == "weekly_detailed": # 週次詳細レポート用
+        report_dir = config.root_dir / "data" / "report" / "weekly" / "detailed"
+    elif report_type == "monthly_detailed": # 月次詳細レポート用
+        report_dir = config.root_dir / "data" / "report" / "monthly" / "detailed"
+    elif report_type == "trading_rules": # トレーディングルール見直しレポート用
+        report_dir = config.root_dir / "data" / "report" / "monthly" / "trading_rules"
+    else:
+        report_dir = config.root_dir / "data" / "report" / report_type
+
     if not report_dir.exists():
+        os.makedirs(report_dir, exist_ok=True) # ディレクトリが存在しない場合は作成
         return None
 
     # ファイル名パターン: summary_report_YYYYMMDD_HHMMSS.txt または detailed_report_YYYYMMDD_HHMMSS.txt
@@ -300,9 +316,7 @@ def send_weekly_report(is_test_mode: bool = False):
                 if "総投資額" in line or "総リターン" in line or "年率リターン" in line or "シャープレシオ" in line:
                     message += f"{line}\n"
             message += "\n"
-        send_alert(
-            "週次サマリーレポート", level="INFO", file_path=summary_report_path, file_name="weekly_summary_report.txt"
-        )  # file_nameを追加
+        send_alert("週次サマリーレポート", level="INFO")
     else:
         message += "ポートフォリオサマリーレポートが見つかりませんでした。\n"
 
@@ -314,12 +328,7 @@ def send_weekly_report(is_test_mode: bool = False):
             message += "\n【最新のプロット画像】\n"
             for img_file in plot_image_files[:3]:  # 最新の3枚を例として
                 message += f"- {os.path.basename(img_file)}\n"
-                send_alert(
-                    f"プロット画像: {os.path.basename(img_file)}",
-                    level="INFO",
-                    file_path=str(img_file),
-                    file_name=os.path.basename(img_file),  # file_nameを追加
-                )
+                send_alert(f"プロット画像: {os.path.basename(img_file)}", level="INFO")
         else:
             message += "最新のプロット画像が見つかりませんでした。\n"
 
@@ -331,12 +340,7 @@ def send_weekly_report(is_test_mode: bool = False):
             message += "\n【最新のチャート画像】\n"
             for img_file in chart_image_files[:3]:  # 最新の3枚を例として
                 message += f"- {os.path.basename(img_file)}\n"
-                send_alert(
-                    f"チャート画像: {os.path.basename(img_file)}",
-                    level="INFO",
-                    file_path=str(img_file),
-                    file_name=os.path.basename(img_file),  # file_nameを追加
-                )
+                send_alert(f"チャート画像: {os.path.basename(img_file)}", level="INFO")
         else:
             message += "最新のチャート画像が見つかりませんでした。\n"
 
@@ -385,7 +389,7 @@ def send_monthly_report(is_test_mode: bool = False):
     if detailed_report_path and os.path.exists(detailed_report_path):
         message += "【詳細レポート】\n"
         message += f"{os.path.basename(detailed_report_path)}\n"
-        send_alert("月次詳細レポート", level="INFO", file_path=detailed_report_path)
+        send_alert("月次詳細レポート", level="INFO")
     else:
         message += "詳細レポートが見つかりませんでした。\n"
 

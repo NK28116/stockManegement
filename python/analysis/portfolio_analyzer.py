@@ -107,6 +107,7 @@ class PortfolioAnalyzer:
             return
 
         with open(output_file, "w", encoding="utf-8") as f:
+            f.write("# -*- coding: utf-8 -*-\n\n") # 文字コード宣言を追加
             f.write("=" * 60 + "\n")
             f.write("ポートフォリオ分析レポート\n")
             f.write("=" * 60 + "\n")
