@@ -69,6 +69,8 @@ class Config:
         self.analyze_interval_seconds = int(os.getenv("ANALYZE_INTERVAL_SECONDS", "3600"))  # 1時間
         self.monitor_interval_seconds = int(os.getenv("MONITOR_INTERVAL_SECONDS", "7200"))  # 2時間
 
+        # Matplotlib フォント設定
+        self.matplotlib_font_family = os.getenv("MATPLOTLIB_FONT_FAMILY", "Hiragino Sans")
     def get_db_config(self) -> Dict[str, Any]:
         """DB接続設定を環境に応じて返す"""
         if self.db_env == "cloud":

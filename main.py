@@ -23,6 +23,7 @@ from python.analysis.portfolio_analyzer import PortfolioAnalyzer
 from python.config import config
 from python.db import dump_csv
 from python.trading import every_stock_buy_and_sell_timing
+from python.trading.trading_rules import generate_trading_report, ImprovedTradingRules # generate_trading_report と ImprovedTradingRules を追加
 from python.utils.logger import get_logger
 from python.utils.monitor import (  # monitorタスク用
     api_call_count,
@@ -131,7 +132,27 @@ def run_monthly_task(is_test_mode: bool = False):
     generate_all_charts.main(period="6mo", is_test_mode=is_test_mode)
     logger.info("全銘柄チャート一括生成 (月次) が実行されました。")
 
-    # 3. 月次レポートのSlack通知
+    # 3. トレーディングルール見直しレポート生成
+    # ポートフォリオ内の全銘柄のデータを取得し、ImprovedTradingRulesで分析
+    all_stocks_df = pd.read_csv(config.codes_path)
+    all_trades = []
+    for _, row in all_stocks_df.iterrows():
+        code = row["code"]
+        df_stock = analyzer.fetch_stock_data(code, period="6mo") # 6ヶ月分のデータで分析
+        if df_stock is not None and not df_stock.empty:
+            rules = ImprovedTradingRules() # ImprovedTradingRulesをインポートする必要がある
+            trades_for_stock = rules.analyze_with_improved_rules(df_stock)
+            all_trades.extend(trades_for_stock)
+
+    # 全銘柄の取引結果をまとめてパフォーマンス指標を計算
+    # ImprovedTradingRulesのインスタンスを別途作成して使用
+    temp_rules_instance = ImprovedTradingRules()
+    overall_metrics = temp_rules_instance.calculate_performance_metrics(all_trades)
+    comparison_data = {"new_rules": {"metrics": overall_metrics}}
+    generate_trading_report(comparison_data, is_test_mode=is_test_mode)
+    logger.info("トレーディングルール見直しレポートが生成されました。")
+
+    # 4. 月次レポートのSlack通知
     send_monthly_report(is_test_mode=is_test_mode)
     logger.info(f"=== 月次タスク完了 (テストモード: {is_test_mode}) ===")
 
