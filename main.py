@@ -24,6 +24,7 @@ from python.config import config
 from python.db import dump_csv
 from python.trading import every_stock_buy_and_sell_timing
 from python.trading.trading_rules import generate_trading_report, ImprovedTradingRules # generate_trading_report と ImprovedTradingRules を追加
+from python.utils.decode_mojibake import decode_mojibake_file # 文字化け解消用
 from python.utils.logger import get_logger
 from python.utils.monitor import (  # monitorタスク用
     api_call_count,
@@ -87,6 +88,22 @@ def run_daily_task(is_test_mode: bool = False):
 
         # 4. 日次モニターレポートのSlack通知 (市場開場前)
         send_daily_evening_report(is_test_mode=is_test_mode)
+
+        # 4.5. 最新の日次サマリーレポートをデコードしてログに出力
+        from python.config import config # configをインポート
+        from pathlib import Path # Pathをインポート
+
+        report_dir = config.root_dir / "data" / "report" / "daily" / "summary"
+        if report_dir.exists():
+            files = sorted(report_dir.glob("summary_report_*.txt"), reverse=True)
+            if files:
+                latest_report_path = str(files[0])
+                logger.info(f"最新の日次サマリーレポートをデコードします: {latest_report_path}")
+                decode_mojibake_file(latest_report_path)
+            else:
+                logger.info("日次サマリーレポートが見つかりませんでした。")
+        else:
+            logger.info("日次サマリーレポートディレクトリが見つかりませんでした。")
 
         # 5. 全銘柄の急落検知とテクニカル指標に基づく警告
         try:
