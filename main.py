@@ -24,6 +24,7 @@ from python.config import config
 from python.db import dump_csv
 from python.trading import every_stock_buy_and_sell_timing
 from python.trading.trading_rules import generate_trading_report, ImprovedTradingRules # generate_trading_report と ImprovedTradingRules を追加
+from google.cloud import storage # Cloud Storageアップロード用
 from python.utils.decode_mojibake import decode_mojibake_file # 文字化け解消用
 from python.utils.logger import get_logger
 from python.utils.monitor import (  # monitorタスク用
@@ -60,6 +61,24 @@ logger = get_logger("main_task", category="task")
 
 analyzer = PortfolioAnalyzer()
 
+def upload_report_to_gcs(local_file_path: str, gcs_blob_path: str, bucket_name: str):
+    """
+    指定されたローカルファイルをCloud Storageにアップロードし、
+    Content-Typeをtext/plain; charset=utf-8に設定する。
+    """
+    try:
+        client = storage.Client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(gcs_blob_path)
+
+        blob.upload_from_filename(
+            local_file_path,
+            content_type="text/plain; charset=utf-8"
+        )
+        logger.info(f"レポートをGCSにアップロードしました: gs://{bucket_name}/{gcs_blob_path}")
+    except Exception as e:
+        logger.error(f"GCSへのレポートアップロード中にエラーが発生しました: {e}")
+
 
 def run_daily_task(is_test_mode: bool = False):
     logger.info(f"=== 日次タスク開始 (テストモード: {is_test_mode}) ===")
@@ -86,26 +105,42 @@ def run_daily_task(is_test_mode: bool = False):
         generate_all_charts.main(period="1mo", is_test_mode=is_test_mode)  # 日次レポート用として3ヶ月期間を指定
         logger.info("全銘柄チャート一括生成が実行されました。")
 
-        # 4. 日次モニターレポートのSlack通知 (市場開場前)
-        send_daily_evening_report(is_test_mode=is_test_mode)
+        # 4. レポートファイルをCloud Storageにアップロード
+        # バケット名はscripts/send_report.shから取得
+        GCS_BUCKET_NAME = "stock-managemet-report-file"
 
-        # 4.5. 最新の日次サマリーレポートをデコードしてログに出力
-        from python.config import config # configをインポート
-        from pathlib import Path # Pathをインポート
-
-        report_dir = config.root_dir / "data" / "report" / "daily" / "summary"
-        if report_dir.exists():
-            files = sorted(report_dir.glob("summary_report_*.txt"), reverse=True)
-            if files:
-                latest_report_path = str(files[0])
-                logger.info(f"最新の日次サマリーレポートをデコードします: {latest_report_path}")
-                decode_mojibake_file(latest_report_path)
+        # サマリーレポートのアップロード
+        summary_report_dir = config.root_dir / "data" / "report" / "daily" / "summary"
+        if summary_report_dir.exists():
+            summary_files = sorted(summary_report_dir.glob("summary_report_*.txt"), reverse=True)
+            if summary_files:
+                latest_summary_report_path = str(summary_files[0])
+                gcs_summary_blob_path = f"data/report/daily/summary/{Path(latest_summary_report_path).name}"
+                upload_report_to_gcs(latest_summary_report_path, gcs_summary_blob_path, GCS_BUCKET_NAME)
+                logger.info(f"最新の日次サマリーレポートをデコードします: {latest_summary_report_path}")
+                decode_mojibake_file(latest_summary_report_path) # デコード処理もここに移動
             else:
                 logger.info("日次サマリーレポートが見つかりませんでした。")
         else:
             logger.info("日次サマリーレポートディレクトリが見つかりませんでした。")
 
-        # 5. 全銘柄の急落検知とテクニカル指標に基づく警告
+        # 詳細レポートのアップロード
+        detailed_report_dir = config.root_dir / "data" / "report" / "daily" / "detailed"
+        if detailed_report_dir.exists():
+            detailed_files = sorted(detailed_report_dir.glob("detailed_report_*.txt"), reverse=True)
+            if detailed_files:
+                latest_detailed_report_path = str(detailed_files[0])
+                gcs_detailed_blob_path = f"data/report/daily/detailed/{Path(latest_detailed_report_path).name}"
+                upload_report_to_gcs(latest_detailed_report_path, gcs_detailed_blob_path, GCS_BUCKET_NAME)
+            else:
+                logger.info("日次詳細レポートが見つかりませんでした。")
+        else:
+            logger.info("日次詳細レポートディレクトリが見つかりませんでした。")
+
+        # 5. 日次モニターレポートのSlack通知 (市場開場前)
+        send_daily_evening_report(is_test_mode=is_test_mode)
+
+        # 6. 全銘柄の急落検知とテクニカル指標に基づく警告
         try:
             stock_df = pd.read_csv(config.codes_path)
             for index, row in stock_df.iterrows():
