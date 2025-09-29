@@ -56,8 +56,8 @@ esac
 SUMMARY_GCS_PATH="gs://$BUCKET/$REPORT_BASE_DIR/summary/summary_report_${TODAY}_*.txt"
 DETAILED_GCS_PATH="gs://$BUCKET/$REPORT_BASE_DIR/detailed/detailed_report_${TODAY}_*.txt"
 TRADING_RULES_GCS_PATH="gs://$BUCKET/$REPORT_BASE_DIR/trading_rules/trading_rules_${TODAY}_*.txt"
-CHART_IMG_GCS_PATH="gs://$BUCKET/data/chartImg/$PERIOD/*.png"
-PLOTS_GCS_PATH="gs://$BUCKET/data/plots/$PERIOD/*.png"
+CHART_IMG_GCS_PATH="gs://$BUCKET/data/chartImg/$PERIOD/"
+PLOTS_GCS_PATH="gs://$BUCKET/data/plots/$PERIOD/"
 
 # 最新ファイルを取得する関数
 get_latest_file() {
@@ -75,8 +75,6 @@ TRADING_RULES_FILE=""
 if [ "$REPORT_TYPE" = "monthly" ]; then
   TRADING_RULES_FILE=$(get_latest_file "$TRADING_RULES_GCS_PATH")
 fi
-CHART_FILE=$(get_latest_file "$CHART_IMG_GCS_PATH")
-PLOT_FILE=$(get_latest_file "$PLOTS_GCS_PATH")
 
 
 # URL変換（gs:// → https://storage.cloud.google.com/）
@@ -96,16 +94,9 @@ if [ -n "$TRADING_RULES_FILE" ]; then
   TRADING_RULES_URL=${TRADING_RULES_FILE/gs:\/\//https://storage.cloud.google.com/}
 fi
 
-CHART_URL=""
-if [ -n "$CHART_FILE" ]; then
-  CHART_URL=${CHART_FILE/gs:\/\//https://storage.cloud.google.com/}
-fi
-
-PLOT_URL=""
-if [ -n "$PLOT_FILE" ]; then
-  PLOT_URL=${PLOT_FILE/gs:\/\//https://storage.cloud.google.com/}
-fi
-
+# Chart と Plot のURL
+CHART_URL="https://storage.cloud.google.com/$BUCKET/data/chartImg/$PERIOD/"
+PLOT_URL="https://storage.cloud.google.com/$BUCKET/data/plots/$PERIOD/"
 
 # ========================
 # Slack送信メッセージ生成
