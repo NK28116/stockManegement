@@ -337,7 +337,7 @@ class EveryStockAnalyzer:
             # サマリーレポート
             summary_report = self.generate_summary_report(results)
             summary_file = (
-                f"{config.data_dir}/report/summary/summary_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                f"{config.data_dir}/report/daily/summary/summary_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
             )
             os.makedirs(os.path.dirname(summary_file), exist_ok=True)
 
@@ -349,7 +349,7 @@ class EveryStockAnalyzer:
             # 詳細レポート
             detailed_report = self.generate_detailed_report(results)
             detailed_file = (
-                f"{config.data_dir}/report/detailed/detailed_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                f"{config.data_dir}/report/daily/detailed/detailed_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
             )
             os.makedirs(os.path.dirname(detailed_file), exist_ok=True)
 
