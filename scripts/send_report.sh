@@ -62,7 +62,11 @@ PLOTS_GCS_PATH="gs://$BUCKET/data/plots/$PERIOD/*.png"
 # 最新ファイルを取得する関数
 get_latest_file() {
   local pattern=$1
-  gsutil ls "$pattern" 2>/dev/null | sort | tail -n 1
+  local file=$(gsutil ls "$pattern" 2>/dev/null | sort | tail -n 1)
+  if [ -z "$file" ]; then
+    echo "Warning: No file found for pattern: $pattern" >&2
+  fi
+  echo "$file"
 }
 
 SUMMARY_FILE=$(get_latest_file "$SUMMARY_GCS_PATH")
