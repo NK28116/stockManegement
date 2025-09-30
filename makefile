@@ -155,7 +155,7 @@ install-cron:
 	  echo "# Monthly tasks (1st day 10:00 AM)"; \
 	  echo "0 10 1 * * cd /home/niwa_kazuhiro/stockManegement && source venv/bin/activate && /home/niwa_kazuhiro/stockManegement/venv/bin/python main.py monthly  && gcloud storage cp /home/niwa_kazuhiro/stockManegement/data gs://stock-managemet-report-file/data/ --recursive && gcloud storage objects update gs://stock-managemet-report-file/data/**/*.txt --content-type='text/plain; charset=utf-8'&& gcloud storage objects update gs://stock-managemet-report-file/data/**/*.csv --content-type='text/csv; charset=utf-8' && gcloud storage objects update gs://stock-managemet-report-file/data/**/*.png --content-type="image/png" && /home/niwa_kazuhiro/stockManegement/scripts/send_report.sh monthly> /cron_monthly.log 2>&1"; \
 	  echo "# Yearly tasks (Jan 1, 12:00 PM)"; \
-	  echo "0 12 1 1 * cd /home/niwa_kazuhiro/stockManegement && source venv/bin/activate && /home/niwa_kazuhiro/stockManegement/venv/bin/python main.py yearly > /cron_yearly.log 2>&1" 
+	  echo "0 12 1 1 * cd /home/niwa_kazuhiro/stockManegement && source venv/bin/activate && /home/niwa_kazuhiro/stockManegement/venv/bin/python main.py yearly > /cron_yearly.log 2>&1" \
 	) | crontab -
 	@echo "Cron jobs installed. Current crontab:"
 	@crontab -l
