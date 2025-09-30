@@ -10,10 +10,14 @@ from typing import Dict
 
 import matplotlib
 import matplotlib.pyplot as plt
+import japanize_matplotlib 
 import pandas as pd
 
 from python.config import config
 
+from dotenv import load_dotenv
+
+load_dotenv()
 # プロジェクトルートを sys.path に追加
 # ログ設定
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
