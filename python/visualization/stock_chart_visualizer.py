@@ -13,12 +13,17 @@ from typing import Dict, List, Optional
 import matplotlib
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+import japanize_matplotlib 
 import pandas as pd
 import yfinance as yf
 
 from python.config import config
 from python.trading.trading_rules import ImprovedTradingRules
 from python.visualization.plot_indicators import plot_macd_bollinger
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 warnings.filterwarnings("ignore")
 
