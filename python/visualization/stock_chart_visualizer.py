@@ -35,7 +35,7 @@ sys.path.append(os.path.join(parent_dir, "trading"))
 # Set font with fallbacks - suppress font warnings
 
 
-matplotlib.rcParams["font.family"] = config.matplotlib_font_family  # 日本語対応（configから取得）
+matplotlib.rcParams["font.family"] = 'Source Han Code JP'  # 日本語対応（configから取得）
 matplotlib.rcParams["axes.unicode_minus"] = False  # マイナス記号の文字化け対策
 # Suppress font warning messages
 
