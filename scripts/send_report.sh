@@ -55,7 +55,6 @@ esac
 # レポートファイルのパスを構築
 SUMMARY_GCS_PATH="gs://$BUCKET/$REPORT_BASE_DIR/summary/summary_report_${TODAY}_*.txt"
 DETAILED_GCS_PATH="gs://$BUCKET/$REPORT_BASE_DIR/detailed/detailed_report_${TODAY}_*.txt"
-TRADING_RULES_GCS_PATH="gs://$BUCKET/$REPORT_BASE_DIR/trading_rules/trading_rules_${TODAY}_*.txt"
 CHART_IMG_GCS_PATH="gs://$BUCKET/data/chartImg/$PERIOD/"
 PLOTS_GCS_PATH="gs://$BUCKET/data/plots/$PERIOD/"
 
@@ -71,11 +70,6 @@ get_latest_file() {
 
 SUMMARY_FILE=$(get_latest_file "$SUMMARY_GCS_PATH")
 DETAILED_FILE=$(get_latest_file "$DETAILED_GCS_PATH")
-TRADING_RULES_FILE=""
-if [ "$REPORT_TYPE" = "monthly" ]; then
-  TRADING_RULES_FILE=$(get_latest_file "$TRADING_RULES_GCS_PATH")
-fi
-
 
 # URL変換（gs:// → https://storage.cloud.google.com/）
 # ファイルが存在しない場合は空文字列のままにする
@@ -89,14 +83,10 @@ if [ -n "$DETAILED_FILE" ]; then
   DETAILED_URL=${DETAILED_FILE/gs:\/\//https://storage.cloud.google.com/}
 fi
 
-TRADING_RULES_URL=""
-if [ -n "$TRADING_RULES_FILE" ]; then
-  TRADING_RULES_URL=${TRADING_RULES_FILE/gs:\/\//https://storage.cloud.google.com/}
-fi
 
-# Chart と Plot のURL
-CHART_URL="https://storage.cloud.google.com/$BUCKET/data/chartImg/$PERIOD/"
-PLOT_URL="https://storage.cloud.google.com/$BUCKET/data/plots/$PERIOD/"
+# Chart & Plot ファイル一覧
+CHART_FILES=$(gsutil ls "gs://$BUCKET/data/chartImg/$PERIOD/*.png" 2>/dev/null || true)
+PLOT_FILES=$(gsutil ls "gs://$BUCKET/data/plots/$PERIOD/*.png" 2>/dev/null || true)
 
 # ========================
 # Slack送信メッセージ生成
@@ -115,19 +105,18 @@ if [ -n "$DETAILED_URL" ]; then
 else
   MESSAGE+="• Detailed: N/A\n"
 fi
-
-if [ -n "$TRADING_RULES_URL" ]; then
-  MESSAGE+="• Trading Rules: ${TRADING_RULES_URL}\n"
-fi
-
-if [ -n "$CHART_URL" ]; then
-  MESSAGE+="• Chart: ${CHART_URL}\n"
+if [ -n "$CHART_FILES" ]; then
+  while IFS= read -r f; do
+    MESSAGE+="• Chart: $(to_https_url "$f")\n"
+  done <<< "$CHART_FILES"
 else
   MESSAGE+="• Chart: N/A\n"
 fi
 
-if [ -n "$PLOT_URL" ]; then
-  MESSAGE+="• Plot: ${PLOT_URL}\n"
+if [ -n "$PLOT_FILES" ]; then
+  while IFS= read -r f; do
+    MESSAGE+="• Plot: $(to_https_url "$f")\n"
+  done <<< "$PLOT_FILES"
 else
   MESSAGE+="• Plot: N/A\n"
 fi
@@ -136,6 +125,8 @@ fi
 # ========================
 # Slackへ送信
 # ========================
+payload=$(jq -Rs --arg text "$MESSAGE" '{text: $text}' <<<"$MESSAGE")
+
 curl -s -X POST -H 'Content-type: application/json' \
-  --data "{\"text\":\"${MESSAGE}\"}" \
+  --data "$payload" \
   "$SLACK_WEBHOOK_URL"
