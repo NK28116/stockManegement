@@ -133,6 +133,36 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
     return df
 
 
+def add_transaction(code: str, trade_type: str, quantity: int, price: float, trade_date: str):
+    """
+    取引履歴をtransactionsテーブルに追加する
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # stocksテーブルに銘柄が存在しない場合は追加
+        cur.execute("INSERT INTO stocks (code, name, purpose) VALUES (%s, %s, %s) ON CONFLICT (code) DO NOTHING",
+                    (code, get_name(code), "")) # purposeは空で追加
+        
+        cur.execute(
+            """
+            INSERT INTO transactions (code, trade_type, quantity, price, trade_date)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (code, trade_type, quantity, price, trade_date),
+        )
+        conn.commit()
+        print(f"取引履歴を追加しました: {trade_type} {code} {quantity}株 @¥{price} on {trade_date}")
+    except PgError as e:
+        print(f"❌ 取引履歴追加エラー: {e}")
+        if conn:
+            conn.rollback()
+    finally:
+        if conn:
+            conn.close()
+
+
 def sell(df: pd.DataFrame, code: str, qty: int, profit_loss_status: str | None = None) -> pd.DataFrame:
     idx = df.index[df["code"] == code]
     if len(idx) == 0:
@@ -303,10 +333,16 @@ def main():
     # 監視中用のパーサーを追加
     p_prebuy = sub.add_parser("prebuy")
     p_prebuy.add_argument("code")
-    p_prebuy.add_argument("quantity", type=int)
+    # quantityはpre_buy関数内で固定されるため、コマンドライン引数からは削除
     p_prebuy.add_argument("--price", type=float, default=None)
     p_prebuy.add_argument("--purpose", type=str, default=None, help="present / middle / long / swing")
-    p_prebuy.add_argument("--status", type=str, default="監視中", help="監視中 / 保有中 / 購入検討中 / 売却済（利益確定） / 売却済（損切り） / 除外")
+    
+    # --watch と --get は排他的な引数
+    status_group = p_prebuy.add_mutually_exclusive_group()
+    status_group.add_argument("--watch", action="store_true", help="ステータスを '監視中' に設定")
+    status_group.add_argument("--get", action="store_true", help="ステータスを '購入検討中' に設定")
+    # --status 引数は --watch / --get と同時に指定できないようにする
+    status_group.add_argument("--status", type=str, choices=["監視中", "保有中", "購入検討中", "売却済（利益確定）", "売却済（損切り）", "除外"], help="ステータスを直接指定")
 
     p_sell = sub.add_parser("sell")
     p_sell.add_argument("code")
@@ -323,6 +359,13 @@ def main():
     p_csv_edit.add_argument("--status", type=str, choices=["監視中", "保有中", "購入検討中", "売却済（利益確定）", "売却済（損切り）", "除外"], help="ステータスを選択")
     p_csv_edit.add_argument("--purpose", type=str, choices=["present", "middle", "long", "swing"], help="目的を選択")
 
+    p_add_transaction = sub.add_parser("add_transaction", help="過去の取引履歴を追加")
+    p_add_transaction.add_argument("code", help="銘柄コード")
+    p_add_transaction.add_argument("trade_type", choices=["buy", "sell"], help="取引タイプ (buy または sell)")
+    p_add_transaction.add_argument("quantity", type=int, help="数量")
+    p_add_transaction.add_argument("price", type=float, help="取引価格")
+    p_add_transaction.add_argument("trade_date", help="取引日 (YYYY-MM-DD)")
+
     args = parser.parse_args()
 
     df = load_codes(config.codes_path)
@@ -332,11 +375,21 @@ def main():
         if args.purpose and args.code in df["code"].values:
             df.loc[df["code"] == args.code, "purpose"] = args.purpose
     elif args.action == "prebuy":
-        df = pre_buy(df, args.code, args.quantity, getattr(args, "price", None))
+        # pre_buy関数はquantityを固定で1として扱うため、args.quantityは不要
+        # statusの決定ロジック
+        prebuy_status = "監視中" # デフォルト
+        if args.watch:
+            prebuy_status = "監視中"
+        elif args.get:
+            prebuy_status = "購入検討中"
+        elif args.status: # --watch, --get が指定されていない場合のみ --status を考慮
+            prebuy_status = args.status
+
+        df = pre_buy(df, args.code, 1, getattr(args, "price", None)) # quantityを1に固定
         if args.purpose and args.code in df["code"].values:
             df.loc[df["code"] == args.code, "purpose"] = args.purpose
-        if args.status and args.code in df["code"].values:
-            df.loc[df["code"] == args.code, "status"] = args.status
+        if args.code in df["code"].values: # statusは常に設定される
+            df.loc[df["code"] == args.code, "status"] = prebuy_status
     elif args.action == "sell":
         df = sell(df, args.code, args.quantity, getattr(args, "profit_loss_status", None))
     elif args.action == "refresh":
@@ -405,6 +458,9 @@ def main():
                     print("無効な選択です。")
         else:
             print(f"エラー: {args.code} はmy_stock.csvに存在しません")
+    elif args.action == "add_transaction":
+        add_transaction(args.code, args.trade_type, args.quantity, args.price, args.trade_date)
+        return # DBへの追加はCSV保存不要なのでここで終了
 
     save_codes(df, config.codes_path)
 

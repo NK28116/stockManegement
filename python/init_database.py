@@ -113,6 +113,18 @@ def init_database():
             )
             """,
             """
+            CREATE TABLE IF NOT EXISTS transactions (
+                id SERIAL PRIMARY KEY,
+                code TEXT NOT NULL,
+                trade_type TEXT NOT NULL, -- 'buy' or 'sell'
+                quantity INTEGER NOT NULL,
+                price DOUBLE PRECISION NOT NULL,
+                trade_date DATE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (code) REFERENCES stocks(code)
+            )
+            """,
+            """
 CREATE TABLE IF NOT EXISTS trading_signals (
     code TEXT,
     signal_date DATE,
