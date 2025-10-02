@@ -68,6 +68,12 @@ get_latest_file() {
   echo "$file"
 }
 
+# gs:// → https://storage.cloud.google.com/ に変換する関数
+to_https_url() {
+  local gs_path=$1
+  echo "${gs_path/gs:\/\//https://storage.cloud.google.com/}"
+}
+
 SUMMARY_FILE=$(get_latest_file "$SUMMARY_GCS_PATH")
 DETAILED_FILE=$(get_latest_file "$DETAILED_GCS_PATH")
 
