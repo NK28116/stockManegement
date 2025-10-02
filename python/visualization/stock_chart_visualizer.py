@@ -34,7 +34,7 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 sys.path.append(os.path.join(parent_dir, "trading"))
 # Set font with fallbacks - suppress font warnings
-fm._rebuild() # フォントキャッシュを再構築
+fm.fontManager.clear() # フォントキャッシュをクリア
 
 matplotlib.rcParams["font.family"] = config.matplotlib_font_family # 日本語対応（configから取得）
 matplotlib.rcParams["axes.unicode_minus"] = False  # マイナス記号の文字化け対策
