@@ -129,8 +129,9 @@ class StockChartVisualizer:
 
         # Figure setup
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 10), height_ratios=[3, 1])
+        current_font = matplotlib.rcParams["font.family"][0] if isinstance(matplotlib.rcParams["font.family"], list) else matplotlib.rcParams["font.family"]
         fig.suptitle(
-            f"{stock_info['name']} ({stock_info['code']}) - 売買タイミング分析",
+            f"{stock_info['name']} ({stock_info['code']}) - 売買タイミング分析 (Font: {current_font})",
             fontsize=16,
             fontweight="bold",
         )
