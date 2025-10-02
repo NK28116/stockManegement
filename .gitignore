@@ -12,7 +12,6 @@ python/__pycache__/config.cpython-312.pyc
 python/__pycache__/config.cpython-312.pyc
 python/__pycache__/config.cpython-313.pyc
 python/__pycache__/config.cpython-313.pyc
-data/my_stock.csv
 python/db/my_stock.db
 data/chartImg/*.png
 data/plots/*.*.png
