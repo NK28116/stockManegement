@@ -130,6 +130,7 @@ MESSAGE="📊 *本日の ${REPORT_TYPE} Report* (${TODAY})
 - Detailed: ${DETAILED_URL:-N/A}
 
 ## Graph
+
 "
 
 # 銘柄ごとにまとめる
@@ -142,6 +143,7 @@ for key in "${!charts[@]}"; do
   fi
   if [ -n "${plots[$key]}" ]; then
     MESSAGE+="    - Plot: ${plots[$key]}
+    -------------------------------------------------------------------
     "
   fi
 done
