@@ -10,7 +10,6 @@ set -euo pipefail
 
 # SlackのIncoming Webhook URL
 SLACK_WEBHOOK_URL="https://example.invalid/REDACTED_SLACK_WEBHOOK"
-
 # GCSバケット名
 BUCKET="stock-managemet-report-file"
 
