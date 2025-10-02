@@ -99,6 +99,7 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
             df.at[i, "quantity"] = 0
             if "status" in df.columns:
                 df.at[i, "status"] = "売却済"
+            df = df.drop(idx).reset_index(drop=True) # 保有数が0になったら行を削除
         else:
             # 加重平均は購入時（qty > 0）のみ計算
             if qty > 0 and price and old_q > 0:
@@ -138,6 +139,7 @@ def sell(df: pd.DataFrame, code: str, qty: int) -> pd.DataFrame:
         if "status" in df.columns:
             df.at[i, "status"] = "売却済"
         # 平均取得単価はそのまま保持（必要なら0にする: df.at[i,"purchase_price"]=0.0）
+        df = df.drop(idx).reset_index(drop=True) # 保有数が0になったら行を削除
     else:
         if "status" in df.columns:
             df.at[i, "status"] = "保有中"
