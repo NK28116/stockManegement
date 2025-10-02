@@ -319,11 +319,12 @@ def main():
     elif args.action == "csv-edit":
         idx = df.index[df["code"] == args.code]
         if len(idx) > 0:
+            i = idx[0] # ここにiの定義を追加
             if args.status:
-                df.at[idx[0], "status"] = args.status
+                df.at[i, "status"] = args.status
                 print(f"ステータス更新: {args.code} -> {args.status}")
             if args.purpose:
-                df.at[idx[0], "purpose"] = args.purpose
+                df.at[i, "purpose"] = args.purpose
                 print(f"目的更新: {args.code} -> {args.purpose}")
             if not args.status and not args.purpose:
                 current_status = df.at[i, "status"] if "status" in df.columns else "N/A"
