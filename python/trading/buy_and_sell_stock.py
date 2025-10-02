@@ -49,10 +49,15 @@ def load_codes(path: str) -> pd.DataFrame:
             elif col == "purchase_price":
                 df[col] = 0.0
     # 型整形
-    # 既存の'sector'カラムを'purpose'にリネーム（存在する場合のみ）
-    if "sector" in df.columns and "purpose" not in df.columns:
-        df = df.rename(columns={"sector": "purpose"})
-        print("CSVヘッダー: 'sector' を 'purpose' にリネームしました。")
+    # 既存の'sector'カラムを'purpose'にリネーム、または削除
+    if "sector" in df.columns:
+        if "purpose" not in df.columns:
+            df = df.rename(columns={"sector": "purpose"})
+            print("CSVヘッダー: 'sector' を 'purpose' にリネームしました。")
+        else:
+            # 'purpose'が既に存在する場合は'sector'を削除
+            df = df.drop(columns=["sector"])
+            print("CSVヘッダー: 'sector' カラムを削除しました（'purpose'が既に存在するため）。")
 
     df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce").fillna(0).astype(int)
     df["purchase_price"] = pd.to_numeric(df["purchase_price"], errors="coerce").fillna(0.0)
