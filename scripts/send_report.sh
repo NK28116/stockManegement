@@ -69,9 +69,14 @@ get_latest_file() {
 }
 
 # gs:// → https://storage.cloud.google.com/ に変換する関数
+# gs:// → https://storage.cloud.google.com/ に変換 + URLエンコード
 to_https_url() {
   local gs_path=$1
-  echo "${gs_path/gs:\/\//https://storage.cloud.google.com/}"
+  local https_path="${gs_path/gs:\/\//https://storage.cloud.google.com/}"
+  # 最初の https:// 部分はエンコードしないように分離
+  local prefix="https://storage.cloud.google.com/"
+  local path="${https_path#${prefix}}"
+  echo "${prefix}$(jq -rn --arg x "$path" '$x|@uri')"
 }
 
 SUMMARY_FILE=$(get_latest_file "$SUMMARY_GCS_PATH")
@@ -101,30 +106,38 @@ MESSAGE="📊 *本日の ${REPORT_TYPE} Report* (${TODAY})
 "
 
 if [ -n "$SUMMARY_URL" ]; then
-  MESSAGE+="• Summary: ${SUMMARY_URL}\n"
+  MESSAGE+="• Summary: ${SUMMARY_URL}
+  "
 else
-  MESSAGE+="• Summary: N/A\n"
+  MESSAGE+="• Summary: N/A
+  "
 fi
 
 if [ -n "$DETAILED_URL" ]; then
-  MESSAGE+="• Detailed: ${DETAILED_URL}\n"
+  MESSAGE+="• Detailed: ${DETAILED_URL}
+  "
 else
-  MESSAGE+="• Detailed: N/A\n"
+  MESSAGE+="• Detailed: N/A
+  "
 fi
 if [ -n "$CHART_FILES" ]; then
   while IFS= read -r f; do
-    MESSAGE+="• Chart: $(to_https_url "$f")\n"
+    MESSAGE+="• Chart: $(to_https_url "$f")
+    "
   done <<< "$CHART_FILES"
 else
-  MESSAGE+="• Chart: N/A\n"
+  MESSAGE+="• Chart: N/A
+  "
 fi
 
 if [ -n "$PLOT_FILES" ]; then
   while IFS= read -r f; do
-    MESSAGE+="• Plot: $(to_https_url "$f")\n"
+    MESSAGE+="• Plot: $(to_https_url "$f")
+    "
   done <<< "$PLOT_FILES"
 else
-  MESSAGE+="• Plot: N/A\n"
+  MESSAGE+="• Plot: N/A
+  "
 fi
 
 
