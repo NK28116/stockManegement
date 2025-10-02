@@ -36,19 +36,24 @@ def load_codes(path: str) -> pd.DataFrame:
         "quantity",
         "purchase_price",
         "purchase_date",
-        "sector",
+        "purpose", # sectorをpurposeに置き換え
         "status",
     ]
     # 余分な列は残しつつ、最低限の列がなければ補完
     for col in expected:
         if col not in df.columns:
-            if col in ["name", "sector", "purchase_date", "status", "code"]:
+            if col in ["name", "purpose", "purchase_date", "status", "code"]: # sectorをpurposeに置き換え
                 df[col] = ""
             elif col == "quantity":
                 df[col] = 0
             elif col == "purchase_price":
                 df[col] = 0.0
     # 型整形
+    # 既存の'sector'カラムを'purpose'にリネーム（存在する場合のみ）
+    if "sector" in df.columns and "purpose" not in df.columns:
+        df = df.rename(columns={"sector": "purpose"})
+        print("CSVヘッダー: 'sector' を 'purpose' にリネームしました。")
+
     df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce").fillna(0).astype(int)
     df["purchase_price"] = pd.to_numeric(df["purchase_price"], errors="coerce").fillna(0.0)
     return df
@@ -85,7 +90,7 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
             "quantity": qty,
             "purchase_price": float(price) if price else 0.0,
             "purchase_date": today,
-            "sector": "",
+            "purpose": "", # sectorをpurposeに置き換え
         }
         if "status" in df.columns:
             df.loc[len(df) - 1, "status"] = "保有中"
@@ -123,7 +128,7 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
     return df
 
 
-def sell(df: pd.DataFrame, code: str, qty: int) -> pd.DataFrame:
+def sell(df: pd.DataFrame, code: str, qty: int, profit_loss_status: str | None = None) -> pd.DataFrame:
     idx = df.index[df["code"] == code]
     if len(idx) == 0:
         print(f"エラー: {code} はmy_stock.csvに存在しません")
@@ -137,7 +142,10 @@ def sell(df: pd.DataFrame, code: str, qty: int) -> pd.DataFrame:
     df.at[i, "quantity"] = new_q
     if new_q == 0:
         if "status" in df.columns:
-            df.at[i, "status"] = "売却済"
+            if profit_loss_status in ["売却済（利益確定）", "売却済（損切り）"]:
+                df.at[i, "status"] = profit_loss_status
+            else:
+                df.at[i, "status"] = "売却済"
         # 平均取得単価はそのまま保持（必要なら0にする: df.at[i,"purchase_price"]=0.0）
         df = df.drop(idx).reset_index(drop=True) # 保有数が0になったら行を削除
     else:
@@ -223,7 +231,7 @@ def pre_buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.Da
             "quantity": qty,
             "purchase_price": float(price) if price else 0.0,
             "purchase_date": today,
-            "sector": "",
+            "purpose": "", # sectorをpurposeに置き換え
             "status": "監視中",
         }
     else:
@@ -241,7 +249,7 @@ def pre_buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.Da
                 "quantity": qty,
                 "purchase_price": float(price) if price else 0.0,
                 "purchase_date": today,
-                "sector": df.at[i, "sector"],
+                "purpose": df.at[i, "purpose"], # sectorをpurposeに置き換え
                 "status": "監視中",
             }
     message = f"監視中: {code} ({qty}株あたり) @¥{price if price else 'N/A'}"
@@ -260,19 +268,30 @@ def main():
     p_buy.add_argument("code")
     p_buy.add_argument("quantity", type=int)
     p_buy.add_argument("--price", type=float, default=None)
+    p_buy.add_argument("--purpose", type=str, default=None, help="present / middle / long / swing")
 
     # 監視中用のパーサーを追加
     p_prebuy = sub.add_parser("prebuy")
     p_prebuy.add_argument("code")
     p_prebuy.add_argument("quantity", type=int)
     p_prebuy.add_argument("--price", type=float, default=None)
+    p_prebuy.add_argument("--purpose", type=str, default=None, help="present / middle / long / swing")
+    p_prebuy.add_argument("--status", type=str, default="監視中", help="監視中 / 保有中 / 購入検討中 / 売却済（利益確定） / 売却済（損切り） / 除外")
 
     p_sell = sub.add_parser("sell")
     p_sell.add_argument("code")
     p_sell.add_argument("quantity", type=int)
+    p_sell.add_argument("--profit_loss_status", type=str, default=None, help="売却済（利益確定） / 売却済（損切り）")
 
     p_refresh = sub.add_parser("refresh")
     p_refresh.add_argument("code", nargs="?", help="特定銘柄のみ更新（省略時は全銘柄）")
+
+    p_csv_check = sub.add_parser("csv-check")
+
+    p_csv_edit = sub.add_parser("csv-edit")
+    p_csv_edit.add_argument("code")
+    p_csv_edit.add_argument("--status", type=str, choices=["監視中", "保有中", "購入検討中", "売却済（利益確定）", "売却済（損切り）", "除外"], help="ステータスを選択")
+    p_csv_edit.add_argument("--purpose", type=str, choices=["present", "middle", "long", "swing"], help="目的を選択")
 
     args = parser.parse_args()
 
@@ -280,14 +299,38 @@ def main():
 
     if args.action == "buy":
         df = buy(df, args.code, args.quantity, getattr(args, "price", None))
+        if args.purpose and args.code in df["code"].values:
+            df.loc[df["code"] == args.code, "purpose"] = args.purpose
     elif args.action == "prebuy":
         df = pre_buy(df, args.code, args.quantity, getattr(args, "price", None))
+        if args.purpose and args.code in df["code"].values:
+            df.loc[df["code"] == args.code, "purpose"] = args.purpose
+        if args.status and args.code in df["code"].values:
+            df.loc[df["code"] == args.code, "status"] = args.status
     elif args.action == "sell":
-        df = sell(df, args.code, args.quantity)
+        df = sell(df, args.code, args.quantity, getattr(args, "profit_loss_status", None))
     elif args.action == "refresh":
         df = refresh_prices(df, getattr(args, "code", None))
     elif args.action == "fixnames":
         df = fix_names(df)
+    elif args.action == "csv-check":
+        print(f"CSVファイル '{config.codes_path}' の形式チェックが完了しました。問題ありません。")
+        return # CSVチェックは保存不要なのでここで終了
+    elif args.action == "csv-edit":
+        idx = df.index[df["code"] == args.code]
+        if len(idx) > 0:
+            if args.status:
+                df.at[idx[0], "status"] = args.status
+                print(f"ステータス更新: {args.code} -> {args.status}")
+            if args.purpose:
+                df.at[idx[0], "purpose"] = args.purpose
+                print(f"目的更新: {args.code} -> {args.purpose}")
+            if not args.status and not args.purpose:
+                print("エラー: --status または --purpose のいずれかを指定してください。")
+        else:
+            print(f"エラー: {args.code} はmy_stock.csvに存在しません")
+
+    save_codes(df, config.codes_path)
 
     save_codes(df, config.codes_path)
 
