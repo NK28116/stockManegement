@@ -326,11 +326,54 @@ def main():
                 df.at[idx[0], "purpose"] = args.purpose
                 print(f"目的更新: {args.code} -> {args.purpose}")
             if not args.status and not args.purpose:
-                print("エラー: --status または --purpose のいずれかを指定してください。")
+                current_status = df.at[i, "status"] if "status" in df.columns else "N/A"
+                current_purpose = df.at[i, "purpose"] if "purpose" in df.columns else "N/A"
+
+                print(f"銘柄: {args.code}")
+                print(f"現在のステータス: {current_status}")
+                print(f"現在の目的: {current_purpose}")
+
+                status_choices = ["監視中", "保有中", "購入検討中", "売却済（利益確定）", "売却済（損切り）", "除外"]
+                purpose_choices = ["present", "middle", "long", "swing"]
+
+                print("\n変更する項目を選択してください:")
+                print("1. ステータス")
+                print("2. 目的")
+                print("3. 両方")
+                print("0. キャンセル")
+
+                choice = input("選択: ")
+
+                if choice == "1" or choice == "3":
+                    print("\n変更先のステータスを選んでください:")
+                    for j, s in enumerate(status_choices, 1):
+                        print(f"{j}. {s}")
+                    status_choice = input("選択: ")
+                    try:
+                        selected_status = status_choices[int(status_choice) - 1]
+                        df.at[i, "status"] = selected_status
+                        print(f"ステータス更新: {args.code} -> {selected_status}")
+                    except (ValueError, IndexError):
+                        print("無効な選択です。ステータスは更新されませんでした。")
+
+                if choice == "2" or choice == "3":
+                    print("\n変更先の目的を選んでください:")
+                    for j, p in enumerate(purpose_choices, 1):
+                        print(f"{j}. {p}")
+                    purpose_choice = input("選択: ")
+                    try:
+                        selected_purpose = purpose_choices[int(purpose_choice) - 1]
+                        df.at[i, "purpose"] = selected_purpose
+                        print(f"目的更新: {args.code} -> {selected_purpose}")
+                    except (ValueError, IndexError):
+                        print("無効な選択です。目的は更新されませんでした。")
+
+                if choice == "0":
+                    print("変更をキャンセルしました。")
+                elif choice not in ["1", "2", "3"]:
+                    print("無効な選択です。")
         else:
             print(f"エラー: {args.code} はmy_stock.csvに存在しません")
-
-    save_codes(df, config.codes_path)
 
     save_codes(df, config.codes_path)
 
