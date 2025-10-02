@@ -9,8 +9,7 @@ set -euo pipefail
 # ========================
 
 # SlackのIncoming Webhook URL
-SLACK_WEBHOOK_URL="https://hooks.slack.com/services/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"
-
+SLACK_WEBHOOK_URL="https://hooks.slack.com/services/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"
 # GCSバケット名
 BUCKET="stock-managemet-report-file"
 
