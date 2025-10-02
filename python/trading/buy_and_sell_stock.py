@@ -172,23 +172,48 @@ def refresh_prices(df: pd.DataFrame, target_code: str | None = None) -> pd.DataF
 
     updated = df.copy()
     now_str = datetime.now().strftime("%Y-%m-%d")
+    
+    # 有効なステータスリスト
+    valid_statuses = ["監視中", "保有中", "購入検討中", "売却済（利益確定）", "売却済（損切り）", "除外"]
+
+    rows_to_keep = []
     for i, row in updated.iterrows():
         code = str(row.get("code", "")).strip()
         if not code:
             continue
         if target_code and code != target_code:
+            rows_to_keep.append(row) # ターゲット外の銘柄はそのまま残す
             continue
+        
+        qty = int(row.get("quantity", 0) or 0)
+        status = str(row.get("status", "")).strip()
+
+        # quantityが0で、かつ有効な売却済みステータスではない場合は削除対象
+        # ただし、'除外'ステータスはquantityが0でなくても残す可能性があるため、別途考慮
+        if qty == 0 and status not in ["売却済（利益確定）", "売却済（損切り）", "除外"]:
+            print(f"銘柄 {code} は保有数が0で、かつ有効な売却済みステータスではないため削除します。")
+            continue # この行はrows_to_keepに追加しない
+
+        # statusが有効なリストに含まれていない場合も削除対象
+        if status and status not in valid_statuses:
+            print(f"銘柄 {code} のステータス '{status}' は無効なため削除します。")
+            continue # この行はrows_to_keepに追加しない
+
         cur = get_price(code)
         if "current_price" in updated.columns:
-            updated.at[i, "current_price"] = round(cur, 2)
-        qty = int(row.get("quantity", 0) or 0)
+            row["current_price"] = round(cur, 2)
+        
         pp = float(row.get("purchase_price", 0.0) or 0.0)
         if "profit_loss" in updated.columns:
-            updated.at[i, "profit_loss"] = round((cur - pp) * qty, 2)
+            row["profit_loss"] = round((cur - pp) * qty, 2)
         if "profit_loss_percent" in updated.columns:
-            updated.at[i, "profit_loss_percent"] = "{((cur-pp)/pp*100):+.2f}%" if pp > 0 else "0.00%"
+            row["profit_loss_percent"] = f"{((cur-pp)/pp*100):+.2f}%" if pp > 0 else "0.00%"
         if "last_updated" in updated.columns:
-            updated.at[i, "last_updated"] = now_str
+            row["last_updated"] = now_str
+        
+        rows_to_keep.append(row)
+            
+    updated = pd.DataFrame(rows_to_keep)
     return updated
 
 
