@@ -32,9 +32,9 @@ sys.path.append(parent_dir)
 sys.path.append(os.path.join(parent_dir, "trading"))
 # Set font with fallbacks - suppress font warnings
 import matplotlib.font_manager as fm
-fm._rebuild() # フォントキャッシュを再構築
-
-matplotlib.rcParams["font.family"] = "IPAexGothic" # 日本語対応（configから取得）
+font_path = "/usr/share/fonts/opentype/ipaexfont-gothic/ipaexg.ttf"
+font_prop = fm.FontProperties(fname=font_path)
+matplotlib.rcParams["font.family"] = font_prop.get_name() # 日本語対応（configから取得）
 matplotlib.rcParams["axes.unicode_minus"] = False  # マイナス記号の文字化け対策
 # Suppress font warning messages
 
@@ -129,7 +129,7 @@ class StockChartVisualizer:
 
         # Figure setup
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 10), height_ratios=[3, 1])
-        current_font = matplotlib.rcParams["font.family"][0] if isinstance(matplotlib.rcParams["font.family"], list) else matplotlib.rcParams["font.family"]
+        current_font = matplotlib.rcParams["font.family"]
         fig.suptitle(
             f"{stock_info['name']} ({stock_info['code']}) - 売買タイミング分析 (Font: {current_font})",
             fontsize=16,
