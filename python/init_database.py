@@ -61,7 +61,7 @@ def init_database():
                 quantity INTEGER,
                 target_price DOUBLE PRECISION,
                 planned_date DATE,
-                sector TEXT,
+                purpose TEXT, -- sectorをpurposeに置き換え
                 status TEXT DEFAULT '監視中',
                 PRIMARY KEY (code, date)
             )
@@ -74,7 +74,7 @@ def init_database():
                 quantity INTEGER,
                 purchase_price DOUBLE PRECISION,
                 purchase_date DATE,
-                sector TEXT,
+                purpose TEXT, -- sectorをpurposeに置き換え
                 weight DOUBLE PRECISION DEFAULT 0.0,
                 PRIMARY KEY (code)
             )
@@ -97,7 +97,7 @@ def init_database():
             CREATE TABLE IF NOT EXISTS stocks (
                 code TEXT PRIMARY KEY,
                 name TEXT,
-                sector TEXT
+                purpose TEXT -- sectorをpurposeに置き換え
             )
             """,
             # 保有株式の全期間の変異
@@ -126,6 +126,41 @@ CREATE TABLE IF NOT EXISTS trading_signals (
 
         for table_sql in tables:
             cur.execute(table_sql)
+
+        # 既存テーブルのカラム名を変更 (sector -> purpose)
+        # カラムが存在する場合のみ実行
+        alter_column_sqls = [
+            """
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stocks' AND column_name='sector') THEN
+                    ALTER TABLE stocks RENAME COLUMN sector TO purpose;
+                    RAISE NOTICE 'Column "sector" in table "stocks" renamed to "purpose".';
+                END IF;
+            END $$;
+            """,
+            """
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='portfolio' AND column_name='sector') THEN
+                    ALTER TABLE portfolio RENAME COLUMN sector TO purpose;
+                    RAISE NOTICE 'Column "sector" in table "portfolio" renamed to "purpose".';
+                END IF;
+            END $$;
+            """,
+            """
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pre_buy_daily' AND column_name='sector') THEN
+                    ALTER TABLE pre_buy_daily RENAME COLUMN sector TO purpose;
+                    RAISE NOTICE 'Column "sector" in table "pre_buy_daily" renamed to "purpose".';
+                END IF;
+            END $$;
+            """,
+        ]
+
+        for alter_sql in alter_column_sqls:
+            cur.execute(alter_sql)
 
         # インデックスの作成
         indexes = [
