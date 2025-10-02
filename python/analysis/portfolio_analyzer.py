@@ -36,7 +36,7 @@ class PortfolioAnalyzer:
         try:
             conn = get_db_connection()
             query = """
-            SELECT ph.id, ph.code, s.name, s.sector, ph.quantity, ph.purchase_price, ph.purchase_date
+            SELECT ph.id, ph.code, s.name, s.purpose, ph.quantity, ph.purchase_price, ph.purchase_date
             FROM portfolio_holdings ph
             JOIN stocks s ON ph.code = s.code
             WHERE ph.portfolio_name = %s
@@ -266,11 +266,11 @@ class PortfolioAnalyzer:
                 total_market_value += market_value
                 stock_market_values[holding["name"]] = market_value
 
-                sector = holding["sector"]
-                sector_market_values[sector] = sector_market_values.get(sector, 0.0) + market_value
+                purpose = holding["purpose"] # sectorをpurposeに置き換え
+                sector_market_values[purpose] = sector_market_values.get(purpose, 0.0) + market_value # sectorをpurposeに置き換え
 
         sector_allocation = (
-            {sector: (value / total_market_value) * 100 for sector, value in sector_market_values.items()}
+            {purpose: (value / total_market_value) * 100 for purpose, value in sector_market_values.items()} # sectorをpurposeに置き換え
             if total_market_value > 0
             else {}
         )
@@ -353,14 +353,14 @@ class PortfolioAnalyzer:
         conn = None
         try:
             conn = get_db_connection()
-            # 銘柄名とセクターを取得
-            stock_info_query = "SELECT name, sector FROM stocks WHERE code = %s"
+            # 銘柄名と目的を取得
+            stock_info_query = "SELECT name, purpose FROM stocks WHERE code = %s" # sectorをpurposeに置き換え
             with conn.cursor() as cursor:
                 cursor.execute(stock_info_query, (code,))
                 stock_info = cursor.fetchone()
             if not stock_info:
                 return {"error": f"銘柄コード {code} が見つかりません。"}
-            stock_name, stock_sector = stock_info
+            stock_name, stock_purpose = stock_info # stock_sectorをstock_purposeに置き換え
 
             # 売買履歴
             transactions_query = """
@@ -386,12 +386,12 @@ class PortfolioAnalyzer:
             latest_price = latest_price_df["Close"].iloc[-1] if not latest_price_df.empty else None
 
             # 今後の見通し (ダミー)
-            outlook = "市場全体の動向とセクターの成長性に基づき、中立的な見通しです。"
+            outlook = "市場全体の動向と目的の成長性に基づき、中立的な見通しです。" # セクターを目的の成長性に置き換え
 
             return {
                 "code": code,
                 "name": stock_name,
-                "sector": stock_sector,
+                "purpose": stock_purpose, # sectorをpurposeに置き換え
                 "pnl": pnl,
                 "transactions": transactions_df.to_dict(orient="records"),
                 "latest_price": latest_price,
