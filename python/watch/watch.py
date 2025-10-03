@@ -224,11 +224,11 @@ def detect_intraday_crash(code, current_price, last_price):
 
 def run_once_with_crash_check(is_test_mode: bool = False):
     """分足1回取得＋急落検知"""
-    codes = load_stock_codes()
+    current_codes = load_stock_codes()  # 最新の監視対象コードリストを取得
     current_dt = datetime.now()
     alerts = []
 
-    for code in codes:
+    for code in current_codes:  # 最新のコードリストを使用
         price, volume = get_stock_price(code)
         history = get_price_history(code, limit=3)
         last_price = history[-1] if history else None
