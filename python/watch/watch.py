@@ -96,47 +96,18 @@ def get_stock_price(symbol: str) -> float:
     - APIキー未設定 → yfinanceから取得
     - APIキー設定済み → 証券会社APIから取得
     """
-    if not config.XXXX_API_KEY or not config.XXXX_API_SECRET or not config.XXXX_API_URL:
-        # --- case1: yfinance ---
-        try:
-            ticker = yf.Ticker(f"{symbol}")
-            price = ticker.history(period="1d")["Close"].iloc[-1]
-            volume = ticker.history(period="1d")["Volume"].iloc[-1]
-            return float(price), int(volume)
-        except Exception:
-            # フォールバック: ランダム値
-            price = round(random.uniform(1000, 5000), 2)
-            volume = random.randint(100, 1000)
-            return price, volume
-
-    # --- case2: API利用 ---
     try:
-        response = requests.get(
-            f"{config.XXXX_API_URL}/price/{symbol}",
-            headers={
-                "X-API-KEY": config.XXXX_API_KEY,
-                "X-API-SECRET": config.XXXX_API_SECRET,
-            },
-            timeout=10,
-        )
-        data = response.json()
-        price = float(data.get("price"))
-        volume = int(data.get("volume", random.randint(100, 1000)))  # Assume API can return volume, otherwise random
+        ticker = yf.Ticker(symbol)
+        price = ticker.history(period="1d")["Close"].iloc[-1]
+        volume = ticker.history(period="1d")["Volume"].iloc[-1]
+        return float(price), int(volume)
+    except Exception as e:
+        logger.error(f"\n {symbol}: possibly delisted; no price data found (period=1d) (Yahoo error = \"No data found, symbol may be delisted\")")
+        # フォールバック: ランダム値
+        price = round(random.uniform(1000, 5000), 2)
+        volume = random.randint(100, 1000)
+        logger.warning("\n== フォールバック: ランダム値を使用 %s -> %s==\n", symbol, price)
         return price, volume
-    except requests.exceptions.RequestException as e:
-        logger.error("\n ==API取得エラー: %s==\n", e)
-        # フォールバック: yfinance or ランダム
-        try:
-            ticker = yf.Ticker(f"{symbol}.T")
-            price = ticker.history(period="1d")["Close"].iloc[-1]
-            volume = ticker.history(period="1d")["Volume"].iloc[-1]
-            logger.info("\n ==フォールバック(yfinance): %s -> %s==\n", symbol, price)
-            return float(price), int(volume)
-        except Exception:
-            price = round(random.uniform(1000, 5000), 2)
-            volume = random.randint(100, 1000)  # Ensure volume is defined
-            logger.warning("\n== フォールバック: ランダム値を使用 %s -> %s==\n", symbol, price)
-            return price, volume
 
 
 # --- 共通処理 ---
@@ -155,7 +126,7 @@ def _monitor_stock(code, current_dt, price, volume, history, last_price, name=No
 
     logs = []
     warnings = []
-    ticker = yf.Ticker(f"{code}")
+    ticker = yf.Ticker(code)
     name = ticker.info["shortName"]
 
     # === INFOログ ===

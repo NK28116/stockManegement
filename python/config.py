@@ -62,7 +62,6 @@ class Config:
         # 証券会社API
         self.XXXX_API_KEY = os.getenv("XXXX_API_KEY", "")
         self.XXXX_API_SECRET = os.getenv("XXXX_API_SECRET", "")
-        self.XXXX_API_URL = os.getenv("XXXX_API_URL", "")
 
         # バックグラウンドタスク間隔設定 (秒)
         self.watch_interval_seconds = int(os.getenv("WATCH_INTERVAL_SECONDS", "120"))  # 2分
