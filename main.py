@@ -258,9 +258,10 @@ def watch_task():
 def analyze_intraday_task():
     """市場開場中に15分足を分析して速報アラート"""
     logger.info("=== 分足監視タスク開始 ===")
-    stock_df = pd.read_csv(config.codes_path)
     while True:
         if is_market_open():
+            # ループ内で毎回 my_stock.csv を再読み込み
+            stock_df = pd.read_csv(config.codes_path)
             for _, row in stock_df.iterrows():
                 code, name = row["code"], row["name"]
                 run_analyze_intraday_data(code, name)  # 15分足
@@ -272,11 +273,12 @@ def analyze_intraday_task():
 def analyze_daily_task():
     """終値確定後に日足データを分析"""
     logger.info("=== 日足分析タスク開始 ===")
-    stock_df = pd.read_csv(config.codes_path)
     while True:
         now = datetime.now()
         # 平日 15:15 頃に実行（終値確定後を想定）
         if now.weekday() < 5 and now.time() >= dt_time(15, 15):
+            # ループ内で毎回 my_stock.csv を再読み込み
+            stock_df = pd.read_csv(config.codes_path)
             for _, row in stock_df.iterrows():
                 code, name = row["code"], row["name"]
                 run_analyze_daily_data(code, name)  # 日足
