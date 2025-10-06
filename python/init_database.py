@@ -22,6 +22,10 @@ def init_database():
         conn = psycopg2.connect(**db_config)
         cur = conn.cursor()
 
+        # 既存のportfolioテーブルを削除（スキーマ変更を確実に適用するため）
+        cur.execute("DROP TABLE IF EXISTS portfolio CASCADE;")
+        logger.info("✅ 既存のportfolioテーブルを削除しました。")
+
         # 基本テーブルの作成
         tables = [
             # 分足

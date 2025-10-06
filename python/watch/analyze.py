@@ -243,9 +243,10 @@ if __name__ == "__main__":
     # my_stock.csvの内容をデータベースに同期
     sync_portfolio_from_csv()
 
-    # 例: my_stock.csv に記載された全銘柄を分析
+    # my_stock.csv に記載された全銘柄を分析
     stock_df = pd.read_csv(config.codes_path)
-    codes = stock_df["code"].tolist()
-    for code in codes:
-        analyze_daily_data(code)
-        analyze_minute_data(code)
+    for index, row in stock_df.iterrows():
+        code = row["code"]
+        name = row["name"] # nameカラムを取得
+        analyze_daily_data(code, name)
+        analyze_minute_data(code, name)
