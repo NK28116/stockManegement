@@ -44,6 +44,7 @@ from python.visualization import generate_all_charts
 from python.watch.analyze import analyze_daily_data as run_analyze_daily_data
 from python.watch.analyze import analyze_minute_data as run_analyze_intraday_data
 from python.watch.dailyAggregator import aggregate_intraday_to_daily
+from python.watch.file_monitor import start_file_monitor # 追加
 from python.watch.watch import run_once_with_crash_check  # watchタスク用
 
 load_dotenv()
@@ -307,6 +308,10 @@ def run_always_mode():
     # 日足監視スレッド
     daily_thread = threading.Thread(target=analyze_daily_task, daemon=True)
     daily_thread.start()
+
+    # ファイル監視スレッド (my_stock.csvの変更を検知してサービス再起動)
+    file_monitor_thread = threading.Thread(target=start_file_monitor, daemon=True)
+    file_monitor_thread.start()
 
     logger.info("すべてのバックグラウンドタスクが起動しました。メインスレッドは待機します。")
     # メインスレッドはバックグラウンドタスクが終了しないように待機
