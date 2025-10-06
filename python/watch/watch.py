@@ -258,7 +258,17 @@ def run_realtime_mode():
         ):
             # 市場開場中
             logger.info("市場開場中: 株価監視を実行します。")
-            run_once()
+            # 毎回最新の銘柄コードリストを読み込む
+            current_codes = load_stock_codes()
+            results = []
+
+            for code in current_codes:
+                price, volume = get_stock_price(code)
+                history = get_price_history(code, limit=config.volatility_period + 2)
+                last_price = history[-1] if history else None
+
+                updated_price = _monitor_stock(code, now, price, volume, history, last_price)
+                results.append((code, updated_price, volume))
             time.sleep(120)  # 2分待機
         elif market_open_morning_end < current_time < market_open_afternoon_start:
             # 昼休み中
