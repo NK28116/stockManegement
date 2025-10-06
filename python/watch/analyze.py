@@ -81,10 +81,10 @@ def analyze_minute_data(code: str, name: str, is_test_mode: bool = False):
         return
 
     # 分足データを15分足にリサンプリング
-    # '15T'は15分間隔を意味する
+    # '15min'は15分間隔を意味する
     # open, high, low, close, volumeを適切に集約
     df = (
-        df_minute.resample("15T")
+        df_minute.resample("15min") # '15T'を'15min'に修正
         .agg({"open": "first", "high": "max", "low": "min", "close": "last", "volume": "sum"})
         .dropna()
     )  # データがない15分足は除外
