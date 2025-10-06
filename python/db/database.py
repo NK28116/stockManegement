@@ -59,6 +59,23 @@ def create_portfolio_table():
             conn.close()
 
 
+def get_portfolio_data():
+    """
+    portfolioテーブルからすべてのデータを取得する。
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        df = pd.read_sql_query("SELECT * FROM portfolio ORDER BY code, purchase_date", conn)
+        return df
+    except PgError as e:
+        logger.error(f"❌ portfolioデータ取得エラー: {e}")
+        return pd.DataFrame()
+    finally:
+        if conn:
+            conn.close()
+
+
 def upsert_portfolio_data(data):
     """
     my_stock.csvから読み込んだデータをportfolioテーブルに挿入または更新する。
