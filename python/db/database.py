@@ -1,5 +1,6 @@
 import logging
 
+import pandas as pd # 追加
 import psycopg2
 from psycopg2 import Error as PgError
 from psycopg2.extras import execute_values
