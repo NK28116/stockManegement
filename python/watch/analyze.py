@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -6,7 +7,7 @@ import psycopg2
 from psycopg2 import Error as PgError
 
 from python.config import config
-from python.db.database import get_db_connection
+from python.db.database import create_portfolio_table, get_db_connection, upsert_portfolio_data
 from python.utils.indicators import (  # インジケーター計算関数をインポート
     calculate_bollinger_bands,
     calculate_macd,
@@ -17,7 +18,7 @@ from ..utils.alert import send_alert
 
 logger = get_logger("analyze", category="watch")
 
-__all__ = ["analyze_daily_data", "analyze_minute_data"]
+__all__ = ["analyze_daily_data", "analyze_minute_data", "sync_portfolio_from_csv"]
 
 
 # フラグ保存用の一時ファイルディレクトリ
@@ -213,7 +214,35 @@ def analyze_daily_data(code: str, name: str, is_test_mode: bool = False):
     logger.info(f"{name} ({code}) の日足データ分析を完了")
 
 
+def sync_portfolio_from_csv():
+    """
+    my_stock.csvの内容を読み込み、portfolioテーブルに同期する。
+    """
+    logger.info("my_stock.csvからportfolioデータを同期します。")
+    try:
+        # portfolioテーブルが存在しない場合は作成
+        create_portfolio_table()
+
+        # my_stock.csvを読み込む
+        df = pd.read_csv(config.codes_path)
+
+        # last_updatedカラムを現在時刻で更新
+        df["last_updated"] = datetime.now()
+
+        # データフレームを辞書のリストに変換
+        data_to_upsert = df.to_dict(orient="records")
+
+        # データベースに挿入または更新
+        upsert_portfolio_data(data_to_upsert)
+        logger.info("my_stock.csvからのportfolioデータ同期が完了しました。")
+    except Exception as e:
+        logger.error(f"my_stock.csvからのportfolioデータ同期中にエラーが発生しました: {e}")
+
+
 if __name__ == "__main__":
+    # my_stock.csvの内容をデータベースに同期
+    sync_portfolio_from_csv()
+
     # 例: my_stock.csv に記載された全銘柄を分析
     stock_df = pd.read_csv(config.codes_path)
     codes = stock_df["code"].tolist()

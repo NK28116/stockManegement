@@ -3,22 +3,19 @@
 重複を解消し、統一されたデータベース構造を作成
 """
 
+import logging
+
 import psycopg2
 from psycopg2 import Error as PgError
 
 from python.config import config
+from python.db.database import create_portfolio_table  # 新しく追加した関数をインポート
+
+logger = logging.getLogger(__name__)
 
 
 def init_database():
     """データベースを初期化"""
-
-    # 重複ディレクトリの確認と削除 (SQLite関連のパスは不要になるため削除)
-    # duplicate_path = os.path.join(os.path.dirname(__file__), "python/db")
-    # if os.path.exists(duplicate_path):
-    #     print(f"重複ディレクトリを削除中: {duplicate_path}")
-    #     shutil.rmtree(duplicate_path)
-
-    # データベース接続とテーブル作成
     conn = None
     try:
         db_config = config.get_db_config()
@@ -61,22 +58,9 @@ def init_database():
                 quantity INTEGER,
                 target_price DOUBLE PRECISION,
                 planned_date DATE,
-                purpose TEXT, -- sectorをpurposeに置き換え
+                purpose TEXT,
                 status TEXT DEFAULT '監視中',
                 PRIMARY KEY (code, date)
-            )
-            """,
-            # 収支
-            """
-            CREATE TABLE IF NOT EXISTS portfolio (
-                code TEXT,
-                name TEXT,
-                quantity INTEGER,
-                purchase_price DOUBLE PRECISION,
-                purchase_date DATE,
-                purpose TEXT, -- sectorをpurposeに置き換え
-                weight DOUBLE PRECISION DEFAULT 0.0,
-                PRIMARY KEY (code)
             )
             """,
             # 保持株式
@@ -97,7 +81,7 @@ def init_database():
             CREATE TABLE IF NOT EXISTS stocks (
                 code TEXT PRIMARY KEY,
                 name TEXT,
-                purpose TEXT -- sectorをpurposeに置き換え
+                purpose TEXT
             )
             """,
             # 保有株式の全期間の変異
@@ -139,8 +123,10 @@ CREATE TABLE IF NOT EXISTS trading_signals (
         for table_sql in tables:
             cur.execute(table_sql)
 
+        # 新しいportfolioテーブルを作成
+        create_portfolio_table()
+
         # 既存テーブルのカラム名を変更 (sector -> purpose)
-        # カラムが存在する場合のみ実行
         alter_column_sqls = [
             """
             DO $$
@@ -148,15 +134,6 @@ CREATE TABLE IF NOT EXISTS trading_signals (
                 IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stocks' AND column_name='sector') THEN
                     ALTER TABLE stocks RENAME COLUMN sector TO purpose;
                     RAISE NOTICE 'Column "sector" in table "stocks" renamed to "purpose".';
-                END IF;
-            END $$;
-            """,
-            """
-            DO $$
-            BEGIN
-                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='portfolio' AND column_name='sector') THEN
-                    ALTER TABLE portfolio RENAME COLUMN sector TO purpose;
-                    RAISE NOTICE 'Column "sector" in table "portfolio" renamed to "purpose".';
                 END IF;
             END $$;
             """,
@@ -187,21 +164,20 @@ CREATE TABLE IF NOT EXISTS trading_signals (
             cur.execute(index_sql)
 
         conn.commit()
-        print(f"データベース初期化完了: {db_config['database']} on {db_config['host']}")
-        print("作成されたテーブル:")
-        print("- intraday (分足データ)")
-        print("- daily (保有中の銘柄データ)")
-        print("- pre_buy_daily(監視中の銘柄データ)")
-        print("- portfolio (ポートフォリオ情報)")
-        print("- stocks (銘柄情報)")
-        print("- portfolio_holdings (ポートフォリオ保有銘柄)")
+        logger.info(f"データベース初期化完了: {db_config['database']} on {db_config['host']}")
+        logger.info("作成されたテーブル:")
+        logger.info("- intraday (分足データ)")
+        logger.info("- daily (保有中の銘柄データ)")
+        logger.info("- pre_buy_daily(監視中の銘柄データ)")
+        logger.info("- portfolio (ポートフォリオ情報 - my_stock.csvと同期)")
+        logger.info("- stocks (銘柄情報)")
+        logger.info("- portfolio_holdings (ポートフォリオ保有銘柄)")
 
     except PgError as e:
-        print(config.db_env)  # → 'local' であること
-        print(config.get_db_config())
-        print(f"❌ データベース初期化エラー: {e}")
+        logger.error(f"❌ データベース初期化エラー: {e}")
         if conn:
             conn.rollback()
+        raise
     finally:
         if conn:
             conn.close()
@@ -221,23 +197,20 @@ def check_database_status():
         tables = [row[0] for row in cur.fetchall()]
 
         if not tables:
-
-            print("❌ データベースにテーブルが見つかりません")
+            logger.warning("❌ データベースにテーブルが見つかりません")
             return False
 
-        print("✅ データベース構造:")
+        logger.info("✅ データベース構造:")
         for table in tables:
             cur.execute(f"SELECT COUNT(*) FROM {table}")
             count = cur.fetchone()[0]
-            print(f"  - {table}: {count}件")
+            logger.info(f"  - {table}: {count}件")
 
         conn.close()
         return True
 
     except PgError as e:
-        print(config.db_env)  # → 'local' であること
-        print(config.get_db_config())
-        print(f"❌ データベース確認エラー: {e}")
+        logger.error(f"❌ データベース確認エラー: {e}")
         return False
     finally:
         if conn:
@@ -245,8 +218,9 @@ def check_database_status():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO) # ロギング設定を追加
 
-    print("データベース初期化開始...")
+    logger.info("データベース初期化開始...")
     init_database()
-    print("\nデータベース状態確認...")
+    logger.info("\nデータベース状態確認...")
     check_database_status()
