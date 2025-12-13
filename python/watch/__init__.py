@@ -4,8 +4,14 @@
 
 from .analyze import analyze_daily_data, get_daily_price_data
 from .dailyAggregator import aggregate_intraday_to_daily, save_daily_data_to_db
-from .watch import (calc_volatility, get_price_history, get_stock_price,
-                    run_dev_mode, run_realtime_mode, save_data_to_db)
+from .watch import (
+    calc_volatility,
+    get_price_history,
+    get_stock_price,
+    run_dev_mode,
+    run_realtime_mode,
+    save_data_to_db,
+)
 
 __all__ = [
     "get_price_history",
