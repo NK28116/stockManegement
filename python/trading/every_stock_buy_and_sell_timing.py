@@ -379,7 +379,10 @@ class EveryStockAnalyzer:
         try:
             # サマリーレポート
             summary_report = self.generate_summary_report(results)
-            summary_file = f"{config.data_dir}/report/daily/summary/summary_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            summary_file = (
+                f"{config.data_dir}/report/daily/summary/"
+                f"summary_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            )
             os.makedirs(os.path.dirname(summary_file), exist_ok=True)
 
             with open(summary_file, "w", encoding="utf-8") as f:

@@ -15,7 +15,6 @@ import pandas as pd
 from dotenv import load_dotenv
 
 
-
 load_dotenv()
 # プロジェクトルートを sys.path に追加
 # ログ設定
