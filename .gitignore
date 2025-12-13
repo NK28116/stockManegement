@@ -4,14 +4,14 @@
 
 .idea
 
-*/__pycache__/*
-*.*.pyc
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs
 log/*
 *.log
-python/__pycache__/config.cpython-312.pyc
-python/__pycache__/config.cpython-312.pyc
-python/__pycache__/config.cpython-313.pyc
-python/__pycache__/config.cpython-313.pyc
 python/db/my_stock.db
 data/chartImg/*.png
 data/plots/*.*.png
@@ -37,5 +37,4 @@ data/practice/*.csv
 
 # macOSメタデータファイル
 .DS_Store
-python/__pycache__/config.cpython-313.pyc
-python/__pycache__/config.cpython-313.pyc
+
