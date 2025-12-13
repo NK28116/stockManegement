@@ -1,5 +1,4 @@
 # tests/test_portfolio_analyzer.py
-import sqlite3
 import pandas as pd
 import pytest
 from unittest.mock import patch, MagicMock
@@ -16,7 +15,7 @@ from python.analysis.portfolio_analyzer import PortfolioAnalyzer
 @pytest.fixture
 def analyzer(tmp_path):
     """テスト用の PortfolioAnalyzer インスタンス"""
-    return PortfolioAnalyzer(db_path=tmp_path / "test.db", result_dir=tmp_path)
+    return PortfolioAnalyzer(result_dir=tmp_path, is_test_mode=True)
 
 
 @pytest.fixture
@@ -45,21 +44,18 @@ def sample_portfolio_df():
     )
 
 
-def test_get_portfolio(analyzer):
-    # --- setup DB ---
-    with sqlite3.connect(analyzer.db_path) as conn:
-        conn.execute("CREATE TABLE stocks (code TEXT PRIMARY KEY, name TEXT, sector TEXT)")
-        conn.execute(
-            "CREATE TABLE portfolio_holdings (id INTEGER PRIMARY KEY, code TEXT, "
-            "portfolio_name TEXT, quantity INTEGER, purchase_price REAL, purchase_date TEXT)"
-        )
-        conn.execute("INSERT INTO stocks VALUES ('AAPL', 'Apple', 'Tech')")
-        conn.execute("INSERT INTO portfolio_holdings VALUES (1, 'AAPL', 'my_stock', 10, 150, '2024-01-01')")
+@patch("python.analysis.portfolio_analyzer.pd.read_sql_query")
+@patch("python.analysis.portfolio_analyzer.get_db_connection")
+def test_get_portfolio(mock_conn, mock_read_sql, analyzer, sample_portfolio_df):
+    mock_read_sql.return_value = sample_portfolio_df
 
     df = analyzer.get_portfolio("my_stock")
+    
     assert not df.empty
     assert "AAPL" in df["code"].values
     assert "Apple" in df["name"].values
+    mock_conn.assert_called_once()
+    mock_read_sql.assert_called_once()
 
 
 @patch("python.analysis.portfolio_analyzer.yf.Ticker")
@@ -114,6 +110,9 @@ def test_analyze_portfolio(
 
 
 def test_save_analysis(analyzer, sample_portfolio_df, tmp_path):
+    # Ensure it writes file
+    analyzer.is_test_mode = False
+    
     # indicator_dict は空でもよい
     analyzer.save_analysis(sample_portfolio_df, {})
     output_file = tmp_path / "my_portfolio_analysis.txt"

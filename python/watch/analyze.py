@@ -3,14 +3,18 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-
 from psycopg2 import Error as PgError
 
 from python.config import config
-from python.db.database import (create_portfolio_table, get_db_connection,
-                                upsert_portfolio_data)
+from python.db.database import (
+    create_portfolio_table,
+    get_db_connection,
+    upsert_portfolio_data,
+)
 from python.utils.indicators import (  # インジケーター計算関数をインポート
-    calculate_bollinger_bands, calculate_macd)
+    calculate_bollinger_bands,
+    calculate_macd,
+)
 from python.utils.logger import get_logger
 
 from ..utils.alert import send_alert

@@ -3,7 +3,6 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-import sqlite3
 import pandas as pd
 import pytest
 from unittest.mock import patch, MagicMock
@@ -30,7 +29,7 @@ def test_get_four_quarter_dates(collector):
     assert len(end) == 10
 
 
-@patch("yfinance.Ticker")
+@patch("python.analysis.data_collector.yf.Ticker")
 def test_collect_stock_data_success(mock_ticker, collector):
     # yfinance の戻り値をモック
     mock_df = pd.DataFrame(
@@ -45,14 +44,11 @@ def test_collect_stock_data_success(mock_ticker, collector):
     )
     mock_ticker.return_value.history.return_value = mock_df
 
-    # calculate_indicators, analyze_performance をモック
-    collector.calculate_indicators = MagicMock(return_value=mock_df)
-    collector.analyze_performance = MagicMock(return_value={"performance": 123})
-
+    # calculate_indicators calls removed from implementation, just returns df
     result = collector.collect_stock_data("7203")
-    assert result == {"performance": 123}
-    collector.calculate_indicators.assert_called_once()
-    collector.analyze_performance.assert_called_once()
+    
+    # Assert result is the dataframe
+    pd.testing.assert_frame_equal(result, mock_df)
 
 
 @patch("yfinance.Ticker")
@@ -63,33 +59,36 @@ def test_collect_stock_data_empty(mock_ticker, collector):
     assert result is None
 
 
-def test_get_stock_list_from_db(tmp_path, monkeypatch):
-    # 一時DBを作成
-    db_path = tmp_path / "test.db"
-    conn = sqlite3.connect(db_path)
-    cur = conn.cursor()
-    cur.execute("CREATE TABLE stocks (code TEXT)")
-    cur.executemany("INSERT INTO stocks (code) VALUES (?)", [("7203",), ("6758",)])
-    conn.commit()
-    conn.close()
-
-    # config.db_path を差し替え
-    monkeypatch.setattr(dc.config, "db_path", str(db_path))
+@patch("psycopg2.connect")
+def test_get_stock_list_from_db(mock_connect, monkeypatch):
+    # Mock DB connection and cursor
+    mock_conn = MagicMock()
+    mock_cur = MagicMock()
+    mock_connect.return_value = mock_conn
+    mock_conn.cursor.return_value = mock_cur
+    
+    # Mock fetchall result
+    mock_cur.fetchall.return_value = [("7203",), ("6758",)]
 
     codes = dc.get_stock_list_from_db()
+    
     assert codes == ["7203", "6758"]
+    mock_cur.execute.assert_called_with("SELECT code FROM stocks")
 
 
 @patch.object(dc, "get_stock_list_from_db", return_value=["7203"])
 @patch.object(dc.StockDataCollector, "fetch_and_store_prices", return_value=None)
-@patch.object(dc.StockDataCollector, "collect_stock_data", return_value={"売上": 100})
+@patch.object(dc.StockDataCollector, "collect_stock_data")
 def test_main(mock_collect, mock_fetch, mock_get_list, tmp_path, monkeypatch):
     monkeypatch.setattr(dc.config, "data_dir", str(tmp_path))
-    monkeypatch.setattr(dc.config, "db_path", str(tmp_path / "dummy.db"))
+    # Return a DataFrame to simulate successful collection
+    mock_df = pd.DataFrame({"売上": [100]})
+    mock_collect.return_value = mock_df
+    # No need to patch db_path anymore as it's not used directly in main logic (handled via get_stock_list_from_db and fetch_and_store_prices)
 
     dc.main()
 
     output_file = tmp_path / "quarterly_data_collection.csv"
     assert output_file.exists()
-    df = pd.read_csv(output_file)
+    df = pd.read_csv(output_file, skiprows=1)
     assert "売上" in df.columns
