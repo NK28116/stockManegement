@@ -6,7 +6,6 @@ import time
 from datetime import datetime, timedelta
 
 import pandas as pd
-
 import yfinance as yf
 
 from python.config import config

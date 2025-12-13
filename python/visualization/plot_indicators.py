@@ -8,12 +8,10 @@ import logging
 import os
 from typing import Dict
 
-
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 from dotenv import load_dotenv
-
 
 load_dotenv()
 # プロジェクトルートを sys.path に追加

@@ -5,13 +5,13 @@ CSVファイルから銘柄を読み込んで一括分析
 """
 import os
 from datetime import datetime, timedelta
-
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import yfinance as yf
-from psycopg2 import \
-    Error as PgError  # PgErrorはget_db_connection内で使われる可能性があるので残す
+
+# PgErrorはget_db_connection内で使われる可能性があるので残す
+from psycopg2 import Error as PgError
 
 from python.config import config
 from python.db.database import get_db_connection
