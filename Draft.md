@@ -124,7 +124,7 @@ python main.py yearly
 ## 設定（`python/config.py`）
 
 - パス設定
-  - DB: `python/db/my_stock.db`
+  - DB: PostgreSQL (接続設定は `.env` で管理)
   - 監視対象CSV: `data/my_stock.csv`
   - ログ: `log/`
 

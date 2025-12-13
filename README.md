@@ -115,9 +115,9 @@ make init-db
 # 年次タスクの実行
 `python main.py yearly`
 年次タスクを実行します。
-- 全銘柄の売買タイミング分析（直近1年）、`my_stock.db` のアーカイブ（CSV形式でのダンプ）を行います。
+- 全銘柄の売買タイミング分析（直近1年）、PostgreSQLデータのアーカイブ（CSV形式でのダンプ）を行います。
   - **生成されるファイル**:
-    - `data/archive/my_stock_YYYYMMDD_HHMMSS.csv` (データベースのCSVダンプ)
+    - `data/archive/stock_data_YYYY.csv` など (データベースのCSVダンプ)
 
 # リアルタイム監視モード (バックグラウンドで実行)
 `python main.py always`
@@ -191,7 +191,15 @@ make test
 ```bash
 make format
 make lint
+make check-format
 ```
+
+## CI/CD
+
+GitHub Actionsを使用して、プッシュおよびプルリクエスト時に以下のチェックを自動実行します：
+- `flake8` によるリンティング
+- `black` および `isort` によるフォーマットチェック
+- `pytest` による自動テスト
 
 ## 貢献
 
