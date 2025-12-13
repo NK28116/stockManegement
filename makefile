@@ -82,15 +82,15 @@ init-db:
 
 .PHONY: backup-db
 backup-db:
-	@echo "Creating database backup..."
-	@mkdir -p data/db/backups
-	@cp data/db/my_stock.db data/db/backups/my_stock_$(shell date +%Y%m%d_%H%M%S).db
+	@echo "PostgreSQL database backup should be handled via pg_dump or cloud usage."
+	@echo "See python/db/dump_csv.py for archiving data."
 
 # Development
 .PHONY: install
 install:
 	@echo "Installing dependencies..."
 	@pip install -r requirements.txt
+	@if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
 .PHONY: test
 test:
@@ -107,6 +107,12 @@ format:
 	@echo "Formatting code..."
 	@black python/
 	@isort python/
+
+.PHONY: check-format
+check-format:
+	@echo "Checking code format..."
+	@black --check python/
+	@isort --check-only python/
 
 .PHONY: clean
 clean:
