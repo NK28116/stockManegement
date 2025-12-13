@@ -95,7 +95,7 @@ install:
 .PHONY: test
 test:
 	@echo "Running tests..."
-	@pytest tests/
+	@PYTHONPATH=. pytest tests/
 
 .PHONY: lint
 lint:
