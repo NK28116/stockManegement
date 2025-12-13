@@ -55,9 +55,13 @@ def start_file_monitor():
 
     event_handler = MyStockCSVHandler(target_file)
     observer = Observer()
-    observer.schedule(event_handler, path, recursive=False)  # my_stock.csvがあるディレクトリのみ監視
+    observer.schedule(
+        event_handler, path, recursive=False
+    )  # my_stock.csvがあるディレクトリのみ監視
     observer.start()
-    logger.info(f"ファイル監視を開始しました。ディレクトリ: {path}, ファイル: {target_file}")
+    logger.info(
+        f"ファイル監視を開始しました。ディレクトリ: {path}, ファイル: {target_file}"
+    )
 
     try:
         while True:
@@ -68,5 +72,7 @@ def start_file_monitor():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
     start_file_monitor()

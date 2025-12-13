@@ -1,6 +1,6 @@
 import logging
 
-import pandas as pd # 追加
+import pandas as pd  # 追加
 import psycopg2
 from psycopg2 import Error as PgError
 from psycopg2.extras import execute_values
@@ -67,7 +67,9 @@ def get_portfolio_data():
     conn = None
     try:
         conn = get_db_connection()
-        df = pd.read_sql_query("SELECT * FROM portfolio ORDER BY code, purchase_date", conn)
+        df = pd.read_sql_query(
+            "SELECT * FROM portfolio ORDER BY code, purchase_date", conn
+        )
         return df
     except PgError as e:
         logger.error(f"❌ portfolioデータ取得エラー: {e}")
@@ -100,7 +102,9 @@ def upsert_portfolio_data(data):
                 row["current_price"],
                 row["profit_loss"],
                 row["profit_loss_percent"],
-                row["last_updated"],  # CSVから読み込んだタイムスタンプ文字列がそのまま入ることを想定
+                row[
+                    "last_updated"
+                ],  # CSVから読み込んだタイムスタンプ文字列がそのまま入ることを想定
                 row["purpose"],
             )
             for row in data

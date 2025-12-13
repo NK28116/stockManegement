@@ -34,7 +34,9 @@ class StockDataCollector:
             quarter_end = datetime(today.year - 1, 12, 31)
             quarter_start = datetime(today.year - 1, 10, 1)
         else:
-            quarter_end = datetime(today.year, (current_quarter - 1) * 3, 1) - timedelta(days=1)
+            quarter_end = datetime(
+                today.year, (current_quarter - 1) * 3, 1
+            ) - timedelta(days=1)
             quarter_start = datetime(today.year, (current_quarter - 2) * 3 + 1, 1)
         return quarter_start.strftime("%Y-%m-%d"), quarter_end.strftime("%Y-%m-%d")
 
@@ -64,12 +66,16 @@ class StockDataCollector:
             if not symbol.endswith(".T"):
                 symbol = f"{symbol}.T"
 
-            get_logger(f"データ取得中: {symbol} ({self.quarter_start} - {self.quarter_end})")
+            get_logger(
+                f"データ取得中: {symbol} ({self.quarter_start} - {self.quarter_end})"
+            )
             ticker = yf.Ticker(symbol)
             df = ticker.history(start=self.quarter_start, end=self.quarter_end)
 
             if df.empty:
-                get_logger(f"警告: {code}のデータが取得できませんでした（上場廃止または銘柄コードが無効の可能性）")
+                get_logger(
+                    f"警告: {code}のデータが取得できませんでした（上場廃止または銘柄コードが無効の可能性）"
+                )
                 return None
 
             # 最低限のデータが存在するかチェック
@@ -167,9 +173,13 @@ def main(is_test_mode: bool = False):
 
     for code in codes:
         if not is_test_mode:
-            collector.fetch_and_store_prices(code, collector.four_quarter_start, collector.four_quarter_end)
+            collector.fetch_and_store_prices(
+                code, collector.four_quarter_start, collector.four_quarter_end
+            )
         else:
-            logger.info(f"テストモードのため、{code}の日次データ取得・保存はスキップします。")
+            logger.info(
+                f"テストモードのため、{code}の日次データ取得・保存はスキップします。"
+            )
 
         stock_df = collector.collect_stock_data(code)
         if stock_df is not None and not stock_df.empty:
@@ -182,7 +192,7 @@ def main(is_test_mode: bool = False):
             output_path = os.path.join(config.data_dir, "quarterly_data_collection.csv")
             os.makedirs(config.data_dir, exist_ok=True)
             with open(output_path, "w", encoding="utf-8") as f:
-                f.write("# -*- coding: utf-8 -*-\n") # 文字コード宣言を追加
+                f.write("# -*- coding: utf-8 -*-\n")  # 文字コード宣言を追加
                 final_df.to_csv(f, index=False, encoding="utf-8")
             logger.info(f"分析結果を保存しました: {output_path}")
         else:

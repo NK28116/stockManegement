@@ -64,12 +64,19 @@ class Config:
         self.XXXX_API_SECRET = os.getenv("XXXX_API_SECRET", "")
 
         # バックグラウンドタスク間隔設定 (秒)
-        self.watch_interval_seconds = int(os.getenv("WATCH_INTERVAL_SECONDS", "120"))  # 2分
-        self.analyze_interval_seconds = int(os.getenv("ANALYZE_INTERVAL_SECONDS", "3600"))  # 1時間
-        self.monitor_interval_seconds = int(os.getenv("MONITOR_INTERVAL_SECONDS", "7200"))  # 2時間
+        self.watch_interval_seconds = int(
+            os.getenv("WATCH_INTERVAL_SECONDS", "120")
+        )  # 2分
+        self.analyze_interval_seconds = int(
+            os.getenv("ANALYZE_INTERVAL_SECONDS", "3600")
+        )  # 1時間
+        self.monitor_interval_seconds = int(
+            os.getenv("MONITOR_INTERVAL_SECONDS", "7200")
+        )  # 2時間
 
         # Matplotlib フォント設定
         self.matplotlib_font_family = os.getenv("MATPLOTLIB_FONT_FAMILY", "IPAexGothic")
+
     def get_db_config(self) -> Dict[str, Any]:
         """DB接続設定を環境に応じて返す"""
         if self.db_env == "cloud":
@@ -101,11 +108,16 @@ class Config:
             "slack_webhook": self.slack_webhook,
             "slack_bot_token": self.slack_bot_token,
             "slack_channel": self.slack_channel,
-            "enabled": bool(self.slack_webhook),  # webhookが設定されていれば有効とみなす
+            "enabled": bool(
+                self.slack_webhook
+            ),  # webhookが設定されていれば有効とみなす
         }
 
     def get_trade_config(self) -> Dict[str, Any]:
-        return {"risk_per_trade": self.risk_per_trade, "max_loss_percent": self.max_loss_percent}
+        return {
+            "risk_per_trade": self.risk_per_trade,
+            "max_loss_percent": self.max_loss_percent,
+        }
 
 
 # 共通インスタンス

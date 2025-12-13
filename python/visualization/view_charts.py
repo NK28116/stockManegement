@@ -45,11 +45,14 @@ def open_charts_folder(dev_mode=False):
         if not selected_csv:
             return
         charts_dir = os.path.join(
-            "f{config.data_dir}/practice/charts", os.path.splitext(os.path.basename(selected_csv))[0]
+            "f{config.data_dir}/practice/charts",
+            os.path.splitext(os.path.basename(selected_csv))[0],
         )
 
     abs_path = os.path.abspath(charts_dir)
-    relative_path_for_display = os.path.join(os.path.basename(os.getcwd()), os.path.relpath(abs_path, os.getcwd()))
+    relative_path_for_display = os.path.join(
+        os.path.basename(os.getcwd()), os.path.relpath(abs_path, os.getcwd())
+    )
 
     if not os.path.exists(abs_path):
         print(f"チャートフォルダ：{relative_path_for_display}が見つかりません。")
@@ -69,14 +72,18 @@ def open_charts_folder(dev_mode=False):
     print(f"\n利用可能なチャート: {len(png_files)}件")
     for i, file in enumerate(sorted(png_files), 1):
         if file.startswith("demo_"):
-            stock_name = file.replace("demo_", "").replace(".png", "").replace("_T_", " - ")
+            stock_name = (
+                file.replace("demo_", "").replace(".png", "").replace("_T_", " - ")
+            )
             print(f"  {i}. {stock_name} [デモ]")
         else:
             stock_name = file.replace(".png", "").replace("_T_", " - ")
             print(f"  {i}. {stock_name}")
 
     if not dev_mode:
-        print(f"\n詳細レポート: {relative_path_for_display}/trading_summary_portfolio_practice.txt")
+        print(
+            f"\n詳細レポート: {relative_path_for_display}/trading_summary_portfolio_practice.txt"
+        )
 
     # try:
     #     subprocess.run(['open', abs_path], check=True)
@@ -92,7 +99,8 @@ def print_summary(dev_mode=False):
         if not selected_csv:
             return
         charts_dir = os.path.join(
-            f"{config.data_dir}/practice/charts", os.path.splitext(os.path.basename(selected_csv))[0]
+            f"{config.data_dir}/practice/charts",
+            os.path.splitext(os.path.basename(selected_csv))[0],
         )
     else:
         charts_dir = f"{config.data_dir}/chartImg"

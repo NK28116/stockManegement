@@ -5,12 +5,13 @@ CSVファイルから銘柄を読み込んで一括分析
 """
 import os
 from datetime import datetime, timedelta
-from turtle import up
+
 from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import yfinance as yf
-from psycopg2 import Error as PgError  # PgErrorはget_db_connection内で使われる可能性があるので残す
+from psycopg2 import \
+    Error as PgError  # PgErrorはget_db_connection内で使われる可能性があるので残す
 
 from python.config import config
 from python.db.database import get_db_connection
@@ -67,7 +68,9 @@ class EveryStockAnalyzer:
                     code = code + ".T"
                 formatted_codes.append(code)
 
-            loggerEveryStockAnalysis.info(f"銘柄コード読み込み完了: {len(formatted_codes)}銘柄")
+            loggerEveryStockAnalysis.info(
+                f"銘柄コード読み込み完了: {len(formatted_codes)}銘柄"
+            )
             return formatted_codes
 
         except Exception as e:
@@ -109,11 +112,15 @@ class EveryStockAnalyzer:
                 "metrics": metrics,
                 "current_price": df["Close"].iloc[-1] if not df.empty else None,
                 "price_change": (
-                    ((df["Close"].iloc[-1] - df["Close"].iloc[0]) / df["Close"].iloc[0]) if len(df) > 1 else 0
+                    ((df["Close"].iloc[-1] - df["Close"].iloc[0]) / df["Close"].iloc[0])
+                    if len(df) > 1
+                    else 0
                 ),
             }
 
-            loggerEveryStockAnalysis.info(f"分析完了: {code} - 取引件数: {len(trades)}\n")
+            loggerEveryStockAnalysis.info(
+                f"分析完了: {code} - 取引件数: {len(trades)}\n"
+            )
             return result
 
         except Exception as e:
@@ -143,11 +150,15 @@ class EveryStockAnalyzer:
         try:
             df = pd.read_csv(self.csv_file)
             if "code" not in df.columns or "status" not in df.columns:
-                loggerEveryStockAnalysis.error("CSVに 'code' または 'status' 列が存在しません")
+                loggerEveryStockAnalysis.error(
+                    "CSVに 'code' または 'status' 列が存在しません"
+                )
                 return {}
 
             self.status = {row["code"]: row["status"] for _, row in df.iterrows()}
-            loggerEveryStockAnalysis.info(f"銘柄ステータス読み込み完了: {len(self.status)}銘柄")
+            loggerEveryStockAnalysis.info(
+                f"銘柄ステータス読み込み完了: {len(self.status)}銘柄"
+            )
             return self.status
         except Exception as e:
             # CSVファイル読み込みエラー
@@ -160,7 +171,9 @@ class EveryStockAnalyzer:
             self.status = self.load_status_from_codes()
 
         successful_results = [
-            r for r in results if r["status"] == "success" and self.status.get(r["code"]) == "保有中"
+            r
+            for r in results
+            if r["status"] == "success" and self.status.get(r["code"]) == "保有中"
         ]
         error_results = [r for r in results if r["status"] == "error"]
 
@@ -200,7 +213,11 @@ class EveryStockAnalyzer:
                 return f"{target_date.strftime('%Y-%m-%d')}: データなし"
 
             # タイムゾーン除去 + 指定日以前で最後の営業日を取得
-            idx = df.index.tz_localize(None) if getattr(df.index, "tz", None) else df.index
+            idx = (
+                df.index.tz_localize(None)
+                if getattr(df.index, "tz", None)
+                else df.index
+            )
             mask = idx <= target_date.replace(tzinfo=None)
             if not mask.any():
                 return f"{target_date.strftime('%Y-%m-%d')}: データなし"
@@ -220,7 +237,10 @@ class EveryStockAnalyzer:
                     if td.date() == day.date():
                         day_trade = t
                     if td <= day:
-                        if (last_trade is None) or (pd.to_datetime(last_trade.get("date")).tz_localize(None) < td):
+                        if (last_trade is None) or (
+                            pd.to_datetime(last_trade.get("date")).tz_localize(None)
+                            < td
+                        ):
                             last_trade = t
                 except Exception:
                     continue
@@ -278,7 +298,9 @@ class EveryStockAnalyzer:
                     purchase_price = purchase_info.get("purchase_price", 0)
                     quantity = purchase_info.get("quantity", 0)
                     report.append(f"購入日: {purchase_date}")
-                    report.append(f"購入額(所持数): ¥{purchase_price:,.0f}({quantity}株)")
+                    report.append(
+                        f"購入額(所持数): ¥{purchase_price:,.0f}({quantity}株)"
+                    )
                 else:
                     report.append("購入情報: N/A")
                 report.append("---")
@@ -291,11 +313,15 @@ class EveryStockAnalyzer:
 
                 # 直近1ヶ月の値動き（取引履歴形式）
                 report.append("直近1ヶ月の値動き")
-                daily_status = self.get_daily_status(result["data"], result["trades"], days=30)
+                daily_status = self.get_daily_status(
+                    result["data"], result["trades"], days=30
+                )
                 if daily_status:
                     for date, status_info in daily_status.items():
                         # 1行にまとめて表示
-                        line = f"{date}: {status_info['status']} - {status_info['reason']}"
+                        line = (
+                            f"{date}: {status_info['status']} - {status_info['reason']}"
+                        )
                         if status_info.get("stop_price"):
                             line += f" (ストップ: {status_info['stop_price']}円)"
                         report.append(line)
@@ -305,15 +331,26 @@ class EveryStockAnalyzer:
                 report.append("---")
 
                 # 売却額と損益
-                current_value = result["current_price"] * purchase_info.get("quantity", 0) if purchase_info else 0
+                current_value = (
+                    result["current_price"] * purchase_info.get("quantity", 0)
+                    if purchase_info
+                    else 0
+                )
                 purchase_value = (
-                    purchase_info.get("purchase_price", 0) * purchase_info.get("quantity", 0) if purchase_info else 0
+                    purchase_info.get("purchase_price", 0)
+                    * purchase_info.get("quantity", 0)
+                    if purchase_info
+                    else 0
                 )
                 profit_loss = current_value - purchase_value
-                profit_loss_percent = (profit_loss / purchase_value) if purchase_value > 0 else 0
+                profit_loss_percent = (
+                    (profit_loss / purchase_value) if purchase_value > 0 else 0
+                )
 
                 report.append(f"売却額: ¥{current_value:,.0f}")
-                report.append(f"損益: ¥{profit_loss:+,.0f} ({profit_loss_percent:+.2%})")
+                report.append(
+                    f"損益: ¥{profit_loss:+,.0f} ({profit_loss_percent:+.2%})"
+                )
                 report.append("############")
 
             report.append("")
@@ -325,20 +362,24 @@ class EveryStockAnalyzer:
     def save_reports(self, results: List[Dict], is_test_mode: bool = False) -> None:
         """レポートを保存"""
         if is_test_mode:
-            loggerBuySellTiming.info("テストモードのため、レポートの保存はスキップします。")
+            loggerBuySellTiming.info(
+                "テストモードのため、レポートの保存はスキップします。"
+            )
             # テストモードではレポート内容をログに出力するなどで確認できるようにする
             summary_report = self.generate_summary_report(results)
             detailed_report = self.generate_detailed_report(results)
-            loggerBuySellTiming.debug(f"サマリーレポート (テストモード):\n{summary_report}")
-            loggerBuySellTiming.debug(f"詳細レポート (テストモード):\n{detailed_report}")
+            loggerBuySellTiming.debug(
+                f"サマリーレポート (テストモード):\n{summary_report}"
+            )
+            loggerBuySellTiming.debug(
+                f"詳細レポート (テストモード):\n{detailed_report}"
+            )
             return
 
         try:
             # サマリーレポート
             summary_report = self.generate_summary_report(results)
-            summary_file = (
-                f"{config.data_dir}/report/daily/summary/summary_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-            )
+            summary_file = f"{config.data_dir}/report/daily/summary/summary_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
             os.makedirs(os.path.dirname(summary_file), exist_ok=True)
 
             with open(summary_file, "w", encoding="utf-8") as f:
@@ -349,7 +390,8 @@ class EveryStockAnalyzer:
             # 詳細レポート
             detailed_report = self.generate_detailed_report(results)
             detailed_file = (
-                f"{config.data_dir}/report/daily/detailed/detailed_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                f"{config.data_dir}/report/daily/detailed/"
+                f"detailed_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
             )
             os.makedirs(os.path.dirname(detailed_file), exist_ok=True)
 
@@ -464,7 +506,9 @@ class EveryStockAnalyzer:
             loggerBuySellTiming.exception("日次ステータス取得エラー: %s", e)
             return {}
 
-    def calculate_daily_stop_price(self, df: pd.DataFrame, date: datetime, trade: Dict = None) -> Optional[float]:
+    def calculate_daily_stop_price(
+        self, df: pd.DataFrame, date: datetime, trade: Dict = None
+    ) -> Optional[float]:
         """その日のストップ値を計算"""
         try:
             # その日のデータを取得（タイムゾーンを考慮）
@@ -479,7 +523,9 @@ class EveryStockAnalyzer:
             else:
                 date_normalized = date
 
-            date_data = df_normalized[df_normalized.index.date == date_normalized.date()]
+            date_data = df_normalized[
+                df_normalized.index.date == date_normalized.date()
+            ]
             if date_data.empty:
                 return None
 
@@ -542,7 +588,7 @@ def run_analysis(period: str = "3mo", is_test_mode: bool = False):
     csv_file = config.codes_path
     analyzer = EveryStockAnalyzer(csv_file)
     results = analyzer.analyze_all_stocks(period=period)
-    reports = analyzer.save_reports(results, is_test_mode=is_test_mode)
+    analyzer.save_reports(results, is_test_mode=is_test_mode)
 
 
 def main():

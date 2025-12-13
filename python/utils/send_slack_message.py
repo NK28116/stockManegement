@@ -1,8 +1,9 @@
-import logging
+
 import os
 
 import requests
 from dotenv import load_dotenv
+
 from python.utils.logger import get_logger
 
 load_dotenv()
@@ -26,9 +27,14 @@ class Slack:
             raise ValueError("メッセージが指定されていません。")
 
         chat_payload = {"channel": channel_id, "text": message}
-        chat_headers = {"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"}
+        chat_headers = {
+            "Authorization": f"Bearer {self.token}",
+            "Content-Type": "application/json",
+        }
         chat_response = requests.post(
-            "https://slack.com/api/chat.postMessage", headers=chat_headers, json=chat_payload
+            "https://slack.com/api/chat.postMessage",
+            headers=chat_headers,
+            json=chat_payload,
         )
         chat_json = chat_response.json()
 
