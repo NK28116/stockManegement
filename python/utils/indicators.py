@@ -31,7 +31,9 @@ def calculate_macd(
 __all__ = ["calculate_bollinger_bands", "detect_sharp_decline"]
 
 
-def calculate_bollinger_bands(prices: pd.Series, period: int = 20, num_std: float = 2.0) -> pd.DataFrame:
+def calculate_bollinger_bands(
+    prices: pd.Series, period: int = 20, num_std: float = 2.0
+) -> pd.DataFrame:
     """
     ボリンジャーバンドを計算する
     Args:
@@ -49,7 +51,9 @@ def calculate_bollinger_bands(prices: pd.Series, period: int = 20, num_std: floa
     return df
 
 
-def detect_sharp_decline(prices: pd.Series, decline_threshold: float = 0.05, period: int = 1) -> pd.DataFrame:
+def detect_sharp_decline(
+    prices: pd.Series, decline_threshold: float = 0.05, period: int = 1
+) -> pd.DataFrame:
     """
     急落を検出する
     Args:
@@ -90,7 +94,8 @@ if __name__ == "__main__":
     # ダミー終値データ
     np.random.seed(0)
     prices = pd.Series(
-        100 + np.random.randn(50).cumsum(), index=pd.to_datetime(pd.date_range(start="2023-01-01", periods=50))
+        100 + np.random.randn(50).cumsum(),
+        index=pd.to_datetime(pd.date_range(start="2023-01-01", periods=50)),
     )
 
     macd_df = calculate_macd(prices)

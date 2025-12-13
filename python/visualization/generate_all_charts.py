@@ -4,8 +4,8 @@
 コマンドライン用の簡単版
 """
 
-import sys # sysモジュールを追加
-from calendar import c
+import sys  # sysモジュールを追加
+
 from python.visualization.stock_chart_visualizer import StockChartVisualizer
 
 __all__ = ["main"]
@@ -14,7 +14,9 @@ __all__ = ["main"]
 def main(period="3mo", is_test_mode: bool = False):
     """全銘柄のチャートを一括生成"""
 
-    print(f"=== 全銘柄チャート一括生成 (期間: {period}, テストモード: {is_test_mode}) ===")
+    print(
+        f"=== 全銘柄チャート一括生成 (期間: {period}, テストモード: {is_test_mode}) ==="
+    )
 
     # Create visualizer
     visualizer = StockChartVisualizer(period=period, is_test_mode=is_test_mode)
@@ -26,7 +28,7 @@ def main(period="3mo", is_test_mode: bool = False):
     print(f"期間: {period}")
 
     # Generate all charts
-    charts_img = visualizer.visualize_all_stocks(portfolio_file)
+    visualizer.visualize_all_stocks(portfolio_file)
 
     print("\n=== チャート生成完了 ===")
     print(f"チャートファイルは data/chartImg/{period} フォルダに保存されました")

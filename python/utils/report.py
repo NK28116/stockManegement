@@ -61,19 +61,19 @@ def _get_latest_report_file(report_type: str) -> str | None:
         report_dir = config.root_dir / "data" / "report" / "daily" / report_type
     elif report_type == "detailed":
         report_dir = config.root_dir / "data" / "report" / "daily" / report_type
-    elif report_type == "weekly_summary": # 週次サマリーレポート用
+    elif report_type == "weekly_summary":  # 週次サマリーレポート用
         report_dir = config.root_dir / "data" / "report" / "weekly" / "summary"
-    elif report_type == "weekly_detailed": # 週次詳細レポート用
+    elif report_type == "weekly_detailed":  # 週次詳細レポート用
         report_dir = config.root_dir / "data" / "report" / "weekly" / "detailed"
-    elif report_type == "monthly_detailed": # 月次詳細レポート用
+    elif report_type == "monthly_detailed":  # 月次詳細レポート用
         report_dir = config.root_dir / "data" / "report" / "monthly" / "detailed"
-    elif report_type == "trading_rules": # トレーディングルール見直しレポート用
+    elif report_type == "trading_rules":  # トレーディングルール見直しレポート用
         report_dir = config.root_dir / "data" / "report" / "monthly" / "trading_rules"
     else:
         report_dir = config.root_dir / "data" / "report" / report_type
 
     if not report_dir.exists():
-        os.makedirs(report_dir, exist_ok=True) # ディレクトリが存在しない場合は作成
+        os.makedirs(report_dir, exist_ok=True)  # ディレクトリが存在しない場合は作成
         return None
 
     # ファイル名パターン: summary_report_YYYYMMDD_HHMMSS.txt または detailed_report_YYYYMMDD_HHMMSS.txt
@@ -177,20 +177,28 @@ def send_daily_morning_report(is_test_mode: bool = False):
             # レポート内容に日付が含まれているか確認し、前日の情報であることを確認
             if report_date in summary_content:
                 # 「前日の各銘柄ステータス」セクションを抽出
-                status_section_start = summary_content.find("【前日の各銘柄ステータス】")
+                status_section_start = summary_content.find(
+                    "【前日の各銘柄ステータス】"
+                )
                 if status_section_start != -1:
                     status_section = summary_content[status_section_start:]
                     # 次のセクションの開始（例: 空行や別の見出し）までを抽出
-                    next_section_start = status_section.find("\n\n", len("【前日の各銘柄ステータス】"))
+                    next_section_start = status_section.find(
+                        "\n\n", len("【前日の各銘柄ステータス】")
+                    )
                     if next_section_start != -1:
                         status_section = status_section[:next_section_start]
                     message += status_section.strip() + "\n\n"
                 else:
                     message += "前日の銘柄ステータスが見つかりませんでした。\n\n"
             else:
-                message += f"日付 {report_date} のサマリーレポートが見つかりませんでした。\n\n"
+                message += (
+                    f"日付 {report_date} のサマリーレポートが見つかりませんでした。\n\n"
+                )
     else:
-        message += "全銘柄売買タイミング分析サマリーレポートが見つかりませんでした。\n\n"
+        message += (
+            "全銘柄売買タイミング分析サマリーレポートが見つかりませんでした。\n\n"
+        )
 
     # 日足での急落アラート
     # ポートフォリオ内の全銘柄の株価データを取得し、急落を検出
@@ -203,10 +211,14 @@ def send_daily_morning_report(is_test_mode: bool = False):
             # インデックスを日付型に変換
             price_df.index = pd.to_datetime(price_df.index)
             # 前日のデータのみを対象
-            yesterday_prices = price_df[price_df.index.date == yesterday.date()]["Close"]
+            yesterday_prices = price_df[price_df.index.date == yesterday.date()][
+                "Close"
+            ]
             if not yesterday_prices.empty:
                 # detect_sharp_declineはSeriesを期待
-                sharp_declines = detect_sharp_decline(yesterday_prices, decline_threshold=0.05)
+                sharp_declines = detect_sharp_decline(
+                    yesterday_prices, decline_threshold=0.05
+                )
                 if not sharp_declines.empty:
                     for _, row in sharp_declines.iterrows():
                         sharp_declines_messages.append(
@@ -214,7 +226,9 @@ def send_daily_morning_report(is_test_mode: bool = False):
                         )
 
     if sharp_declines_messages:
-        message += "【前日の日足急落アラート】\n" + "\n".join(sharp_declines_messages) + "\n\n"
+        message += (
+            "【前日の日足急落アラート】\n" + "\n".join(sharp_declines_messages) + "\n\n"
+        )
     else:
         message += "【前日の日足急落アラート】\n該当する銘柄はありませんでした。\n\n"
     send_alert(message, level="INFO")
@@ -247,16 +261,22 @@ def send_daily_evening_report(is_test_mode: bool = False):
                 if status_section_start != -1:
                     status_section = summary_content[status_section_start:]
                     # 次のセクションの開始（例: 空行や別の見出し）までを抽出
-                    next_section_start = status_section.find("\n\n", len("【前日の各銘柄ステータス】"))
+                    next_section_start = status_section.find(
+                        "\n\n", len("【前日の各銘柄ステータス】")
+                    )
                     if next_section_start != -1:
                         status_section = status_section[:next_section_start]
                     message += status_section.strip() + "\n\n"
                 else:
                     message += "今日の銘柄ステータスが見つかりませんでした。\n\n"
             else:
-                message += f"日付 {report_date} のサマリーレポートが見つかりませんでした。\n\n"
+                message += (
+                    f"日付 {report_date} のサマリーレポートが見つかりませんでした。\n\n"
+                )
     else:
-        message += "全銘柄売買タイミング分析サマリーレポートが見つかりませんでした。\n\n"
+        message += (
+            "全銘柄売買タイミング分析サマリーレポートが見つかりませんでした。\n\n"
+        )
 
     # 日足での急落アラート (当日)
     portfolio_df = analyzer.get_portfolio()
@@ -268,7 +288,9 @@ def send_daily_evening_report(is_test_mode: bool = False):
             price_df.index = pd.to_datetime(price_df.index)
             today_prices = price_df[price_df.index.date == today.date()]["Close"]
             if not today_prices.empty:
-                sharp_declines = detect_sharp_decline(today_prices, decline_threshold=0.05)
+                sharp_declines = detect_sharp_decline(
+                    today_prices, decline_threshold=0.05
+                )
                 if not sharp_declines.empty:
                     for _, row in sharp_declines.iterrows():
                         sharp_declines_messages.append(
@@ -276,12 +298,16 @@ def send_daily_evening_report(is_test_mode: bool = False):
                         )
 
     if sharp_declines_messages:
-        message += "【今日の日足急落アラート】\n" + "\n".join(sharp_declines_messages) + "\n\n"
+        message += (
+            "【今日の日足急落アラート】\n" + "\n".join(sharp_declines_messages) + "\n\n"
+        )
     else:
         message += "【今日の日足急落アラート】\n該当する銘柄はありませんでした。\n\n"
 
     # ポートフォリオ全体の当日の損益
-    daily_pnl = analyzer.get_portfolio_pnl(today - timedelta(days=1), today)  # 前日終値から当日終値までの損益
+    daily_pnl = analyzer.get_portfolio_pnl(
+        today - timedelta(days=1), today
+    )  # 前日終値から当日終値までの損益
     message += "【ポートフォリオ日次損益】\n"
     message += f"・総損益: {daily_pnl['total_pnl']:.2f}円\n"
     message += f"・実現損益: {daily_pnl['realized_pnl']:.2f}円\n"
@@ -289,7 +315,9 @@ def send_daily_evening_report(is_test_mode: bool = False):
 
     message += "【今日の市場の動き】\n"
     message += _get_market_news_for_period("1d") + "\n\n"
-    message += "詳細な日足分析結果はログまたは別途生成される詳細レポートをご確認ください。\n"
+    message += (
+        "詳細な日足分析結果はログまたは別途生成される詳細レポートをご確認ください。\n"
+    )
 
     send_alert(message, level="INFO")
     logger.info("その日の日次レポートのSlack送信が完了しました。")
@@ -313,7 +341,12 @@ def send_weekly_report(is_test_mode: bool = False):
             message += "【ポートフォリオサマリー】\n"
             # 例: 総投資額、総リターン、年率リターンなどを抽出
             for line in summary_content.splitlines():
-                if "総投資額" in line or "総リターン" in line or "年率リターン" in line or "シャープレシオ" in line:
+                if (
+                    "総投資額" in line
+                    or "総リターン" in line
+                    or "年率リターン" in line
+                    or "シャープレシオ" in line
+                ):
                     message += f"{line}\n"
             message += "\n"
         send_alert("週次サマリーレポート", level="INFO")
@@ -402,7 +435,9 @@ def send_monthly_report(is_test_mode: bool = False):
     message += f"・年率リターン: {monthly_performance['annualized_return']:.2%}\n"
     message += f"・シャープレシオ: {monthly_performance['sharpe_ratio']:.2f}\n"
     message += f"・月間損益: {monthly_performance['monthly_pnl']:.2f}円\n"
-    message += f"・月間資産配分変化: {monthly_performance['asset_allocation_change']:.2%}\n\n"
+    message += (
+        f"・月間資産配分変化: {monthly_performance['asset_allocation_change']:.2%}\n\n"
+    )
 
     # ポートフォリオの再構築検討事項
     rebalancing_suggestions = analyzer.get_portfolio_rebalancing_suggestions()
@@ -419,11 +454,15 @@ def send_monthly_report(is_test_mode: bool = False):
         message += "【個別銘柄の月間パフォーマンス】\n"
         for _, holding in portfolio_df.iterrows():
             code = holding["code"]
-            individual_performance = analyzer.get_individual_stock_performance(code, last_month_start, datetime.now())
+            individual_performance = analyzer.get_individual_stock_performance(
+                code, last_month_start, datetime.now()
+            )
             if "error" not in individual_performance:
                 message += f"・{individual_performance['name']} ({individual_performance['code']}):\n"
                 message += f"  - 月間損益: {individual_performance['pnl']:.2f}円\n"
-                message += f"  - 最新価格: {individual_performance['latest_price']:.2f}円\n"
+                message += (
+                    f"  - 最新価格: {individual_performance['latest_price']:.2f}円\n"
+                )
                 message += f"  - 今後の見通し: {individual_performance['outlook']}\n"
                 if individual_performance["transactions"]:
                     message += "  - 最近の取引:\n"
@@ -436,7 +475,9 @@ def send_monthly_report(is_test_mode: bool = False):
             else:
                 message += f"・{code}: パフォーマンスデータの取得に失敗しました ({individual_performance['error']})\n"
     else:
-        message += "【個別銘柄の月間パフォーマンス】\nポートフォリオに銘柄がありません。\n\n"
+        message += (
+            "【個別銘柄の月間パフォーマンス】\nポートフォリオに銘柄がありません。\n\n"
+        )
 
     send_alert(message, level="INFO")
     logger.info("月次レポートのSlack送信が完了しました。")

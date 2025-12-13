@@ -64,7 +64,9 @@ class PortfolioAnalyzer:
             logger.error(f"株価データ取得エラー: {ticker} - {e}")
             return pd.DataFrame()
 
-    def plot_indicators(self, price_df: pd.DataFrame, indicators: pd.DataFrame, code: str, name: str):
+    def plot_indicators(
+        self, price_df: pd.DataFrame, indicators: pd.DataFrame, code: str, name: str
+    ):
         """株価 + テクニカル指標グラフ描画"""
         if price_df.empty or indicators.empty:
             logger.warning(f"{code}-{name} の描画対象データが空です")
@@ -74,16 +76,38 @@ class PortfolioAnalyzer:
 
         # 価格 + Bollinger Bands
         ax[0].plot(price_df.index, price_df["Close"], label="Close")
-        ax[0].plot(indicators.index, indicators["bb_middle"], label="BB Middle", linestyle="--", color="orange")
-        ax[0].plot(indicators.index, indicators["bb_upper"], label="BB Upper", linestyle="--", color="green")
-        ax[0].plot(indicators.index, indicators["bb_lower"], label="BB Lower", linestyle="--", color="red")
+        ax[0].plot(
+            indicators.index,
+            indicators["bb_middle"],
+            label="BB Middle",
+            linestyle="--",
+            color="orange",
+        )
+        ax[0].plot(
+            indicators.index,
+            indicators["bb_upper"],
+            label="BB Upper",
+            linestyle="--",
+            color="green",
+        )
+        ax[0].plot(
+            indicators.index,
+            indicators["bb_lower"],
+            label="BB Lower",
+            linestyle="--",
+            color="red",
+        )
         ax[0].set_title(f"{code}-{name} Price + Bollinger Bands")
         ax[0].legend()
 
         # MACD
         ax[1].plot(indicators.index, indicators["macd"], label="MACD", color="blue")
-        ax[1].plot(indicators.index, indicators["macd_signal"], label="Signal", color="red")
-        ax[1].bar(indicators.index, indicators["macd_dif"], label="MACD Dif", color="gray")
+        ax[1].plot(
+            indicators.index, indicators["macd_signal"], label="Signal", color="red"
+        )
+        ax[1].bar(
+            indicators.index, indicators["macd_dif"], label="MACD Dif", color="gray"
+        )
         ax[1].set_title(f"{code}-{name} MACD")
         ax[1].legend()
 
@@ -93,28 +117,40 @@ class PortfolioAnalyzer:
             fig.savefig(plot_file)
             logger.info(f"{code}-{name} のプロットを保存: {plot_file}")
         else:
-            logger.info(f"テストモードのため、{code}-{name} のプロット保存はスキップします。")
+            logger.info(
+                f"テストモードのため、{code}-{name} のプロット保存はスキップします。"
+            )
         plt.close(fig)
 
-    def save_analysis(self, portfolio_df: pd.DataFrame, indicators_dict: Dict[str, pd.DataFrame]):
+    def save_analysis(
+        self, portfolio_df: pd.DataFrame, indicators_dict: Dict[str, pd.DataFrame]
+    ):
         """ポートフォリオ分析結果を保存"""
         output_file = self.result_dir / "my_portfolio_analysis.txt"
 
         if self.is_test_mode:
-            logger.info("テストモードのため、ポートフォリオ分析結果の保存はスキップします。")
-            report_content = self._generate_analysis_report_content(portfolio_df, indicators_dict)
-            logger.debug(f"ポートフォリオ分析レポート (テストモード):\n{report_content}")
+            logger.info(
+                "テストモードのため、ポートフォリオ分析結果の保存はスキップします。"
+            )
+            report_content = self._generate_analysis_report_content(
+                portfolio_df, indicators_dict
+            )
+            logger.debug(
+                f"ポートフォリオ分析レポート (テストモード):\n{report_content}"
+            )
             return
 
         with open(output_file, "w", encoding="utf-8") as f:
-            f.write("# -*- coding: utf-8 -*-\n\n") # 文字コード宣言を追加
+            f.write("# -*- coding: utf-8 -*-\n\n")  # 文字コード宣言を追加
             f.write("=" * 60 + "\n")
             f.write("ポートフォリオ分析レポート\n")
             f.write("=" * 60 + "\n")
             f.write(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"対象銘柄数: {len(portfolio_df)}\n\n")
             f.write("【ポートフォリオ概要】\n")
-            total_investment = (portfolio_df["quantity"] * portfolio_df["purchase_price"]).sum()
+            total_investment = (
+                portfolio_df["quantity"] * portfolio_df["purchase_price"]
+            ).sum()
             f.write(f"総投資額: {int(total_investment)}円\n\n")
             f.write("【銘柄別詳細】\n")
             for _, row in portfolio_df.iterrows():
@@ -122,7 +158,9 @@ class PortfolioAnalyzer:
                 f.write(f"  数量: {row['quantity']}株\n")
                 f.write(f"  購入価格: {row['purchase_price']}円\n")
                 f.write(f"  投資額: {row['quantity']*row['purchase_price']}円\n")
-                weight = row["quantity"] * row["purchase_price"] / total_investment * 100
+                weight = (
+                    row["quantity"] * row["purchase_price"] / total_investment * 100
+                )
                 f.write(f"  ウェイト: {weight:.2f}%\n\n")
         logger.info(f"ポートフォリオ分析結果を保存: {output_file}")
 
@@ -137,7 +175,9 @@ class PortfolioAnalyzer:
         report_lines.append(f"分析日時: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         report_lines.append(f"対象銘柄数: {len(portfolio_df)}\n")
         report_lines.append("【ポートフォリオ概要】")
-        total_investment = (portfolio_df["quantity"] * portfolio_df["purchase_price"]).sum()
+        total_investment = (
+            portfolio_df["quantity"] * portfolio_df["purchase_price"]
+        ).sum()
         report_lines.append(f"総投資額: {int(total_investment)}円\n")
         report_lines.append("【銘柄別詳細】")
         for _, row in portfolio_df.iterrows():
@@ -178,7 +218,9 @@ class PortfolioAnalyzer:
         else:
             logger.info("テストモードのため、週次レポートのSlack通知はスキップします。")
 
-    def _get_transactions(self, start_date: datetime, end_date: datetime) -> pd.DataFrame:
+    def _get_transactions(
+        self, start_date: datetime, end_date: datetime
+    ) -> pd.DataFrame:
         """指定期間の取引履歴を取得するヘルパー関数"""
         conn = None
         try:
@@ -202,7 +244,9 @@ class PortfolioAnalyzer:
             if conn:
                 conn.close()
 
-    def get_portfolio_pnl(self, start_date: datetime, end_date: datetime) -> Dict[str, float]:
+    def get_portfolio_pnl(
+        self, start_date: datetime, end_date: datetime
+    ) -> Dict[str, float]:
         """
         指定期間のポートフォリオ全体の損益を計算する
         Args:
@@ -234,7 +278,9 @@ class PortfolioAnalyzer:
             latest_price_df = self.fetch_stock_data(ticker, period="1d")
             if not latest_price_df.empty:
                 latest_price = latest_price_df["Close"].iloc[-1]
-                unrealized_pnl += holding["quantity"] * (latest_price - holding["purchase_price"])
+                unrealized_pnl += holding["quantity"] * (
+                    latest_price - holding["purchase_price"]
+                )
 
         total_pnl = realized_pnl + unrealized_pnl
         return {
@@ -266,21 +312,32 @@ class PortfolioAnalyzer:
                 total_market_value += market_value
                 stock_market_values[holding["name"]] = market_value
 
-                purpose = holding["purpose"] # sectorをpurposeに置き換え
-                sector_market_values[purpose] = sector_market_values.get(purpose, 0.0) + market_value # sectorをpurposeに置き換え
+                purpose = holding["purpose"]  # sectorをpurposeに置き換え
+                sector_market_values[purpose] = (
+                    sector_market_values.get(purpose, 0.0) + market_value
+                )  # sectorをpurposeに置き換え
 
         sector_allocation = (
-            {purpose: (value / total_market_value) * 100 for purpose, value in sector_market_values.items()} # sectorをpurposeに置き換え
+            {
+                purpose: (value / total_market_value) * 100
+                for purpose, value in sector_market_values.items()
+            }  # sectorをpurposeに置き換え
             if total_market_value > 0
             else {}
         )
         stock_allocation = (
-            {stock: (value / total_market_value) * 100 for stock, value in stock_market_values.items()}
+            {
+                stock: (value / total_market_value) * 100
+                for stock, value in stock_market_values.items()
+            }
             if total_market_value > 0
             else {}
         )
 
-        return {"sector_allocation": sector_allocation, "stock_allocation": stock_allocation}
+        return {
+            "sector_allocation": sector_allocation,
+            "stock_allocation": stock_allocation,
+        }
 
     def get_portfolio_monthly_performance(self, end_date: datetime) -> Dict[str, float]:
         """
@@ -331,7 +388,9 @@ class PortfolioAnalyzer:
 
         # 例: パフォーマンスの悪い銘柄があれば検討を促す
         # TODO: 銘柄ごとのパフォーマンスデータを取得し、評価するロジックを追加
-        suggestions.append("・パフォーマンスが継続的に低い銘柄の見直しを検討してください。")
+        suggestions.append(
+            "・パフォーマンスが継続的に低い銘柄の見直しを検討してください。"
+        )
         suggestions.append(
             "・市場環境の変化に応じて、成長が見込まれるセクターへの投資比率を高めることを検討してください。"
         )
@@ -340,7 +399,9 @@ class PortfolioAnalyzer:
             return "現在のポートフォリオはバランスが取れています。大きな再構築の必要はありません。"
         return "\n".join(suggestions)
 
-    def get_individual_stock_performance(self, code: str, start_date: datetime, end_date: datetime) -> Dict:
+    def get_individual_stock_performance(
+        self, code: str, start_date: datetime, end_date: datetime
+    ) -> Dict:
         """
         個別銘柄の指定期間での損益、売買履歴、今後の見通しを計算する
         Args:
@@ -354,13 +415,15 @@ class PortfolioAnalyzer:
         try:
             conn = get_db_connection()
             # 銘柄名と目的を取得
-            stock_info_query = "SELECT name, purpose FROM stocks WHERE code = %s" # sectorをpurposeに置き換え
+            stock_info_query = "SELECT name, purpose FROM stocks WHERE code = %s"  # sectorをpurposeに置き換え
             with conn.cursor() as cursor:
                 cursor.execute(stock_info_query, (code,))
                 stock_info = cursor.fetchone()
             if not stock_info:
                 return {"error": f"銘柄コード {code} が見つかりません。"}
-            stock_name, stock_purpose = stock_info # stock_sectorをstock_purposeに置き換え
+            stock_name, stock_purpose = (
+                stock_info  # stock_sectorをstock_purposeに置き換え
+            )
 
             # 売買履歴
             transactions_query = """
@@ -369,7 +432,9 @@ class PortfolioAnalyzer:
             WHERE code = %s AND trade_date BETWEEN %s AND %s
             ORDER BY trade_date ASC
             """
-            transactions_df = pd.read_sql_query(transactions_query, conn, params=(code, start_date, end_date))
+            transactions_df = pd.read_sql_query(
+                transactions_query, conn, params=(code, start_date, end_date)
+            )
 
             # 期間内の損益計算 (簡略化)
             pnl = 0.0
@@ -383,15 +448,17 @@ class PortfolioAnalyzer:
 
             # 最新株価の取得
             latest_price_df = self.fetch_stock_data(code, period="1d")
-            latest_price = latest_price_df["Close"].iloc[-1] if not latest_price_df.empty else None
+            latest_price = (
+                latest_price_df["Close"].iloc[-1] if not latest_price_df.empty else None
+            )
 
             # 今後の見通し (ダミー)
-            outlook = "市場全体の動向と目的の成長性に基づき、中立的な見通しです。" # セクターを目的の成長性に置き換え
+            outlook = "市場全体の動向と目的の成長性に基づき、中立的な見通しです。"  # セクターを目的の成長性に置き換え
 
             return {
                 "code": code,
                 "name": stock_name,
-                "purpose": stock_purpose, # sectorをpurposeに置き換え
+                "purpose": stock_purpose,  # sectorをpurposeに置き換え
                 "pnl": pnl,
                 "transactions": transactions_df.to_dict(orient="records"),
                 "latest_price": latest_price,
@@ -437,5 +504,7 @@ if __name__ == "__main__":
 
     print("\n--- 個別銘柄月間パフォーマンステスト (例: 7203) ---")
     # ダミーの銘柄コードを使用
-    individual_performance = analyzer.get_individual_stock_performance("7203", last_month, today)
+    individual_performance = analyzer.get_individual_stock_performance(
+        "7203", last_month, today
+    )
     print(f"個別銘柄パフォーマンス:\n{individual_performance}")

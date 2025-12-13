@@ -8,22 +8,25 @@ import logging
 import os
 from typing import Dict
 
+
 import matplotlib
 import matplotlib.pyplot as plt
-import japanize_matplotlib 
 import pandas as pd
-
-from python.config import config
-
 from dotenv import load_dotenv
+
+
 
 load_dotenv()
 # プロジェクトルートを sys.path に追加
 # ログ設定
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
+)
 
 # Matplotlib フォント設定
-matplotlib.rcParams["font.family"] = 'Source Han Code JP'  # 日本語対応（configから取得）
+matplotlib.rcParams["font.family"] = (
+    "Source Han Code JP"  # 日本語対応（configから取得）
+)
 matplotlib.rcParams["axes.unicode_minus"] = False  # マイナス記号の文字化け対策
 
 __all__ = ["plot_macd_bollinger"]
@@ -57,8 +60,12 @@ def plot_macd_bollinger(
 
         # --- 上段: 株価 + Bollinger Band ---
         ax[0].plot(df.index, df["Close"], label="Close", color="blue")
-        ax[0].plot(bb_df.index, bb_df["Upper"], label="Upper BB", linestyle="--", color="red")
-        ax[0].plot(bb_df.index, bb_df["Lower"], label="Lower BB", linestyle="--", color="green")
+        ax[0].plot(
+            bb_df.index, bb_df["Upper"], label="Upper BB", linestyle="--", color="red"
+        )
+        ax[0].plot(
+            bb_df.index, bb_df["Lower"], label="Lower BB", linestyle="--", color="green"
+        )
         ax[0].plot(
             bb_df.index,
             bb_df["Middle"],

@@ -5,7 +5,8 @@
 
 from .alert import send_alert
 from .logger import get_logger
-from .report import send_daily_morning_report, send_daily_evening_report, send_monthly_report, send_weekly_report
+from .report import (send_daily_evening_report, send_daily_morning_report,
+                     send_monthly_report, send_weekly_report)
 
 __all__ = [
     "get_logger",

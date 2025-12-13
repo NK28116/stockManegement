@@ -27,13 +27,17 @@ def get_logger(module_name: str, category: str = "general") -> logging.Logger:
         # ファイル出力
         file_handler = logging.FileHandler(log_file, encoding="utf-8")
         file_handler.setFormatter(
-            logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M")
+            logging.Formatter(
+                "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M"
+            )
         )
 
         # コンソール出力
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(
-            logging.Formatter("%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M")
+            logging.Formatter(
+                "%(asctime)s - %(levelname)s - %(message)s", datefmt="%Y-%m-%d %H:%M"
+            )
         )
 
         # ハンドラ登録

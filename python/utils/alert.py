@@ -1,4 +1,4 @@
-import os
+
 
 import requests
 
@@ -51,9 +51,7 @@ class AlertManager:
             return self._send_slack(message, level)
         return False  # Slack webhookが設定されていない場合
 
-    def _send_slack(
-        self, message: str, level: str
-    ) -> bool:
+    def _send_slack(self, message: str, level: str) -> bool:
         """Slackに通知を送信"""
         try:
             # テキストメッセージのみ送信する場合 (Incoming Webhookを使用)
@@ -61,7 +59,9 @@ class AlertManager:
                 "text": f"[{level}] {message}",
                 "username": "Stock Management Bot",
             }
-            response = requests.post(self.alert_config["slack_webhook"], json=payload, timeout=10)
+            response = requests.post(
+                self.alert_config["slack_webhook"], json=payload, timeout=10
+            )
 
             if response.status_code == 200:
                 logger.info("Slack通知送信成功")

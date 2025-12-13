@@ -41,7 +41,9 @@ def dump_and_delete_table_by_year(table_name: str, date_column: str, target_year
         print(f"✅ {table_name} {target_year}年分を保存しました: {output_file}")
 
         # DBから削除
-        delete_query = f"DELETE FROM {table_name} WHERE EXTRACT(YEAR FROM {date_column}) = %s"
+        delete_query = (
+            f"DELETE FROM {table_name} WHERE EXTRACT(YEAR FROM {date_column}) = %s"
+        )
         cur = conn.cursor()
         cur.execute(delete_query, (str(target_year),))
         conn.commit()
@@ -63,7 +65,9 @@ def main(target_year: Optional[int] = None):
     if target_year is None:
         # 引数が指定されない場合、自動的に前年を対象とする
         target_year = datetime.now().year - 1
-        print(f"引数が指定されなかったため、自動的に前年 ({target_year}年) を対象とします。")
+        print(
+            f"引数が指定されなかったため、自動的に前年 ({target_year}年) を対象とします。"
+        )
     elif not isinstance(target_year, int):
         print("❌ 無効な入力です。西暦の数字を入力してください。")
         return
@@ -83,6 +87,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="PostgreSQLデータベースを年単位でCSVにダンプし、該当データをDBから削除するスクリプト"
     )
-    parser.add_argument("--year", type=int, help="ダンプ＆削除する年 (指定しない場合は前年)")
+    parser.add_argument(
+        "--year", type=int, help="ダンプ＆削除する年 (指定しない場合は前年)"
+    )
     args = parser.parse_args()
     main(args.year)
