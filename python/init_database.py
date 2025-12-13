@@ -168,7 +168,9 @@ CREATE TABLE IF NOT EXISTS trading_signals (
             cur.execute(index_sql)
 
         conn.commit()
-        logger.info(f"データベース初期化完了: {db_config['database']} on {db_config['host']}")
+        logger.info(
+            f"データベース初期化完了: {db_config['database']} on {db_config['host']}"
+        )
         logger.info("作成されたテーブル:")
         logger.info("- intraday (分足データ)")
         logger.info("- daily (保有中の銘柄データ)")
@@ -197,7 +199,9 @@ def check_database_status():
         cur = conn.cursor()
 
         # テーブル一覧を取得 (PostgreSQLの場合)
-        cur.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+        cur.execute(
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'"
+        )
         tables = [row[0] for row in cur.fetchall()]
 
         if not tables:
@@ -222,7 +226,7 @@ def check_database_status():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO) # ロギング設定を追加
+    logging.basicConfig(level=logging.INFO)  # ロギング設定を追加
 
     logger.info("データベース初期化開始...")
     init_database()

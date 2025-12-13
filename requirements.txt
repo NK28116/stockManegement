@@ -9,3 +9,4 @@ requests
 psycopg2-binary
 google-cloud-storage
 watchdog
+ta

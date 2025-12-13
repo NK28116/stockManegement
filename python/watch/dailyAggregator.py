@@ -12,7 +12,13 @@ __all__ = ["save_daily_data_to_db", "aggregate_intraday_to_daily"]
 
 
 def save_daily_data_to_db(
-    code: str, date: str, open_price: float, high_price: float, low_price: float, close_price: float, volume: int
+    code: str,
+    date: str,
+    open_price: float,
+    high_price: float,
+    low_price: float,
+    close_price: float,
+    volume: int,
 ):
     """日足データをDBに保存する"""
     conn = None
@@ -66,7 +72,8 @@ def aggregate_intraday_to_daily(target_date: str, is_test_mode: bool = False):
         conn = get_db_connection()
         # その日の全銘柄の分足データを取得
         query = (
-            "SELECT code, timestamp, price, volume FROM intraday " "WHERE timestamp::date = %s ORDER BY timestamp ASC"
+            "SELECT code, timestamp, price, volume FROM intraday "
+            "WHERE timestamp::date = %s ORDER BY timestamp ASC"
         )
         df = pd.read_sql_query(query, conn, params=(target_date,))
 
@@ -91,10 +98,20 @@ def aggregate_intraday_to_daily(target_date: str, is_test_mode: bool = False):
             total_volume = int(stock_df["volume"].sum())  # numpy.int64をintに変換
 
             if not is_test_mode:
-                save_daily_data_to_db(code, target_date, open_price, high_price, low_price, close_price, total_volume)
+                save_daily_data_to_db(
+                    code,
+                    target_date,
+                    open_price,
+                    high_price,
+                    low_price,
+                    close_price,
+                    total_volume,
+                )
                 logger.info(f"銘柄 {code} の {target_date} 日足データを保存しました。")
             else:
-                logger.info(f"テストモードのため、銘柄 {code} の {target_date} 日足データの保存はスキップします。")
+                logger.info(
+                    f"テストモードのため、銘柄 {code} の {target_date} 日足データの保存はスキップします。"
+                )
 
     except PgError as e:
         logger.error(f"日足データ集計中にエラーが発生しました: {e}")

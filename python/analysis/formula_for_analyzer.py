@@ -4,11 +4,19 @@
 PortfolioAnalyzer や trading で再利用可能
 """
 
-from typing import List, Dict
+from typing import Dict, List
+
 import pandas as pd
+import ta
+
 from python.config import config
 
-__all__ = ["calculate_technical_indicators", "check_buy_signal", "check_sell_signal", "generate_buy_sell_signals"]
+__all__ = [
+    "calculate_technical_indicators",
+    "check_buy_signal",
+    "check_sell_signal",
+    "generate_buy_sell_signals",
+]
 
 
 def calculate_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
@@ -61,17 +69,26 @@ def check_buy_signal(df: pd.DataFrame) -> List[Dict]:
 
         # ゴールデンクロス
         if prev["Close"] < prev["SMA_20"] and row["Close"] > row["SMA_20"]:
-            signals.append({"date": row.name, "signal": "golden_cross", "price": row["Close"]})
+            signals.append(
+                {"date": row.name, "signal": "golden_cross", "price": row["Close"]}
+            )
             continue
 
         # RSI過売り
-        if prev["RSI"] < config.rsi_oversold_threshold and row["RSI"] >= config.rsi_oversold_threshold:
-            signals.append({"date": row.name, "signal": "rsi_oversold", "price": row["Close"]})
+        if (
+            prev["RSI"] < config.rsi_oversold_threshold
+            and row["RSI"] >= config.rsi_oversold_threshold
+        ):
+            signals.append(
+                {"date": row.name, "signal": "rsi_oversold", "price": row["Close"]}
+            )
             continue
 
         # 価格安値圏
         if row["Close"] <= 0.9 * row["SMA_20"]:
-            signals.append({"date": row.name, "signal": "price_low", "price": row["Close"]})
+            signals.append(
+                {"date": row.name, "signal": "price_low", "price": row["Close"]}
+            )
             continue
 
     return signals
@@ -92,22 +109,37 @@ def check_sell_signal(df: pd.DataFrame, buy_price: float) -> List[Dict]:
 
         # デッドクロス
         if prev["Close"] > prev["SMA_20"] and row["Close"] < row["SMA_20"]:
-            signals.append({"date": row.name, "signal": "dead_cross", "price": row["Close"]})
+            signals.append(
+                {"date": row.name, "signal": "dead_cross", "price": row["Close"]}
+            )
             continue
 
         # RSI過買い
-        if prev["RSI"] > config.rsi_overbought_threshold and row["RSI"] <= config.rsi_overbought_threshold:
-            signals.append({"date": row.name, "signal": "rsi_overbought", "price": row["Close"]})
+        if (
+            prev["RSI"] > config.rsi_overbought_threshold
+            and row["RSI"] <= config.rsi_overbought_threshold
+        ):
+            signals.append(
+                {"date": row.name, "signal": "rsi_overbought", "price": row["Close"]}
+            )
             continue
 
         # 利確
-        if buy_price is not None and row["Close"] >= buy_price * (1 + config.take_profit_percent):
-            signals.append({"date": row.name, "signal": "take_profit", "price": row["Close"]})
+        if buy_price is not None and row["Close"] >= buy_price * (
+            1 + config.take_profit_percent
+        ):
+            signals.append(
+                {"date": row.name, "signal": "take_profit", "price": row["Close"]}
+            )
             continue
 
         # ストップロス
-        if buy_price is not None and row["Close"] <= buy_price * (1 - config.stop_loss_percent):
-            signals.append({"date": row.name, "signal": "stop_loss", "price": row["Close"]})
+        if buy_price is not None and row["Close"] <= buy_price * (
+            1 - config.stop_loss_percent
+        ):
+            signals.append(
+                {"date": row.name, "signal": "stop_loss", "price": row["Close"]}
+            )
             continue
 
     return signals
@@ -123,8 +155,16 @@ def generate_buy_sell_signals(df: pd.DataFrame) -> pd.DataFrame:
     df["signal"] = "HOLD"
 
     # シンプルMACDクロス判定
-    df.loc[(df["macd"] > df["macd_signal"]) & (df["macd"].shift(1) <= df["macd_signal"].shift(1)), "signal"] = "BUY"
-    df.loc[(df["macd"] < df["macd_signal"]) & (df["macd"].shift(1) >= df["macd_signal"].shift(1)), "signal"] = "SELL"
+    df.loc[
+        (df["macd"] > df["macd_signal"])
+        & (df["macd"].shift(1) <= df["macd_signal"].shift(1)),
+        "signal",
+    ] = "BUY"
+    df.loc[
+        (df["macd"] < df["macd_signal"])
+        & (df["macd"].shift(1) >= df["macd_signal"].shift(1)),
+        "signal",
+    ] = "SELL"
 
     # Bollinger Band 判定（任意で併用可能）
     df.loc[df["Close"] > df["bb_upper"], "signal"] = "SELL"
