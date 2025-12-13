@@ -135,7 +135,11 @@ CREATE TABLE IF NOT EXISTS trading_signals (
             """
             DO $$
             BEGIN
-                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='stocks' AND column_name='sector') THEN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name='stocks' AND column_name='sector'
+                ) THEN
                     ALTER TABLE stocks RENAME COLUMN sector TO purpose;
                     RAISE NOTICE 'Column "sector" in table "stocks" renamed to "purpose".';
                 END IF;
@@ -144,7 +148,11 @@ CREATE TABLE IF NOT EXISTS trading_signals (
             """
             DO $$
             BEGIN
-                IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='pre_buy_daily' AND column_name='sector') THEN
+                IF EXISTS (
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name='pre_buy_daily' AND column_name='sector'
+                ) THEN
                     ALTER TABLE pre_buy_daily RENAME COLUMN sector TO purpose;
                     RAISE NOTICE 'Column "sector" in table "pre_buy_daily" renamed to "purpose".';
                 END IF;

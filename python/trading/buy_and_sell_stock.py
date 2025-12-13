@@ -414,7 +414,7 @@ def main():
     p_refresh = sub.add_parser("refresh")
     p_refresh.add_argument("code", nargs="?", help="特定銘柄のみ更新（省略時は全銘柄）")
 
-    p_csv_check = sub.add_parser("csv-check")
+    sub.add_parser("csv-check")
 
     p_csv_edit = sub.add_parser("csv-edit")
     p_csv_edit.add_argument("code")
