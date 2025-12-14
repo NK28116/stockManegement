@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+
 from python.web.schemas import TradingRules, TradingRulesUpdate
 from python.web.services.rule_store import RuleStore, get_rule_store
 
@@ -16,7 +17,9 @@ async def get_rules(store: RuleStore = Depends(get_rule_store)):
 
 
 @router.post("/", response_model=TradingRules)
-async def update_rules(updates: TradingRulesUpdate, store: RuleStore = Depends(get_rule_store)):
+async def update_rules(
+    updates: TradingRulesUpdate, store: RuleStore = Depends(get_rule_store)
+):
     try:
         return store.update_rules(updates.model_dump(exclude_unset=True))
     except Exception as e:
