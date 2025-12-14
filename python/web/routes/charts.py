@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
@@ -48,7 +49,12 @@ async def list_charts() -> List[Dict[str, Any]]:
             # print(f"DEBUG: Found plot {f.name}")
             code, name = extract_info(f.name)
             if code not in charts_map:
-                charts_map[code] = {"code": code, "name": name, "plots": None, "chartImg": None}
+                charts_map[code] = {
+                    "code": code,
+                    "name": name,
+                    "plots": None,
+                    "chartImg": None,
+                }
             charts_map[code]["plots"] = f.name
             if charts_map[code]["name"] == "Unknown" and name != "Unknown":
                 charts_map[code]["name"] = name
@@ -60,7 +66,12 @@ async def list_charts() -> List[Dict[str, Any]]:
             # print(f"DEBUG: Found chartImg {f.name}")
             code, name = extract_info(f.name)
             if code not in charts_map:
-                charts_map[code] = {"code": code, "name": name, "plots": None, "chartImg": None}
+                charts_map[code] = {
+                    "code": code,
+                    "name": name,
+                    "plots": None,
+                    "chartImg": None,
+                }
             charts_map[code]["chartImg"] = f.name
             if charts_map[code]["name"] == "Unknown" and name != "Unknown":
                 charts_map[code]["name"] = name
@@ -89,19 +100,27 @@ async def list_charts() -> List[Dict[str, Any]]:
                             pl_pct_str = row.get("profit_loss_percent", "")
                             if "{" in pl_pct_str or not pl_pct_str:
                                 if purchase_price != 0:
-                                    pl_pct = (current_price - purchase_price) / purchase_price * 100
+                                    pl_pct = (
+                                        (current_price - purchase_price)
+                                        / purchase_price
+                                        * 100
+                                    )
                                 else:
                                     pl_pct = 0.0
                             else:
                                 try:
-                                    pl_pct = float(pl_pct_str.replace("%", "").replace("+", ""))
+                                    pl_pct = float(
+                                        pl_pct_str.replace("%", "").replace("+", "")
+                                    )
                                 except ValueError:
                                     pl_pct = 0.0
 
                             # Calculate simple profit_loss if needed
                             pl_val_str = row.get("profit_loss", "")
                             if "{" in pl_val_str or not pl_val_str:
-                                pl_val = (current_price - purchase_price) * float(row.get("quantity", 1))
+                                pl_val = (current_price - purchase_price) * float(
+                                    row.get("quantity", 1)
+                                )
                             else:
                                 try:
                                     pl_val = float(pl_val_str)
