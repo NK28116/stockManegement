@@ -3,7 +3,7 @@
 ### 0-1. デプロイ形態の最終決定
 
 * [ ] **WebUI：Cloud Run**
-* [ ] **定期実行：GCE（既存） or Cloud Scheduler + Cloud Run Job**
+* [ ] **定期実行：GCE（既存）**
 * [ ] **永続ストレージ：GCS**
 
 ※ ここでは「GCEは既にある前提」で進めます。
@@ -144,7 +144,6 @@ gs://stock-management-prod/
 **どちらか一択**
 
 * [ ] GCE cron（既存）
-* [ ] Cloud Scheduler + Cloud Run Job
 
 ---
 
@@ -218,3 +217,13 @@ gs://stock-management-prod/
 * [ ] cron 有効化
 * [ ] 監視開始
 
+# フェーズ8：将来拡張検討
+
+Docs/WayToBenefit.mdを参考に、以下の拡張を検討
+
+* [ ] 高度ルール追加
+* [ ] Privateな情報を削除
+* [ ] READMEを含めたDocsの編集などのOSS公開準備
+* [ ] 監視市場の追加 <- 収益化可能性
+* [ ] 英語圏に対応 <- 収益化可能性
+* [ ] 通知ツールの追加（LINE, Discordなど）
