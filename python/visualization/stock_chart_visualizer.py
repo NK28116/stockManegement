@@ -18,6 +18,7 @@ import yfinance as yf
 from dotenv import load_dotenv
 
 from python.config import config
+from python.web.services.rule_store import get_rule_store
 from python.trading.trading_rules import ImprovedTradingRules
 from python.visualization.plot_indicators import plot_macd_bollinger
 
@@ -35,9 +36,7 @@ import matplotlib.font_manager as fm  # noqa: E402
 
 font_path = "/usr/share/fonts/opentype/ipaexfont-gothic/ipaexg.ttf"
 font_prop = fm.FontProperties(fname=font_path)
-matplotlib.rcParams["font.family"] = (
-    font_prop.get_name()
-)  # 日本語対応（configから取得）
+matplotlib.rcParams["font.family"] = font_prop.get_name()  # 日本語対応（configから取得）
 matplotlib.rcParams["axes.unicode_minus"] = False  # マイナス記号の文字化け対策
 # Suppress font warning messages
 
@@ -56,7 +55,16 @@ class StockChartVisualizer:
     def __init__(self, period="3mo", is_test_mode: bool = False):
         self.period = period
         self.is_test_mode = is_test_mode
-        self.trading_rules = ImprovedTradingRules()
+
+        # Load dynamic rules
+        try:
+            rules = get_rule_store().get_rules()
+            # print("動的売買ルールを読み込みました") # ログが多すぎるのでコメントアウト
+        except Exception:
+            # print("動的売買ルールの読み込みに失敗、デフォルト設定を使用します")
+            rules = None
+
+        self.trading_rules = ImprovedTradingRules(rules=rules)
         # 出力先を期間ごとに変更
         self.data_dir = os.path.join(config.data_dir, "chartImg", self.period)
         self.plot_image_dir = os.path.join(config.data_dir, "plots", self.period)
@@ -127,9 +135,7 @@ class StockChartVisualizer:
             print(f"データ取得エラー: {ticker} - {e}")
             return None
 
-    def create_chart_with_signals(
-        self, stock_info: Dict, df: pd.DataFrame, trades: List[Dict]
-    ) -> plt.Figure:
+    def create_chart_with_signals(self, stock_info: Dict, df: pd.DataFrame, trades: List[Dict]) -> plt.Figure:
         """売買シグナル付きチャートを作成"""
 
         # Figure setup
@@ -142,9 +148,7 @@ class StockChartVisualizer:
         )
 
         # Price chart
-        ax1.plot(
-            df.index, df["Close"], linewidth=2, color="blue", label="終値", alpha=0.8
-        )
+        ax1.plot(df.index, df["Close"], linewidth=2, color="blue", label="終値", alpha=0.8)
 
         # Volume chart
         ax2.bar(df.index, df["Volume"], alpha=0.6, color="gray", label="出来高")
@@ -180,17 +184,13 @@ class StockChartVisualizer:
             )
 
             # Add annotations for buy signals
-            for i, (date, price, reason) in enumerate(
-                zip(buy_dates, buy_prices, buy_reasons)
-            ):
+            for i, (date, price, reason) in enumerate(zip(buy_dates, buy_prices, buy_reasons)):
                 ax1.annotate(
                     f"買い\n¥{price:.0f}",
                     xy=(date, price),
                     xytext=(10, 30),
                     textcoords="offset points",
-                    bbox=dict(
-                        boxstyle="round,pad=0.3", facecolor="lightgreen", alpha=0.7
-                    ),
+                    bbox=dict(boxstyle="round,pad=0.3", facecolor="lightgreen", alpha=0.7),
                     arrowprops=dict(arrowstyle="->", color="green"),
                     fontsize=9,
                     ha="center",
@@ -209,9 +209,7 @@ class StockChartVisualizer:
             )
 
             # Add annotations for sell signals
-            for i, (date, price, reason) in enumerate(
-                zip(sell_dates, sell_prices, sell_reasons)
-            ):
+            for i, (date, price, reason) in enumerate(zip(sell_dates, sell_prices, sell_reasons)):
                 profit_loss = ""
                 for trade in trades:
                     if (
@@ -227,9 +225,7 @@ class StockChartVisualizer:
                     xy=(date, price),
                     xytext=(10, -40),
                     textcoords="offset points",
-                    bbox=dict(
-                        boxstyle="round,pad=0.3", facecolor="lightcoral", alpha=0.7
-                    ),
+                    bbox=dict(boxstyle="round,pad=0.3", facecolor="lightcoral", alpha=0.7),
                     arrowprops=dict(arrowstyle="->", color="red"),
                     fontsize=9,
                     ha="center",
@@ -240,9 +236,7 @@ class StockChartVisualizer:
             ma5 = df["Close"].rolling(5).mean()
             ma25 = df["Close"].rolling(25).mean()
             ax1.plot(df.index, ma5, color="orange", alpha=0.7, linewidth=1, label="MA5")
-            ax1.plot(
-                df.index, ma25, color="purple", alpha=0.7, linewidth=1, label="MA25"
-            )
+            ax1.plot(df.index, ma25, color="purple", alpha=0.7, linewidth=1, label="MA25")
 
         # Chart formatting
         ax1.set_ylabel("価格 (円)", fontsize=12)
@@ -274,9 +268,7 @@ class StockChartVisualizer:
         if not self.is_test_mode:
             os.makedirs(self.plot_image_dir, exist_ok=True)
         else:
-            print(
-                "テストモードのため、MACD & ボリンジャーバンドチャートの出力ディレクトリ作成はスキップします。"
-            )
+            print("テストモードのため、MACD & ボリンジャーバンドチャートの出力ディレクトリ作成はスキップします。")
 
         # --- ポートフォリオ読み込み ---
         stocks = self.load_portfolio_stocks(portfolio_file)
@@ -291,9 +283,7 @@ class StockChartVisualizer:
 
         for i, stock_info in enumerate(stocks, 1):
             try:
-                print(
-                    f"\n[{i}/{len(stocks)}] 処理中: {stock_info['name']} ({stock_info['code']})"
-                )
+                print(f"\n[{i}/{len(stocks)}] 処理中: {stock_info['name']} ({stock_info['code']})")
 
                 # 株価データ取得
                 df = self.fetch_stock_data(stock_info["code"])
@@ -338,24 +328,16 @@ class StockChartVisualizer:
                 print("\n=== 全銘柄のMACD & ボリンジャーバンドチャート作成完了 ===")
                 print(f"保存先: {os.path.abspath(self.plot_image_dir)}")
             else:
-                print(
-                    "\n=== 全銘柄のMACD & ボリンジャーバンドチャート作成完了 (テストモード) ==="
-                )
+                print("\n=== 全銘柄のMACD & ボリンジャーバンドチャート作成完了 (テストモード) ===")
                 print("テストモードのため、チャートは保存されませんでした。")
         else:
             print("チャート作成対象データがありませんでした")
 
-    def generate_trading_summary(
-        self, stock_info: Dict, trades: List[Dict], metrics: Dict
-    ) -> str:
+    def generate_trading_summary(self, stock_info: Dict, trades: List[Dict], metrics: Dict) -> str:
         """取引サマリーを生成"""
-        print(
-            f"  取引サマリー生成中: {stock_info['name']} ({stock_info['code']})"
-        )  # デバッグ用
+        print(f"  取引サマリー生成中: {stock_info['name']} ({stock_info['code']})")  # デバッグ用
 
-        summary = [
-            f"\n=== {stock_info['name']} ({stock_info['code']}) 取引サマリー ==="
-        ]
+        summary = [f"\n=== {stock_info['name']} ({stock_info['code']}) 取引サマリー ==="]
 
         if not metrics:
             summary.append("取引データがありません")
@@ -390,9 +372,7 @@ class StockChartVisualizer:
                 if "profit_loss_percent" in trade:
                     profit_info = f" (損益: {trade['profit_loss_percent']:.2%})"
                 reason = trade.get("reason", "")
-                summary.append(
-                    f"  {trade['date']}: ¥{trade['price']:.2f} - {reason}{profit_info}"
-                )
+                summary.append(f"  {trade['date']}: ¥{trade['price']:.2f} - {reason}{profit_info}")
 
         return "\n".join(summary)
 
@@ -414,9 +394,7 @@ class StockChartVisualizer:
 
         for i, stock_info in enumerate(stocks, 1):
             try:
-                print(
-                    f"\n[{i}/{len(stocks)}] 処理中: {stock_info['name']} ({stock_info['code']})"
-                )
+                print(f"\n[{i}/{len(stocks)}] 処理中: {stock_info['name']} ({stock_info['code']})")
 
                 # Fetch data
                 df = self.fetch_stock_data(stock_info["code"])
@@ -431,9 +409,7 @@ class StockChartVisualizer:
                 figSignal = self.create_chart_with_signals(stock_info, df, trades)
 
                 # Save chart
-                chart_filename = (
-                    f"{stock_info['code'].replace('.', '_')}_{stock_info['name']}.png"
-                )
+                chart_filename = f"{stock_info['code'].replace('.', '_')}_{stock_info['name']}.png"
                 chart_path = os.path.join(self.data_dir, chart_filename)
                 if not self.is_test_mode:
                     figSignal.savefig(chart_path, dpi=150, bbox_inches="tight")
@@ -479,17 +455,13 @@ class StockChartVisualizer:
             return
 
         try:
-            report_filename = (
-                f"trading_summary_{portfolio_file.replace('.csv', '')}.txt"
-            )
+            report_filename = f"trading_summary_{portfolio_file.replace('.csv', '')}.txt"
             report_path = os.path.join(self.data_dir, report_filename)
 
             with open(report_path, "w", encoding="utf-8") as f:
                 f.write("# -*- coding: utf-8 -*-\n\n")  # 文字コード宣言を追加
                 f.write("=== 全銘柄売買タイミング分析レポート ===\n")
-                f.write(
-                    f"作成日時: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-                )
+                f.write(f"作成日時: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
                 f.write(f"対象ポートフォリオ: {portfolio_file}\n")
                 f.write("=" * 60 + "\n")
 
@@ -525,9 +497,7 @@ def main():
 
     # User selection
     try:
-        choice = input(
-            f"\nポートフォリオを選択してください (1-{len(portfolios)}, デフォルト: 1): "
-        ).strip()
+        choice = input(f"\nポートフォリオを選択してください (1-{len(portfolios)}, デフォルト: 1): ").strip()
         if not choice:
             choice = "1"
 
@@ -539,9 +509,7 @@ def main():
         selected_portfolio = portfolios[portfolio_index]
 
         # Period selection
-        period = input(
-            "期間を選択してください (1mo, 3mo, 6mo, 1y, デフォルト: 3mo): "
-        ).strip()
+        period = input("期間を選択してください (1mo, 3mo, 6mo, 1y, デフォルト: 3mo): ").strip()
         if not period:
             period = "3mo"
 

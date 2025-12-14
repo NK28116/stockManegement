@@ -31,31 +31,53 @@
         </header>
 
         <!-- Dashboard Tab -->
-        <div v-if="currentTab === 'dashboard'" class="space-y-6">
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-semibold mb-4">Charts (Plots)</h2>
-                <div v-if="loadingCharts" class="text-gray-500">Loading charts...</div>
-                <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div v-for="chart in charts.plots" :key="chart" class="border rounded p-2">
-                        <p class="text-sm font-medium mb-2 text-center text-gray-600">{{ chart }}</p>
-                        <img :src="`/api/charts/image/plots/${chart}`" class="w-full h-auto rounded" loading="lazy">
-                    </div>
-                    <div v-if="charts.plots.length === 0" class="text-gray-500 italic">No charts found in data/plots
-                    </div>
-                </div>
-            </div>
+        <div v-if="currentTab === 'dashboard'" class="bg-white p-6 rounded-lg shadow overflow-x-auto">
+            <div v-if="loadingCharts" class="text-gray-500">Loading charts...</div>
+            <div v-else-if="errorMessage" class="text-red-500 p-4 bg-red-50 rounded">{{ errorMessage }}</div>
+            <div v-else-if="charts.length === 0" class="text-gray-500 italic">No charts found.</div>
 
-            <div class="bg-white p-6 rounded-lg shadow">
-                <h2 class="text-xl font-semibold mb-4">Charts (ChartImg)</h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div v-for="chart in charts.chartImg" :key="chart" class="border rounded p-2">
-                        <p class="text-sm font-medium mb-2 text-center text-gray-600">{{ chart }}</p>
-                        <img :src="`/api/charts/image/chartImg/${chart}`" class="w-full h-auto rounded" loading="lazy">
-                    </div>
-                    <div v-if="charts.chartImg.length === 0" class="text-gray-500 italic">No charts found in
-                        data/chartImg</div>
-                </div>
-            </div>
+            <table v-else class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/5">
+                            Company
+                        </th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5">
+                            Plots (MACD/BB)
+                        </th>
+                        <th scope="col"
+                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-2/5">
+                            ChartImg (Signals)
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <tr v-for="item in charts" :key="item.code">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-bold text-gray-900">{{ item.name }}</div>
+                            <div class="text-sm text-gray-500">{{ item.code }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div v-if="item.plots" class="w-full">
+                                <img :src="`/api/charts/image/plots/${item.plots}`"
+                                    class="w-full h-auto rounded shadow-sm border" loading="lazy">
+                                <p class="text-xs text-center text-gray-400 mt-1">{{ item.plots }}</p>
+                            </div>
+                            <span v-else class="text-gray-400 text-sm">No plot</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div v-if="item.chartImg" class="w-full">
+                                <img :src="`/api/charts/image/chartImg/${item.chartImg}`"
+                                    class="w-full h-auto rounded shadow-sm border" loading="lazy">
+                                <p class="text-xs text-center text-gray-400 mt-1">{{ item.chartImg }}</p>
+                            </div>
+                            <span v-else class="text-gray-400 text-sm">No chart</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         <!-- Settings Tab -->
@@ -101,13 +123,14 @@
             data() {
                 return {
                     currentTab: 'dashboard',
-                    charts: { plots: [], chartImg: [] },
+                    charts: [],
                     rules: {},
                     loadingCharts: false,
                     loadingRules: false,
                     saving: false,
                     message: '',
-                    messageType: ''
+                    messageType: '',
+                    errorMessage: ''
                 }
             },
             mounted() {
@@ -120,11 +143,14 @@
                 },
                 async fetchCharts() {
                     this.loadingCharts = true
+                    this.errorMessage = ''
                     try {
                         const res = await fetch('/api/charts/list')
+                        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
                         this.charts = await res.json()
                     } catch (e) {
                         console.error(e)
+                        this.errorMessage = 'Failed to load charts: ' + e.message
                     } finally {
                         this.loadingCharts = false
                     }

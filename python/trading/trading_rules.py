@@ -18,6 +18,38 @@ __all__ = ["ImprovedTradingRules", "generate_trading_report"]
 class ImprovedTradingRules:
     """売買ルールクラス"""
 
+    def __init__(self, rules=None):
+        """
+        初期化
+
+        Args:
+            rules (TradingRules, optional): 動的な売買ルール設定.
+                                          Noneの場合はconfig.pyのデフォルト値を使用.
+        """
+        if rules:
+            self.rules = rules
+        else:
+            # Fallback to config values wrapped in a compatible structure
+            from python.web.schemas import TradingRules
+
+            self.rules = TradingRules(
+                stop_loss_percent=config.stop_loss_percent,
+                take_profit_percent=config.take_profit_percent,
+                trailing_stop_percent=config.trailing_stop_percent,
+                risk_per_trade=config.risk_per_trade,
+                max_loss_percent=config.max_loss_percent,
+                crash_threshold=config.crash_threshold,
+                volatility_threshold=config.volatility_threshold,
+                volume_spike_threshold=config.volume_spike_threshold,
+                rsi_overbought_threshold=config.rsi_overbought_threshold,
+                rsi_oversold_threshold=config.rsi_oversold_threshold,
+                macd_fast_period=config.macd_fast_period,
+                macd_slow_period=config.macd_slow_period,
+                macd_signal_period=config.macd_signal_period,
+                bollinger_period=config.bollinger_period,
+                bollinger_std=config.bollinger_std,
+            )
+
     def analyze_with_improved_rules(self, df: pd.DataFrame) -> List[Dict]:
         """
         売買ルールで分析
@@ -55,8 +87,8 @@ class ImprovedTradingRules:
                         "entry_price": price,
                         "entry_pattern": pattern,
                         "highest_price": price,  # 最高値追跡
-                        "stop_loss_price": price * (1 - config.stop_loss_percent),
-                        "take_profit_price": price * (1 + config.take_profit_percent),
+                        "stop_loss_price": price * (1 - self.rules.stop_loss_percent),
+                        "take_profit_price": price * (1 + self.rules.take_profit_percent),
                     }
                     trades.append(
                         {
@@ -74,7 +106,7 @@ class ImprovedTradingRules:
                 if price > position["highest_price"]:
                     position["highest_price"] = price
                     # トレーリングストップ更新
-                    new_stop = price * (1 - config.trailing_stop_percent)
+                    new_stop = price * (1 - self.rules.trailing_stop_percent)
                     if new_stop > position["stop_loss_price"]:
                         position["stop_loss_price"] = new_stop
 
@@ -86,11 +118,10 @@ class ImprovedTradingRules:
                             "price": price,
                             "action": "SELL",
                             "pattern": pattern,
-                            "reason": f"ストップロス（-{config.stop_loss_percent:.1%}）",
+                            "reason": f"ストップロス（-{self.rules.stop_loss_percent:.1%}）",
                             "entry_price": position["entry_price"],
                             "profit_loss": price - position["entry_price"],
-                            "profit_loss_percent": (price - position["entry_price"])
-                            / position["entry_price"],
+                            "profit_loss_percent": (price - position["entry_price"]) / position["entry_price"],
                         }
                     )
                     position = None
@@ -103,11 +134,10 @@ class ImprovedTradingRules:
                             "price": price,
                             "action": "SELL",
                             "pattern": pattern,
-                            "reason": f"利確（+{config.take_profit_percent:.1%}）",
+                            "reason": f"利確（+{self.rules.take_profit_percent:.1%}）",
                             "entry_price": position["entry_price"],
                             "profit_loss": price - position["entry_price"],
-                            "profit_loss_percent": (price - position["entry_price"])
-                            / position["entry_price"],
+                            "profit_loss_percent": (price - position["entry_price"]) / position["entry_price"],
                         }
                     )
                     position = None
@@ -123,8 +153,7 @@ class ImprovedTradingRules:
                             "reason": "デッドクロス（--）売却",
                             "entry_price": position["entry_price"],
                             "profit_loss": price - position["entry_price"],
-                            "profit_loss_percent": (price - position["entry_price"])
-                            / position["entry_price"],
+                            "profit_loss_percent": (price - position["entry_price"]) / position["entry_price"],
                         }
                     )
                     position = None
@@ -155,23 +184,18 @@ class ImprovedTradingRules:
             return {"total_trades": len(buy_trades), "completed_trades": 0}
 
         # 損益計算
-        profits = [
-            t["profit_loss_percent"] for t in sell_trades if "profit_loss_percent" in t
-        ]
+        profits = [t["profit_loss_percent"] for t in sell_trades if "profit_loss_percent" in t]
 
         metrics = {
             "total_trades": len(buy_trades),
             "completed_trades": len(sell_trades),
-            "win_rate": (
-                len([p for p in profits if p > 0]) / len(profits) if profits else 0
-            ),
+            "win_rate": (len([p for p in profits if p > 0]) / len(profits) if profits else 0),
             "average_profit": np.mean(profits) if profits else 0,
             "total_return": sum(profits) if profits else 0,
             "max_profit": max(profits) if profits else 0,
             "max_loss": min(profits) if profits else 0,
             "profit_factor": (
-                sum([p for p in profits if p > 0])
-                / abs(sum([p for p in profits if p < 0]))
+                sum([p for p in profits if p > 0]) / abs(sum([p for p in profits if p < 0]))
                 if profits and any(p < 0 for p in profits)
                 else float("inf")  # "in" を "inf" に修正
             ),
@@ -200,9 +224,7 @@ def generate_trading_report(comparison: Dict, is_test_mode: bool = False) -> str
     report_content.append(f"総リターン: {new_metrics.get('total_return', 0):.2%}")
     report_content.append(f"最大利益: {new_metrics.get('max_profit', 0):.2%}")
     report_content.append(f"最大損失: {new_metrics.get('max_loss', 0):.2%}")
-    report_content.append(
-        f"プロフィットファクター: {new_metrics.get('profit_factor', 0):.2f}"
-    )
+    report_content.append(f"プロフィットファクター: {new_metrics.get('profit_factor', 0):.2f}")
     report_content.append("")
 
     # 推奨事項
@@ -227,9 +249,7 @@ def generate_trading_report(comparison: Dict, is_test_mode: bool = False) -> str
             f.write(report_str)
         print(f"トレーディングルール見直しレポートを保存しました: {report_path}")
     else:
-        print(
-            "テストモードのため、トレーディングルール見直しレポートの保存はスキップします。"
-        )
+        print("テストモードのため、トレーディングルール見直しレポートの保存はスキップします。")
 
     return report_str
 
@@ -247,6 +267,4 @@ if __name__ == "__main__":
 
     comparison = {"new_rules": {"metrics": metrics}}
 
-    report = generate_trading_report(
-        comparison, is_test_mode=False
-    )  # テストモードを明示的に指定
+    report = generate_trading_report(comparison, is_test_mode=False)  # テストモードを明示的に指定
