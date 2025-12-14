@@ -10,3 +10,7 @@ psycopg2-binary
 google-cloud-storage
 watchdog
 ta
+fastapi
+uvicorn
+jinja2
+python-multipart
