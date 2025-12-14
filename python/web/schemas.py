@@ -1,6 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel
 
+
 class TradingRules(BaseModel):
     stop_loss_percent: float
     take_profit_percent: float
@@ -17,6 +18,7 @@ class TradingRules(BaseModel):
     macd_signal_period: int
     bollinger_period: int
     bollinger_std: int
+
 
 class TradingRulesUpdate(BaseModel):
     stop_loss_percent: Optional[float] = None
