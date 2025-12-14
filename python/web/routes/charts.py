@@ -1,6 +1,5 @@
-import os
 from pathlib import Path
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Any
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
@@ -19,8 +18,6 @@ async def list_charts() -> List[Dict[str, Any]]:
     print(f"DEBUG: Looking for data in {data_dir}")
 
     charts_map = {}
-
-    import re
 
     # Helper to clean code
     def extract_info(filename: str):
