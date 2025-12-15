@@ -150,9 +150,21 @@ gs://stock-management-prod/
   * [x] `GCS_BUCKET_NAME=stock-management-prod`
   * [x] `GOOGLE_CLOUD_PROJECT=stockmanagement-gce`
 
+### 3-5. CI/CD (GitHub Actions)
+
+* [x] Workflow設定: `.github/workflows/google-cloudrun-docker.yml` (WIF + gcr.io)
+* [ ] IAM & Secrets設定:
+  1. `scripts/setup_wif.sh` を実行
+  2. GitHub Repository Settings > Secrets and variables > Actions に以下を設定:
+     * `GCP_PROJECT_ID`
+     * `GCP_WIF_PROVIDER`
+     * `GCP_SERVICE_ACCOUNT`
+
 ---
 
-## フェーズ4：定期実行（自動監視）
+
+## 4. 運用監視 (Phase 4)
+：定期実行（自動監視）
 
 ### 4-1. 実行方式決定
 
