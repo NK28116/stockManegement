@@ -108,10 +108,10 @@ gs://stock-management-prod/
 * [x] active.json → `trading_rules/`
 * [x] chartImg → `charts/`
 * [x] report → `reports/`
-* [ ] data 保存先を **GCSに切替**
-  * [ ] `python/utils/gcs_client.py` 実装（GCS/Local 同時書き込み or 切り替え）
-  * [ ] `rules_loader.py` を GCS 対応
-  * [ ] `charts.py` を GCS 対応（画像参照先変更）
+* [x] data 保存先を **GCSに切替**
+  * [x] `python/utils/gcs_client.py` 実装（GCS/Local 同時書き込み or 切り替え）
+  * [x] `rules_loader.py` を GCS 対応
+  * [x] `charts.py` を GCS 対応（画像参照先変更）
 
 ---
 
@@ -126,27 +126,29 @@ gs://stock-management-prod/
 
 ### 3-2. GCS I/O 実装
 
-* [ ] rules の GET/POST が GCS 直結
-* [ ] charts は署名URL or public read (or backend proxy)
+* [x] rules の GET/POST が GCS 直結
+* [x] charts は署名URL or public read (or backend proxy)
 
 ---
 
 ### 3-3. Dockerfile 作成
 
-* [ ] Base Image: `python:3.12-slim`
-* [ ] Requirements: `fastapi`, `uvicorn`, `google-cloud-storage`, `jinja2`, `python-multipart`
-* [ ] Entrypoint: `uvicorn python.web.app:app --host 0.0.0.0 --port $PORT`
-* [ ] `gunicorn` は今回は `uvicorn` 単体でも可（Cloud Run は前段にLBがいるため）
+* [x] Base Image: `python:3.12-slim`
+* [x] Requirements: `fastapi`, `uvicorn`, `google-cloud-storage`, `jinja2`, `python-multipart`
+* [x] Entrypoint: `uvicorn python.web.app:app --host 0.0.0.0 --port $PORT`
+* [x] `gunicorn` は今回は `uvicorn` 単体でも可（Cloud Run は前段にLBがいるため）
 
 ---
 
 ### 3-4. Cloud Run 設定 (コマンドラインで実行予定)
 
-* [ ] `gcloud builds submit --tag gcr.io/PROJECT_ID/stock-web-ui`
-* [ ] `gcloud run deploy stock-web-ui --image gcr.io/PROJECT_ID/stock-web-ui --allow-unauthenticated` (一旦、後で認証追加)
-* [ ] 環境変数設定:
-  * [ ] `GCS_BUCKET_NAME=stock-management-prod`
-  * [ ] `GOOGLE_CLOUD_PROJECT=...`
+* [x] `gcloud builds submit --tag gcr.io/stockmanagement-gce/stock-web-ui`
+* [x] `gcloud run deploy stock-web-ui --image gcr.io/stockmanagement-gce/stock-web-ui --allow-unauthenticated`
+    * Region: `us-east1` (Always Free)
+    * URL: `https://stock-web-ui-664052483309.us-east1.run.app`
+* [x] 環境変数設定:
+  * [x] `GCS_BUCKET_NAME=stock-management-prod`
+  * [x] `GOOGLE_CLOUD_PROJECT=stockmanagement-gce`
 
 ---
 
