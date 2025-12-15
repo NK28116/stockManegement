@@ -143,7 +143,9 @@ def analyze_minute_data(code: str, name: str, is_test_mode: bool = False):
     # --- MACD分析 ---
     macd_period = rules.indicators.macd.slow_period  # long_period代用
     if len(df) >= macd_period:  # MACD計算に必要な期間
-        df = calculate_macd(df)
+        macd_df = calculate_macd(df["close"])
+        df["macd"] = macd_df["MACD"]
+        df["macd_signal"] = macd_df["Signal"]
         # MACDゴールデンクロス/デッドクロスなどの分析ロジックをここに追加
         # 例: MACDがシグナルを上抜けた/下抜けた
         if (
@@ -160,7 +162,9 @@ def analyze_minute_data(code: str, name: str, is_test_mode: bool = False):
     # --- ボリンジャーバンド分析 ---
     boll_period = rules.indicators.bollinger.period
     if len(df) >= boll_period:  # ボリンジャーバンド計算に必要な期間
-        df = calculate_bollinger_bands(df)
+        bb_df = calculate_bollinger_bands(df["close"])
+        df["upper_band"] = bb_df["Upper"]
+        df["lower_band"] = bb_df["Lower"]
         # ボリンジャーバンドのブレイクアウトなどの分析ロジックをここに追加
         # 例: 終値がアッパーバンドを上抜けた
         if df["close"].iloc[-1] > df["upper_band"].iloc[-1]:
@@ -240,7 +244,9 @@ def analyze_daily_data(code: str, name: str, is_test_mode: bool = False):
     # --- MACD分析 ---
     macd_period = rules.indicators.macd.slow_period
     if len(df) >= macd_period:  # MACD計算に必要な期間
-        df = calculate_macd(df)
+        macd_df = calculate_macd(df["close"])
+        df["macd"] = macd_df["MACD"]
+        df["macd_signal"] = macd_df["Signal"]
         # MACDゴールデンクロス/デッドクロスなどの分析ロジックをここに追加
         # 例: MACDがシグナルを上抜けた/下抜けた
         if (
@@ -257,7 +263,9 @@ def analyze_daily_data(code: str, name: str, is_test_mode: bool = False):
     # --- ボリンジャーバンド分析 ---
     boll_period = rules.indicators.bollinger.period
     if len(df) >= boll_period:  # ボリンジャーバンド計算に必要な期間
-        df = calculate_bollinger_bands(df)
+        bb_df = calculate_bollinger_bands(df["close"])
+        df["upper_band"] = bb_df["Upper"]
+        df["lower_band"] = bb_df["Lower"]
         # ボリンジャーバンドのブレイクアウトなどの分析ロジックをここに追加
         # 例: 終値がアッパーバンドを上抜けた
         if df["close"].iloc[-1] > df["upper_band"].iloc[-1]:
