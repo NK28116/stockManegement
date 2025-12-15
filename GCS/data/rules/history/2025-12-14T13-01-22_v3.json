@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "version": 3,
+    "applied_at": "2025-12-14T13:45:10Z",
+    "applied_by": "admin",
+    "comment": "tighten stop loss"
+  },
+  "rules": { ... ACTIVE RULE FULL JSON ... },
+  "diff": {
+    "stop_loss_percent": {
+      "before": 0.08,
+      "after": 0.05
+    },
+    "risk_per_trade": {
+      "before": 0.5,
+      "after": 1.0
+    }
+  }
+}

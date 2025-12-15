@@ -1,39 +1,142 @@
+from __future__ import annotations
+
 from typing import Optional
+from datetime import datetime
+from pydantic import BaseModel, Field, field_validator
 
-from pydantic import BaseModel
+
+# ---------------------------
+# Meta
+# ---------------------------
 
 
-class TradingRules(BaseModel):
+class RuleMeta(BaseModel):
+    version: int
+    description: str
+    updated_at: datetime
+    updated_by: str
+    comment: Optional[str] = None
+    active: bool = True
+
+
+# ---------------------------
+# Risk Management
+# ---------------------------
+
+
+class RiskManagementRules(BaseModel):
     stop_loss_percent: float
     take_profit_percent: float
     trailing_stop_percent: float
     risk_per_trade: float
-    max_loss_percent: float
-    crash_threshold: float
+    max_daily_loss_percent: float
+
+    @field_validator("*")
+    @classmethod
+    def check_percent(cls, v: float, info):
+        # Allow 0 for disabled/unused, otherwise expects 0 < x < 1 typically,
+        # but original code enforced 0 < value < 1 strictly.
+        if isinstance(v, (int, float)):
+            if not (0 < v < 1):
+                # Some legacy values might be exactly 0 or 1, but original code raised ValueError
+                raise ValueError(f"{info.field_name} must be between 0 and 1, got {v}")
+        return v
+
+
+# ---------------------------
+# Entry Rules
+# ---------------------------
+
+
+class PriceMomentumRule(BaseModel):
+    enabled: bool
+    pattern: str  # "++"
+
+
+class RSIFilterRule(BaseModel):
+    enabled: bool
+    oversold: int
+
+
+class MACDFilterRule(BaseModel):
+    enabled: bool
+    require_cross: bool
+
+
+class EntryRules(BaseModel):
+    price_momentum: PriceMomentumRule
+    rsi_filter: RSIFilterRule
+    macd_filter: MACDFilterRule
+
+
+# ---------------------------
+# Exit Rules
+# ---------------------------
+
+
+class ExitToggleRule(BaseModel):
+    enabled: bool
+    pattern: Optional[str] = None
+
+
+class ExitRules(BaseModel):
+    stop_loss: ExitToggleRule
+    take_profit: ExitToggleRule
+    dead_cross_exit: ExitToggleRule
+
+
+# ---------------------------
+# Indicators
+# ---------------------------
+
+
+class RSIIndicator(BaseModel):
+    period: int
+    overbought: int
+    oversold: int
+
+
+class MACDIndicator(BaseModel):
+    fast_period: int
+    slow_period: int
+    signal_period: int
+
+
+class BollingerIndicator(BaseModel):
+    period: int
+    std: float
+
+
+class Indicators(BaseModel):
+    rsi: RSIIndicator
+    macd: MACDIndicator
+    bollinger: BollingerIndicator
+
+
+# ---------------------------
+# Filters
+# ---------------------------
+
+
+class MarketFilters(BaseModel):
+    crash_threshold_percent: float
     volatility_threshold: float
     volume_spike_threshold: float
-    rsi_overbought_threshold: float
-    rsi_oversold_threshold: float
-    macd_fast_period: int
-    macd_slow_period: int
-    macd_signal_period: int
-    bollinger_period: int
-    bollinger_std: int
 
 
-class TradingRulesUpdate(BaseModel):
-    stop_loss_percent: Optional[float] = None
-    take_profit_percent: Optional[float] = None
-    trailing_stop_percent: Optional[float] = None
-    risk_per_trade: Optional[float] = None
-    max_loss_percent: Optional[float] = None
-    crash_threshold: Optional[float] = None
-    volatility_threshold: Optional[float] = None
-    volume_spike_threshold: Optional[float] = None
-    rsi_overbought_threshold: Optional[float] = None
-    rsi_oversold_threshold: Optional[float] = None
-    macd_fast_period: Optional[int] = None
-    macd_slow_period: Optional[int] = None
-    macd_signal_period: Optional[int] = None
-    bollinger_period: Optional[int] = None
-    bollinger_std: Optional[int] = None
+# ---------------------------
+# Root TradingRules
+# ---------------------------
+
+
+class TradingRules(BaseModel):
+    meta: RuleMeta
+    risk_management: RiskManagementRules
+    entry_rules: EntryRules
+    exit_rules: ExitRules
+    indicators: Indicators
+    filters: MarketFilters
+
+    @property
+    def is_active(self) -> bool:
+        return self.meta.active

@@ -145,23 +145,111 @@
             <div class="bg-white p-6 rounded-lg shadow">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-semibold">Trading Rules Configuration</h2>
-                    <button @click="saveRules"
-                        class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded shadow transition"
-                        :disabled="saving">
-                        {{ saving ? 'Saving...' : 'Save Changes' }}
-                    </button>
+                    <div class="flex gap-3">
+                        <button @click="previewChanges"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                            Preview Changes
+                        </button>
+
+                        <button @click="saveRules" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+                            :disabled="saving">
+                            Save Draft
+                        </button>
+                    </div>
                 </div>
 
                 <div v-if="loadingRules" class="text-gray-500">Loading rules...</div>
 
-                <form v-else class="grid grid-cols-1 md:grid-cols-2 gap-6" @submit.prevent="saveRules">
-                    <div v-for="(value, key) in rules" :key="key" class="border-b pb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-1 capitalize">{{ formatKey(key)
-                            }}</label>
-                        <div class="flex items-center">
-                            <input type="number" step="any" v-model.number="rules[key]"
-                                class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
-                            <span class="ml-2 text-xs text-gray-500 font-mono">{{ key }}</span>
+                <form v-else class="space-y-8" @submit.prevent="previewChanges">
+                    <!-- Meta Information (Read Only) -->
+                    <div class="bg-gray-50 p-4 rounded border">
+                        <h3 class="font-bold text-gray-700 mb-2">Meta Info</h3>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="text-gray-500">Version:</span>
+                                <span class="font-mono ml-2">{{ rules.meta?.version }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Updated:</span>
+                                <span class="font-mono ml-2">{{ rules.meta?.updated_at }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Active:</span>
+                                <span class="ml-2 px-2 py-0.5 rounded text-xs"
+                                    :class="rules.meta?.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                                    {{ rules.meta?.active ? 'ACTIVE' : 'INACTIVE' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Risk Management -->
+                    <div class="border-t pt-4">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Risk Management</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="border p-3 rounded hover:bg-gray-50" v-for="(val, key) in rules.risk_management"
+                                :key="key">
+                                <label class="block text-sm font-medium text-gray-700 mb-1 capitalize">{{ formatKey(key)
+                                    }}</label>
+                                <input type="number" step="any" v-model.number="rules.risk_management[key]"
+                                    class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Market Filters -->
+                    <div class="border-t pt-4">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Market Filters</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="border p-3 rounded hover:bg-gray-50" v-for="(val, key) in rules.filters"
+                                :key="key">
+                                <label class="block text-sm font-medium text-gray-700 mb-1 capitalize">{{ formatKey(key)
+                                    }}</label>
+                                <input type="number" step="any" v-model.number="rules.filters[key]"
+                                    class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Indicators -->
+                    <div class="border-t pt-4">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Indicators</h3>
+
+                        <!-- MACD -->
+                        <div class="mb-4 ml-2">
+                            <h4 class="font-medium text-gray-600 mb-2">MACD</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div v-for="(val, key) in rules.indicators?.macd" :key="key">
+                                    <label class="block text-xs font-medium text-gray-500 mb-1 capitalize">{{
+                                        formatKey(key) }}</label>
+                                    <input type="number" v-model.number="rules.indicators.macd[key]"
+                                        class="w-full border p-1 rounded">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Bollinger -->
+                        <div class="mb-4 ml-2">
+                            <h4 class="font-medium text-gray-600 mb-2">Bollinger Bands</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div v-for="(val, key) in rules.indicators?.bollinger" :key="key">
+                                    <label class="block text-xs font-medium text-gray-500 mb-1 capitalize">{{
+                                        formatKey(key) }}</label>
+                                    <input type="number" step="any" v-model.number="rules.indicators.bollinger[key]"
+                                        class="w-full border p-1 rounded">
+                                </div>
+                            </div>
+                        </div>
+                        <!-- RSI -->
+                        <div class="mb-4 ml-2">
+                            <h4 class="font-medium text-gray-600 mb-2">RSI</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div v-for="(val, key) in rules.indicators?.rsi" :key="key">
+                                    <label class="block text-xs font-medium text-gray-500 mb-1 capitalize">{{
+                                        formatKey(key) }}</label>
+                                    <input type="number" step="any" v-model.number="rules.indicators.rsi[key]"
+                                        class="w-full border p-1 rounded">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -176,6 +264,68 @@
     </div>
     {% endraw %}
 
+    <div v-if="showDiffModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+
+        <div class="bg-white w-full max-w-2xl rounded-lg shadow-lg p-6">
+            <h3 class="text-lg font-bold mb-4">Rule Changes Preview</h3>
+
+            <table class="w-full text-sm border">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="p-2 text-left">Field</th>
+                        <th class="p-2">Before</th>
+                        <th class="p-2">After</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="d in diffs" :key="d.field" class="border-t">
+                        <td class="p-2 font-mono">{{ d.field }}</td>
+                        <td class="p-2 text-gray-500">{{ d.before }}</td>
+                        <td class="p-2 font-bold">{{ d.after }}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div v-if="warnings.length || riskFlags.length" class="mt-4 bg-yellow-100 text-yellow-800 p-3 rounded">
+                <div class="font-bold mb-1 flex items-center">
+                    <svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                    Safety Warnings (Risk Detected)
+                </div>
+                <div v-if="riskFlags.length > 0" class="mb-2">
+                    <p class="font-bold text-red-700">The server detected high-risk settings:</p>
+                    <ul class="list-disc ml-5 text-red-800 font-medium">
+                        <li v-for="flag in riskFlags">{{ flag }}</li>
+                    </ul>
+                </div>
+                <div v-if="warnings.length > 0">
+                    <p class="text-sm text-yellow-700">Client-side checks:</p>
+                    <ul class="list-disc ml-5 text-sm">
+                        <li v-for="w in warnings">{{ w }}</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6">
+                <button @click="showDiffModal=false" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+                    Cancel
+                </button>
+                <button v-if="riskFlags.length === 0" @click="saveRules(false)"
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                    Save Changes
+                </button>
+                <button v-else @click="applyRulesConfirmed"
+                    class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-bold">
+                    Force Apply (I understand the risk)
+                </button>
+            </div>
+        </div>
+    </div>
+
+
     <script>
         const { createApp } = Vue
 
@@ -184,18 +334,19 @@
                 return {
                     currentTab: 'dashboard',
                     charts: [],
-                    rules: {},
+                    rules: {}, // Nested structure
                     loadingCharts: false,
                     loadingRules: false,
                     saving: false,
                     message: '',
                     messageType: '',
-                    loadingRules: false,
-                    saving: false,
-                    message: '',
-                    messageType: '',
                     errorMessage: '',
-                    expandedCharts: {}
+                    expandedCharts: {},
+                    showDiffModal: false,
+                    diffs: [],
+                    warnings: [],
+                    riskFlags: [], // Flags from API
+                    originalRules: {}
                 }
             },
             mounted() {
@@ -204,7 +355,6 @@
             },
             methods: {
                 toggleDetails(code) {
-                    // Toggle the state. If undefined, it becomes true.
                     this.expandedCharts[code] = !this.expandedCharts[code]
                 },
                 formatKey(key) {
@@ -258,34 +408,104 @@
                 async fetchRules() {
                     this.loadingRules = true
                     try {
-                        const res = await fetch('/api/rules/')
-                        this.rules = await res.json()
+                        // Use the new /active endpoint
+                        const res = await fetch('/api/rules/active')
+                        const data = await res.json()
+                        this.rules = JSON.parse(JSON.stringify(data))
+                        this.originalRules = JSON.parse(JSON.stringify(data))
                     } catch (e) {
-                        console.error(e)
+                        this.errorMessage = 'Failed to load rules: ' + e.message
                     } finally {
                         this.loadingRules = false
                     }
                 },
-                async saveRules() {
+
+                // Helper to flatten nested object for diffing (simplified for 2 levels)
+                flattenRules(obj, prefix = '') {
+                    let result = {}
+                    for (const key in obj) {
+                        if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                            Object.assign(result, this.flattenRules(obj[key], prefix + key + '.'))
+                        } else {
+                            result[prefix + key] = obj[key]
+                        }
+                    }
+                    return result
+                },
+
+                previewChanges() {
+                    this.diffs = []
+                    this.warnings = []
+                    this.riskFlags = [] // Clear previous API risks
+
+                    // Simple client-side diff (optional, mostly for display)
+                    const flatRules = this.flattenRules(this.rules)
+                    const flatOriginal = this.flattenRules(this.originalRules)
+
+                    for (const key in flatRules) {
+                        if (flatRules[key] !== flatOriginal[key]) {
+                            this.diffs.push({
+                                field: key,
+                                before: flatOriginal[key],
+                                after: flatRules[key]
+                            })
+                        }
+                    }
+
+                    // Pre-save validations (client-side)
+                    if (this.rules.risk_management.stop_loss_percent > 0.1) {
+                        this.warnings.push('High Stop Loss detected (>10%)')
+                    }
+
+                    this.showDiffModal = true
+                },
+
+                async saveRules(force = false) {
                     this.saving = true
                     this.message = ''
+
                     try {
-                        const res = await fetch('/api/rules/', {
+                        // 1. Save Draft
+                        const draftRes = await fetch('/api/rules/', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(this.rules)
                         })
-                        if (!res.ok) throw new Error('Failed to save')
-                        this.rules = await res.json()
-                        this.message = 'Configuration saved successfully!'
+                        if (!draftRes.ok) throw new Error('Failed to save draft')
+
+                        // 2. Apply
+                        const applyUrl = force ? '/api/rules/apply?force=true' : '/api/rules/apply'
+                        const applyRes = await fetch(applyUrl, { method: 'POST' })
+                        const applyData = await applyRes.json()
+
+                        if (applyData.status === 'NEED_CONFIRM') {
+                            this.riskFlags = applyData.risk_flags
+                            this.showDiffModal = true // Re-open modal if closed, showing risks
+                            return // Stop here, wait for user confirmation
+                        } else if (!applyRes.ok) {
+                            throw new Error(applyData.detail || 'Failed to apply rules')
+                        }
+
+                        // Success
+                        this.rules = JSON.parse(JSON.stringify(this.rules)) // Update local state if needed (usually redundant if successful)
+                        this.originalRules = JSON.parse(JSON.stringify(this.rules))
+
+                        this.message = 'Configuration saved and applied successfully!'
                         this.messageType = 'success'
+                        this.showDiffModal = false
                         setTimeout(() => this.message = '', 3000)
+
                     } catch (e) {
-                        this.message = 'Error saving rules: ' + e.message
+                        this.message = 'Error: ' + e.message
                         this.messageType = 'error'
                     } finally {
                         this.saving = false
                     }
+                },
+
+                applyRulesConfirmed() {
+                    // Call saveRules with force=true
+                    this.saveRules(true)
                 }
             }
         }).mount('#app')

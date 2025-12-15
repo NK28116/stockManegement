@@ -1,0 +1,14 @@
+[
+  {
+    "version": 3,
+    "applied_at": "2025-12-14T13:01:22Z",
+    "applied_by": "admin",
+    "comment": "initial rules"
+  },
+  {
+    "version": 4,
+    "applied_at": "2025-12-14T13:45:10Z",
+    "applied_by": "admin",
+    "comment": "tighten stop loss"
+  }
+]

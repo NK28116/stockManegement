@@ -9,6 +9,7 @@ import pandas as pd
 import yfinance as yf
 
 from python.config import config
+from python.utils.rules_loader import get_active_rules
 from python.db.database import get_db_connection  # PostgreSQL接続用に追加
 from python.utils.alert import send_alert
 from python.utils.logger import get_logger
@@ -119,9 +120,7 @@ def get_stock_price(symbol: str) -> float:
         # フォールバック: ランダム値
         price = round(random.uniform(1000, 5000), 2)
         volume = random.randint(100, 1000)
-        logger.warning(
-            "\n== フォールバック: ランダム値を使用 %s -> %s==\n", symbol, price
-        )
+        logger.warning("\n== フォールバック: ランダム値を使用 %s -> %s==\n", symbol, price)
         return price, volume
 
 
@@ -141,9 +140,7 @@ def _monitor_stock(
     """
     if not is_test_mode:
         save_data_to_db(code, current_dt, price, volume)
-        logger.info(
-            f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - DB保存成功: intraday にデータ追加"
-        )
+        logger.info(f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - DB保存成功: intraday にデータ追加")
     else:
         logger.info(
             f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - テストモードのため、DB保存はスキップ: intraday にデータ追加"
@@ -162,27 +159,27 @@ def _monitor_stock(
         header = f"\n### {code} ###"
     logs.append(header)
 
-    logs.append(
-        f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - 株価取得成功: {code} -> {price}\n"
-    )
+    logs.append(f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - 株価取得成功: {code} -> {price}\n")
+
+    # Load rules
+    rules = get_active_rules()
 
     # === 警告系 ===
     if len(history) >= 3 and history[-1] < history[-2] < history[-3]:
-        warnings.append(
-            f"- 連続下落検出: {history[-3]:.1f} -> {history[-2]:.1f} -> {history[-1]:.1f}"
-        )
+        warnings.append(f"- 連続下落検出: {history[-3]:.1f} -> {history[-2]:.1f} -> {history[-1]:.1f}")
 
     recent_prices = history[-config.volatility_period :]
     if len(recent_prices) >= 2:
         vol = calc_volatility(recent_prices)
-        if vol > config.volatility_threshold:
+        if vol > rules.filters.volatility_threshold:
             warnings.append(f"- ボラティリティ警告: {vol:.2f}%")
 
     if last_price is not None and last_price > 0:
         drop_pct = (price - last_price) / last_price * 100
-        if drop_pct <= config.crash_threshold:
+        crash_threshold = rules.filters.crash_threshold_percent
+        if drop_pct <= crash_threshold:
             warnings.append(
-                f"- 前回比 {config.crash_threshold}%以上下落: {last_price:.1f} -> {price:.1f} ({drop_pct:.2f}%)\n"
+                f"- 前回比 {crash_threshold}%以上下落: {last_price:.1f} -> {price:.1f} ({drop_pct:.2f}%)\n"
             )
 
     if warnings:
@@ -212,9 +209,7 @@ def run_dev_mode(dev_date):
             price = last_price[code] * (1 + change_pct)
             volume = random.randint(100, 1000)
 
-            last_price[code] = _monitor_stock(
-                code, current_dt, price, volume, price_history[code], last_price[code]
-            )
+            last_price[code] = _monitor_stock(code, current_dt, price, volume, price_history[code], last_price[code])
 
         current_dt += timedelta(minutes=1)
         time.sleep(0.5)  # time_module.sleep を time.sleep に変更
@@ -236,9 +231,7 @@ def run_once():
         history = get_price_history(code, limit=config.volatility_period + 2)
         last_price = history[-1] if history else None
 
-        updated_price = _monitor_stock(
-            code, current_dt, price, volume, history, last_price
-        )
+        updated_price = _monitor_stock(code, current_dt, price, volume, history, last_price)
         results.append((code, updated_price, volume))
 
     return results
@@ -249,11 +242,12 @@ def detect_intraday_crash(code, current_price, last_price):
         return None
 
     drop_pct = (current_price - last_price) / last_price * 100
-    if drop_pct <= config.crash_threshold:
-        message = (
-            f"[分足急落] {code}: {last_price:.1f} -> {current_price:.1f} "
-            f"({drop_pct:.2f}%)"
-        )
+
+    rules = get_active_rules()
+    crash_threshold = rules.filters.crash_threshold_percent
+
+    if drop_pct <= crash_threshold:
+        message = f"[分足急落] {code}: {last_price:.1f} -> {current_price:.1f} " f"({drop_pct:.2f}%)"
         send_alert(message, level="WARNING")  # Slack に送信
         return message
     return None
@@ -312,18 +306,14 @@ def run_realtime_mode():
                 history = get_price_history(code, limit=config.volatility_period + 2)
                 last_price = history[-1] if history else None
 
-                updated_price = _monitor_stock(
-                    code, now, price, volume, history, last_price
-                )
+                updated_price = _monitor_stock(code, now, price, volume, history, last_price)
                 results.append((code, updated_price, volume))
             time.sleep(120)  # 2分待機
         elif market_open_morning_end < current_time < market_open_afternoon_start:
             # 昼休み中
             logger.info("昼休み中: 監視を一時停止し、後場開始まで待機します。")
             # 後場開始までの残り時間を計算
-            wait_seconds = (
-                datetime.combine(now.date(), market_open_afternoon_start) - now
-            ).total_seconds()
+            wait_seconds = (datetime.combine(now.date(), market_open_afternoon_start) - now).total_seconds()
             if wait_seconds > 0:
                 time.sleep(wait_seconds)
             else:
@@ -332,9 +322,7 @@ def run_realtime_mode():
             # 市場閉場中 (15:00以降または9:00以前)
             logger.info("市場閉場中: 翌日の開場まで待機します。")
             # 翌日の市場開場までの残り時間を計算
-            tomorrow_morning_open = datetime.combine(
-                now.date() + timedelta(days=1), market_open_morning_start
-            )
+            tomorrow_morning_open = datetime.combine(now.date() + timedelta(days=1), market_open_morning_start)
             wait_seconds = (tomorrow_morning_open - now).total_seconds()
             if wait_seconds > 0:
                 time.sleep(wait_seconds)
