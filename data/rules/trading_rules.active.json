@@ -1,10 +1,10 @@
 {
   "meta": {
-    "version": "1.0",
-    "description": "Swing Trade Default",
-    "updated_at": "2025-12-14T13:42:11Z",
-    "updated_by": "web-ui",
-    "active": true
+    "version": 5,
+    "active": true,
+    "description": "Test Rules",
+    "updated_at": "2025-12-15T02:04:35.398033",
+    "updated_by": "TestUser"
   },
   "risk_management": {
     "stop_loss_percent": 0.05,
@@ -28,21 +28,36 @@
     }
   },
   "exit_rules": {
-    "stop_loss": { "enabled": true },
-    "take_profit": { "enabled": true },
+    "stop_loss": {
+      "enabled": true
+    },
+    "take_profit": {
+      "enabled": true
+    },
     "dead_cross_exit": {
       "enabled": true,
       "pattern": "--"
     }
   },
   "indicators": {
-    "rsi": { "period": 14, "overbought": 70, "oversold": 30 },
-    "macd": { "fast_period": 12, "slow_period": 26, "signal_period": 9 },
-    "bollinger": { "period": 20, "std": 2 }
+    "rsi": {
+      "period": 14,
+      "overbought": 70,
+      "oversold": 30
+    },
+    "macd": {
+      "fast_period": 12,
+      "slow_period": 26,
+      "signal_period": 9
+    },
+    "bollinger": {
+      "period": 20,
+      "std": 2.0
+    }
   },
   "filters": {
-    "crash_threshold_percent": -3,
-    "volatility_threshold": 3,
-    "volume_spike_threshold": 2
+    "crash_threshold_percent": -3.0,
+    "volatility_threshold": 3.0,
+    "volume_spike_threshold": 2.0
   }
 }

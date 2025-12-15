@@ -84,3 +84,18 @@ def send_alert(
 ) -> bool:
     """アラート送信の簡易関数"""
     return alert_manager.send_alert(message, level, is_test_mode)
+
+def rule_change_warnings(diffs):
+    warnings = []
+
+    for d in diffs:
+        if d["field"] == "risk_management.stop_loss_percent":
+            if d["after"] > 0.1:
+                warnings.append("ストップロスが広すぎます")
+
+        if d["field"] == "risk_management.risk_per_trade":
+            if d["after"] >= 0.05:
+                warnings.append("1トレードのリスクが高すぎます")
+
+    return warnings
+
