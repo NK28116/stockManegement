@@ -261,69 +261,69 @@
             </div>
         </div>
 
-    </div>
-    {% endraw %}
+        <!-- Diff Modal moved inside #app and {% raw %} -->
+        <div v-if="showDiffModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+            <div class="bg-white w-full max-w-2xl rounded-lg shadow-lg p-6">
+                <h3 class="text-lg font-bold mb-4">Rule Changes Preview</h3>
 
-    <div v-if="showDiffModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                <table class="w-full text-sm border">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="p-2 text-left">Field</th>
+                            <th class="p-2">Before</th>
+                            <th class="p-2">After</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="d in diffs" :key="d.field" class="border-t">
+                            <td class="p-2 font-mono">{{ d.field }}</td>
+                            <td class="p-2 text-gray-500">{{ d.before }}</td>
+                            <td class="p-2 font-bold">{{ d.after }}</td>
+                        </tr>
+                    </tbody>
+                </table>
 
-        <div class="bg-white w-full max-w-2xl rounded-lg shadow-lg p-6">
-            <h3 class="text-lg font-bold mb-4">Rule Changes Preview</h3>
-
-            <table class="w-full text-sm border">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="p-2 text-left">Field</th>
-                        <th class="p-2">Before</th>
-                        <th class="p-2">After</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="d in diffs" :key="d.field" class="border-t">
-                        <td class="p-2 font-mono">{{ d.field }}</td>
-                        <td class="p-2 text-gray-500">{{ d.before }}</td>
-                        <td class="p-2 font-bold">{{ d.after }}</td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div v-if="warnings.length || riskFlags.length" class="mt-4 bg-yellow-100 text-yellow-800 p-3 rounded">
-                <div class="font-bold mb-1 flex items-center">
-                    <svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd"
-                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                            clip-rule="evenodd"></path>
-                    </svg>
-                    Safety Warnings (Risk Detected)
+                <div v-if="warnings.length || riskFlags.length" class="mt-4 bg-yellow-100 text-yellow-800 p-3 rounded">
+                    <div class="font-bold mb-1 flex items-center">
+                        <svg class="w-5 h-5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd"
+                                d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                clip-rule="evenodd"></path>
+                        </svg>
+                        Safety Warnings (Risk Detected)
+                    </div>
+                    <div v-if="riskFlags.length > 0" class="mb-2">
+                        <p class="font-bold text-red-700">The server detected high-risk settings:</p>
+                        <ul class="list-disc ml-5 text-red-800 font-medium">
+                            <li v-for="flag in riskFlags">{{ flag }}</li>
+                        </ul>
+                    </div>
+                    <div v-if="warnings.length > 0">
+                        <p class="text-sm text-yellow-700">Client-side checks:</p>
+                        <ul class="list-disc ml-5 text-sm">
+                            <li v-for="w in warnings">{{ w }}</li>
+                        </ul>
+                    </div>
                 </div>
-                <div v-if="riskFlags.length > 0" class="mb-2">
-                    <p class="font-bold text-red-700">The server detected high-risk settings:</p>
-                    <ul class="list-disc ml-5 text-red-800 font-medium">
-                        <li v-for="flag in riskFlags">{{ flag }}</li>
-                    </ul>
-                </div>
-                <div v-if="warnings.length > 0">
-                    <p class="text-sm text-yellow-700">Client-side checks:</p>
-                    <ul class="list-disc ml-5 text-sm">
-                        <li v-for="w in warnings">{{ w }}</li>
-                    </ul>
-                </div>
-            </div>
 
-            <div class="flex justify-end gap-3 mt-6">
-                <button @click="showDiffModal=false" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
-                    Cancel
-                </button>
-                <button v-if="riskFlags.length === 0" @click="saveRules(false)"
-                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                    Save Changes
-                </button>
-                <button v-else @click="applyRulesConfirmed"
-                    class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-bold">
-                    Force Apply (I understand the risk)
-                </button>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button @click="showDiffModal=false" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
+                        Cancel
+                    </button>
+                    <button v-if="riskFlags.length === 0" @click="saveRules(false)"
+                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                        Save Changes
+                    </button>
+                    <button v-else @click="applyRulesConfirmed"
+                        class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-bold">
+                        Force Apply (I understand the risk)
+                    </button>
+                </div>
             </div>
         </div>
+
     </div>
+    {% endraw %}
 
 
     <script>
