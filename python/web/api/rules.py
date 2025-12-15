@@ -44,7 +44,7 @@ ACTIVE_PATH = "trading_rules/active.json"
 HISTORY_DIR_PREFIX = "trading_rules/history/"
 INDEX_PATH = "trading_rules/history/index.json"
 
-router = APIRouter()
+router = APIRouter(prefix="/api/rules", tags=["rules"])
 
 
 def save_history(
