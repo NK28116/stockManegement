@@ -1,7 +1,11 @@
 # python/web/services/backtest.py
-import yfinance as yf
 from datetime import datetime, timedelta
+
+import yfinance as yf
+
 from python.trading.trading_rules import ImprovedTradingRules
+from python.web.schemas import TradingRules
+
 
 def evaluate_rule_risk(rules: TradingRules) -> list[str]:
     flags = []
@@ -16,7 +20,6 @@ def evaluate_rule_risk(rules: TradingRules) -> list[str]:
         flags.append("Take profit is disabled")
 
     return flags
-
 
 
 def run_backtest(rules, days: int = 180):
@@ -34,5 +37,5 @@ def run_backtest(rules, days: int = 180):
         "period_days": days,
         "metrics": metrics,
         "trade_count": len(trades),
-        "risk_flags": evaluate_risk(metrics),
+        "risk_flags": evaluate_rule_risk(rules),
     }

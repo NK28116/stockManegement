@@ -85,6 +85,7 @@ def send_alert(
     """アラート送信の簡易関数"""
     return alert_manager.send_alert(message, level, is_test_mode)
 
+
 def rule_change_warnings(diffs):
     warnings = []
 
@@ -98,4 +99,3 @@ def rule_change_warnings(diffs):
                 warnings.append("1トレードのリスクが高すぎます")
 
     return warnings
-
