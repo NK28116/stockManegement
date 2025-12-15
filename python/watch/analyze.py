@@ -6,6 +6,7 @@ import pandas as pd
 from psycopg2 import Error as PgError
 
 from python.config import config
+from python.utils.rules_loader import get_active_rules
 from python.db.database import (
     create_portfolio_table,
     get_db_connection,
@@ -36,9 +37,7 @@ def save_intraday_crash_flag(code: str, date: pd.Timestamp, is_test_mode: bool =
         with open(flag_file, "w") as f:
             json.dump({"crash": True}, f)
     else:
-        logger.info(
-            f"テストモードのため、分足急落フラグの保存はスキップします: {code}_{date.strftime('%Y%m%d')}"
-        )
+        logger.info(f"テストモードのため、分足急落フラグの保存はスキップします: {code}_{date.strftime('%Y%m%d')}")
 
 
 def check_intraday_crash_flag(code: str, date: pd.Timestamp) -> bool:
@@ -47,9 +46,7 @@ def check_intraday_crash_flag(code: str, date: pd.Timestamp) -> bool:
     return flag_file.exists()
 
 
-def get_intraday_price_data(
-    code, limit_minutes=60
-):  # 15分足作成に必要な分足データを取得するため、多めに取得
+def get_intraday_price_data(code, limit_minutes=60):  # 15分足作成に必要な分足データを取得するため、多めに取得
     """DBから指定銘柄の分足データを取得する"""
     conn = None
     try:
@@ -86,6 +83,9 @@ def analyze_minute_data(code: str, name: str, is_test_mode: bool = False):
         code (str): 分析対象の銘柄コード
     """
     logger.info(f"{name}( {code}) の15分足データ分析を開始")
+
+    rules = get_active_rules()
+
     # 15分足を作成するために、過去60分間の分足データを取得
     df_minute = get_intraday_price_data(code, limit_minutes=60)
 
@@ -121,9 +121,11 @@ def analyze_minute_data(code: str, name: str, is_test_mode: bool = False):
         prev_close = df["close"].iloc[-2]
         current_close = df["close"].iloc[-1]
         drop_pct = (current_close - prev_close) / prev_close * 100
-        if drop_pct <= config.crash_threshold:
+
+        crash_threshold = rules.filters.crash_threshold_percent
+        if drop_pct <= crash_threshold:
             message = (
-                f"{name} ({code}) 15分足で {config.crash_threshold}%以上下落: "
+                f"{name} ({code}) 15分足で {crash_threshold}%以上下落: "
                 f"{prev_close:.1f} -> {current_close:.1f} ({drop_pct:.2f}%)"
             )
             logger.warning(message)
@@ -135,23 +137,19 @@ def analyze_minute_data(code: str, name: str, is_test_mode: bool = False):
             save_intraday_crash_flag(code, df.index[-1], is_test_mode=is_test_mode)
 
     # --- MACD分析 ---
-    if len(df) >= config.macd_long_period:  # MACD計算に必要な期間
+    macd_period = rules.indicators.macd.slow_period  # long_period代用
+    if len(df) >= macd_period:  # MACD計算に必要な期間
         df = calculate_macd(df)
         # MACDゴールデンクロス/デッドクロスなどの分析ロジックをここに追加
         # 例: MACDがシグナルを上抜けた/下抜けた
-        if (
-            df["macd"].iloc[-1] > df["macd_signal"].iloc[-1]
-            and df["macd"].iloc[-2] <= df["macd_signal"].iloc[-2]
-        ):
+        if df["macd"].iloc[-1] > df["macd_signal"].iloc[-1] and df["macd"].iloc[-2] <= df["macd_signal"].iloc[-2]:
             logger.info(f"{name} ({code}) MACDゴールデンクロス発生")
-        elif (
-            df["macd"].iloc[-1] < df["macd_signal"].iloc[-1]
-            and df["macd"].iloc[-2] >= df["macd_signal"].iloc[-2]
-        ):
+        elif df["macd"].iloc[-1] < df["macd_signal"].iloc[-1] and df["macd"].iloc[-2] >= df["macd_signal"].iloc[-2]:
             logger.info(f"{name} ({code}) MACDデッドクロス発生")
 
     # --- ボリンジャーバンド分析 ---
-    if len(df) >= config.bollinger_period:  # ボリンジャーバンド計算に必要な期間
+    boll_period = rules.indicators.bollinger.period
+    if len(df) >= boll_period:  # ボリンジャーバンド計算に必要な期間
         df = calculate_bollinger_bands(df)
         # ボリンジャーバンドのブレイクアウトなどの分析ロジックをここに追加
         # 例: 終値がアッパーバンドを上抜けた
@@ -162,7 +160,7 @@ def analyze_minute_data(code: str, name: str, is_test_mode: bool = False):
 
 
 def get_daily_price_data(
-    code, limit=config.volatility_period + 20
+    code, limit=30  # default value changed from config.volatility_period + 20
 ):  # MACD/BB計算用に多めに取得
     """DBから指定銘柄の日足データを取得する"""
     conn = None
@@ -172,9 +170,7 @@ def get_daily_price_data(
                 FROM stock_data \
                 WHERE code = %s \
                 ORDER BY date ASC LIMIT %s"
-        df = pd.read_sql_query(
-            query, conn, params=(code, limit), index_col="date", parse_dates=["date"]
-        )
+        df = pd.read_sql_query(query, conn, params=(code, limit), index_col="date", parse_dates=["date"])
         return df
     except PgError as e:
         logger.error(f"DBから日足データ取得エラー: {e}")
@@ -192,7 +188,12 @@ def analyze_daily_data(code: str, name: str, is_test_mode: bool = False):
         code (str): 分析対象の銘柄コード
     """
     logger.info(f"{name} ({code}) の日足データ分析を開始")
-    df = get_daily_price_data(code)
+
+    rules = get_active_rules()
+
+    # MACD/BB計算用に多めに取得
+    # config.volatility_period(10) + 20 => 30
+    df = get_daily_price_data(code, limit=30)
 
     if df.empty:
         logger.warning(f"{name} ({code}) の日足データが見つかりませんでした。")
@@ -203,7 +204,9 @@ def analyze_daily_data(code: str, name: str, is_test_mode: bool = False):
         prev_close = df["close"].iloc[-2]
         current_close = df["close"].iloc[-1]
         drop_pct = (current_close - prev_close) / prev_close * 100
-        if drop_pct <= config.crash_threshold:
+
+        crash_threshold = rules.filters.crash_threshold_percent
+        if drop_pct <= crash_threshold:
             intraday_flag = check_intraday_crash_flag(code, df.index[-1])
             if intraday_flag:
                 # 🚨 分足でも日中に急落あり → 強い警告
@@ -216,30 +219,26 @@ def analyze_daily_data(code: str, name: str, is_test_mode: bool = False):
             else:
                 # 日足だけ急落 → 通常警告
                 message = (
-                    f"{name} ({code}) 日足で {config.crash_threshold}%以上下落: "
+                    f"{name} ({code}) 日足で {crash_threshold}%以上下落: "
                     f"{prev_close:.1f} -> {current_close:.1f} ({drop_pct:.2f}%)"
                 )
                 send_alert(message, level="WARNING")
                 logger.warning(message)
 
     # --- MACD分析 ---
-    if len(df) >= config.macd_long_period:  # MACD計算に必要な期間
+    macd_period = rules.indicators.macd.slow_period
+    if len(df) >= macd_period:  # MACD計算に必要な期間
         df = calculate_macd(df)
         # MACDゴールデンクロス/デッドクロスなどの分析ロジックをここに追加
         # 例: MACDがシグナルを上抜けた/下抜けた
-        if (
-            df["macd"].iloc[-1] > df["macd_signal"].iloc[-1]
-            and df["macd"].iloc[-2] <= df["macd_signal"].iloc[-2]
-        ):
+        if df["macd"].iloc[-1] > df["macd_signal"].iloc[-1] and df["macd"].iloc[-2] <= df["macd_signal"].iloc[-2]:
             logger.info(f"{name} ({code}) MACDゴールデンクロス発生")
-        elif (
-            df["macd"].iloc[-1] < df["macd_signal"].iloc[-1]
-            and df["macd"].iloc[-2] >= df["macd_signal"].iloc[-2]
-        ):
+        elif df["macd"].iloc[-1] < df["macd_signal"].iloc[-1] and df["macd"].iloc[-2] >= df["macd_signal"].iloc[-2]:
             logger.info(f"{name} ({code}) MACDデッドクロス発生")
 
     # --- ボリンジャーバンド分析 ---
-    if len(df) >= config.bollinger_period:  # ボリンジャーバンド計算に必要な期間
+    boll_period = rules.indicators.bollinger.period
+    if len(df) >= boll_period:  # ボリンジャーバンド計算に必要な期間
         df = calculate_bollinger_bands(df)
         # ボリンジャーバンドのブレイクアウトなどの分析ロジックをここに追加
         # 例: 終値がアッパーバンドを上抜けた
@@ -273,9 +272,7 @@ def sync_portfolio_from_csv():
         upsert_portfolio_data(data_to_upsert)
         logger.info("my_stock.csvからのportfolioデータ同期が完了しました。")
     except Exception as e:
-        logger.error(
-            f"my_stock.csvからのportfolioデータ同期中にエラーが発生しました: {e}"
-        )
+        logger.error(f"my_stock.csvからのportfolioデータ同期中にエラーが発生しました: {e}")
 
 
 if __name__ == "__main__":

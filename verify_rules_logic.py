@@ -1,65 +1,105 @@
 import os
 import sys
-import json
 import pandas as pd
-from pathlib import Path
+from datetime import datetime
 
 # Add project root to path
 sys.path.append(os.getcwd())
 
 from python.trading.trading_rules import ImprovedTradingRules
-from python.config import config
-from python.web.schemas import TradingRules
+from python.web.schemas import (
+    TradingRules,
+    RuleMeta,
+    RiskManagementRules,
+    EntryRules,
+    ExitRules,
+    Indicators,
+    MarketFilters,
+    PriceMomentumRule,
+    RSIFilterRule,
+    MACDFilterRule,
+    ExitToggleRule,
+    RSIIndicator,
+    MACDIndicator,
+    BollingerIndicator,
+)
 
 
 def test_dynamic_rules():
     print("=== Testing Dynamic Rules Injection ===")
 
-    # 1. Test Default Configuration (Backward Compatibility)
-    print("\n1. Testing Default Config (No args)")
-    rules_default = ImprovedTradingRules()
-    print(f"  Default Stop Loss: {rules_default.rules.stop_loss_percent}")
-    assert rules_default.rules.stop_loss_percent == config.stop_loss_percent, "Default should match config.py"
+    # 1. Test Dynamic Configuration
+    print("\n1. Testing Dynamic Config (Injection)")
+    custom_stop_loss = 0.99  # 99% stop loss (extreme value for testing)
 
-    # 2. Test Dynamic Configuration
-    print("\n2. Testing Dynamic Config (Injection)")
-    custom_val = 0.99  # 99% stop loss (extreme value for testing)
-
-    # Create a custom TradingRules object
-    # Copy defaults from config but change one value
+    # Create a custom TradingRules object with nested structure
     custom_rules_schema = TradingRules(
-        stop_loss_percent=custom_val,
-        take_profit_percent=config.take_profit_percent,
-        trailing_stop_percent=config.trailing_stop_percent,
-        risk_per_trade=config.risk_per_trade,
-        max_loss_percent=config.max_loss_percent,
-        crash_threshold=config.crash_threshold,
-        volatility_threshold=config.volatility_threshold,
-        volume_spike_threshold=config.volume_spike_threshold,
-        rsi_overbought_threshold=config.rsi_overbought_threshold,
-        rsi_oversold_threshold=config.rsi_oversold_threshold,
-        macd_fast_period=config.macd_fast_period,
-        macd_slow_period=config.macd_slow_period,
-        macd_signal_period=config.macd_signal_period,
-        bollinger_period=config.bollinger_period,
-        bollinger_std=config.bollinger_std,
+        meta=RuleMeta(
+            version="1.0",
+            description="Test Rules",
+            updated_at=datetime.now(),
+            updated_by="Test",
+            active=True,
+        ),
+        risk_management=RiskManagementRules(
+            stop_loss_percent=custom_stop_loss,
+            take_profit_percent=0.10,
+            trailing_stop_percent=0.03,
+            risk_per_trade=0.02,  # Fixed: ensure 0 < value < 1
+            max_daily_loss_percent=0.03,
+        ),
+        entry_rules=EntryRules(
+            price_momentum=PriceMomentumRule(enabled=True, pattern="++"),
+            rsi_filter=RSIFilterRule(enabled=True, oversold=30),
+            macd_filter=MACDFilterRule(enabled=True, require_cross=True),
+        ),
+        exit_rules=ExitRules(
+            stop_loss=ExitToggleRule(enabled=True),
+            take_profit=ExitToggleRule(enabled=True),
+            dead_cross_exit=ExitToggleRule(enabled=True, pattern="--"),
+        ),
+        indicators=Indicators(
+            rsi=RSIIndicator(
+                period=14,
+                overbought=70,
+                oversold=30,
+            ),
+            macd=MACDIndicator(
+                fast_period=12,
+                slow_period=26,
+                signal_period=9,
+            ),
+            bollinger=BollingerIndicator(
+                period=20,
+                std=2.0,
+            ),
+        ),
+        filters=MarketFilters(
+            crash_threshold_percent=-3.0,
+            volatility_threshold=3.0,
+            volume_spike_threshold=2.0,
+        ),
     )
 
     rules_custom = ImprovedTradingRules(rules=custom_rules_schema)
-    print(f"  Custom Stop Loss: {rules_custom.rules.stop_loss_percent}")
-    assert rules_custom.rules.stop_loss_percent == custom_val, "Instance should use injected value"
+    print(f"  Custom Stop Loss: {rules_custom.rules.risk_management.stop_loss_percent}")
+    assert (
+        rules_custom.rules.risk_management.stop_loss_percent == custom_stop_loss
+    ), "Instance should use injected value"
 
-    # 3. Test Logic Impact
-    print("\n3. Testing Logic Impact")
+    # 2. Test Logic Impact
+    print("\n2. Testing Logic Impact")
     # Create dummy DataFrame
     df = pd.DataFrame(
         {"Close": [100, 105, 110, 100, 90, 80], "Volume": [1000] * 6}, index=pd.date_range("2024-01-01", periods=6)
     )
 
-    # The logic in optimize rules is complex, but we can check if the stop loss value held in the object is correct
-    # We trust that if self.rules.stop_loss_percent is used in the code (which we refactored), it works.
-    # Let's just verify the attribute on the instance again to be sure.
-    assert rules_custom.rules.stop_loss_percent == custom_val
+    # Analyze with custom rules
+    trades = rules_custom.analyze_with_improved_rules(df)
+
+    # Just verify that it runs and returns a list (logic verification is more complex, but this proves integration)
+    assert isinstance(trades, list)
+    print(f"  Analysis returned {len(trades)} trades/actions")
 
     print("\n✅ Verification Successful!")
 
@@ -69,7 +109,13 @@ if __name__ == "__main__":
         test_dynamic_rules()
     except AssertionError as e:
         print(f"\n❌ Verification Failed: {e}")
+        import traceback
+
+        traceback.print_exc()
         exit(1)
     except Exception as e:
         print(f"\n❌ An error occurred: {e}")
+        import traceback
+
+        traceback.print_exc()
         exit(1)

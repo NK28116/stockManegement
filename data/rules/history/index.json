@@ -1,0 +1,32 @@
+[
+  {
+    "version": 1,
+    "applied_at": "2025-12-15T01:23:23.191363",
+    "applied_by": "tester",
+    "comment": "Initial Commit"
+  },
+  {
+    "version": 2,
+    "applied_at": "2025-12-15T01:23:23.193842",
+    "applied_by": "tester",
+    "comment": "relax stop loss"
+  },
+  {
+    "version": 3,
+    "applied_at": "2025-12-15T02:03:46.370525",
+    "applied_by": "TestUser",
+    "comment": null
+  },
+  {
+    "version": 4,
+    "applied_at": "2025-12-15T02:04:12.921840",
+    "applied_by": "TestUser",
+    "comment": null
+  },
+  {
+    "version": 5,
+    "applied_at": "2025-12-15T02:04:35.398033",
+    "applied_by": "TestUser",
+    "comment": null
+  }
+]
