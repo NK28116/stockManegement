@@ -1,7 +1,6 @@
-import json
 from datetime import datetime
-from pathlib import Path
 
+from python.utils.gcs_client import gcs
 from python.web.schemas import (
     BollingerIndicator,
     EntryRules,
@@ -19,27 +18,22 @@ from python.web.schemas import (
     TradingRules,
 )
 
-# Active rules path
-RULES_DIR = Path("data/rules")
-ACTIVE_RULES_PATH = RULES_DIR / "trading_rules.active.json"
+# Active rules path relative to bucket root or data/ dir
+ACTIVE_RULES_PATH = "trading_rules/active.json"
 
 
 def get_active_rules() -> TradingRules:
     """
     アクティブな取引ルールを取得する。
-    ファイルが存在しない、または読み込みに失敗した場合はデフォルトルールを返す。
+    GCSまたはローカルから読み込み、失敗した場合はデフォルトルールを返す。
     """
-    if ACTIVE_RULES_PATH.exists():
+    data = gcs.get_json(ACTIVE_RULES_PATH)
+    if data:
         try:
-            with open(ACTIVE_RULES_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
             # Ensure it validates against the schema
             return TradingRules.model_validate(data)
         except Exception as e:
-            # logging could be added here
-            print(
-                f"[WARNING] Failed to load active rules from {ACTIVE_RULES_PATH}: {e}. using defaults."
-            )
+            print(f"[WARNING] Failed to validate active rules from {ACTIVE_RULES_PATH}: {e}. using defaults.")
 
     return get_default_rules()
 
