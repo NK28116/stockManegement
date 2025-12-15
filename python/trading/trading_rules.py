@@ -1,12 +1,12 @@
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import numpy as np
 import pandas as pd
 
-from python.web.schemas import TradingRules
 from python.utils.rules_loader import get_active_rules
+from python.web.schemas import TradingRules
 
 __all__ = ["ImprovedTradingRules", "generate_trading_report"]
 
@@ -61,7 +61,9 @@ class ImprovedTradingRules:
 
         return False
 
-    def should_exit(self, current_price: float, position: Dict, signals: List[str], i: int) -> Optional[str]:
+    def should_exit(
+        self, current_price: float, position: Dict, signals: List[str], i: int
+    ) -> Optional[str]:
         """
         イグジット条件判定
 
@@ -134,8 +136,10 @@ class ImprovedTradingRules:
                         "entry_price": price,
                         "entry_pattern": pattern,
                         "highest_price": price,  # 最高値追跡
-                        "stop_loss_price": price * (1 - self.rules.risk_management.stop_loss_percent),
-                        "take_profit_price": price * (1 + self.rules.risk_management.take_profit_percent),
+                        "stop_loss_price": price
+                        * (1 - self.rules.risk_management.stop_loss_percent),
+                        "take_profit_price": price
+                        * (1 + self.rules.risk_management.take_profit_percent),
                     }
                     trades.append(
                         {
@@ -153,7 +157,9 @@ class ImprovedTradingRules:
                 if price > position["highest_price"]:
                     position["highest_price"] = price
                     # トレーリングストップ更新
-                    new_stop = price * (1 - self.rules.risk_management.trailing_stop_percent)
+                    new_stop = price * (
+                        1 - self.rules.risk_management.trailing_stop_percent
+                    )
                     if new_stop > position["stop_loss_price"]:
                         position["stop_loss_price"] = new_stop
 
@@ -169,7 +175,8 @@ class ImprovedTradingRules:
                             "reason": exit_reason,
                             "entry_price": position["entry_price"],
                             "profit_loss": price - position["entry_price"],
-                            "profit_loss_percent": (price - position["entry_price"]) / position["entry_price"],
+                            "profit_loss_percent": (price - position["entry_price"])
+                            / position["entry_price"],
                         }
                     )
                     position = None
@@ -199,18 +206,23 @@ class ImprovedTradingRules:
             return {"total_trades": len(buy_trades), "completed_trades": 0}
 
         # 損益計算
-        profits = [t["profit_loss_percent"] for t in sell_trades if "profit_loss_percent" in t]
+        profits = [
+            t["profit_loss_percent"] for t in sell_trades if "profit_loss_percent" in t
+        ]
 
         metrics = {
             "total_trades": len(buy_trades),
             "completed_trades": len(sell_trades),
-            "win_rate": (len([p for p in profits if p > 0]) / len(profits) if profits else 0),
+            "win_rate": (
+                len([p for p in profits if p > 0]) / len(profits) if profits else 0
+            ),
             "average_profit": np.mean(profits) if profits else 0,
             "total_return": sum(profits) if profits else 0,
             "max_profit": max(profits) if profits else 0,
             "max_loss": min(profits) if profits else 0,
             "profit_factor": (
-                sum([p for p in profits if p > 0]) / abs(sum([p for p in profits if p < 0]))
+                sum([p for p in profits if p > 0])
+                / abs(sum([p for p in profits if p < 0]))
                 if profits and any(p < 0 for p in profits)
                 else float("inf")
             ),
@@ -239,7 +251,9 @@ def generate_trading_report(comparison: Dict, is_test_mode: bool = False) -> str
     report_content.append(f"総リターン: {new_metrics.get('total_return', 0):.2%}")
     report_content.append(f"最大利益: {new_metrics.get('max_profit', 0):.2%}")
     report_content.append(f"最大損失: {new_metrics.get('max_loss', 0):.2%}")
-    report_content.append(f"プロフィットファクター: {new_metrics.get('profit_factor', 0):.2f}")
+    report_content.append(
+        f"プロフィットファクター: {new_metrics.get('profit_factor', 0):.2f}"
+    )
     report_content.append("")
 
     # 推奨事項
@@ -266,15 +280,18 @@ def generate_trading_report(comparison: Dict, is_test_mode: bool = False) -> str
             f.write(report_str)
         print(f"トレーディングルール見直しレポートを保存しました: {report_path}")
     else:
-        print("テストモードのため、トレーディングルール見直しレポートの保存はスキップします。")
+        print(
+            "テストモードのため、トレーディングルール見直しレポートの保存はスキップします。"
+        )
 
     return report_str
 
 
 if __name__ == "__main__":
     # サンプルデータでテスト
-    import yfinance as yf
     import os
+
+    import yfinance as yf
 
     ticker = "7203.T"
     df = yf.Ticker(ticker).history(period="3mo")

@@ -1,21 +1,32 @@
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 
-def diff_dict(old: Dict[str, Any], new: Dict[str, Any], prefix: str = "") -> List[Dict[str, Any]]:
+def diff_dict(
+    old: Dict[str, Any], new: Dict[str, Any], prefix: str = ""
+) -> List[Dict[str, Any]]:
     diffs = []
 
     for key in new:
         full_key = f"{prefix}.{key}" if prefix else key
 
         if key not in old:
-            diffs.append({"field": full_key, "before": None, "after": new[key], "type": "added"})
+            diffs.append(
+                {"field": full_key, "before": None, "after": new[key], "type": "added"}
+            )
             continue
 
         if isinstance(new[key], dict) and isinstance(old[key], dict):
             diffs.extend(diff_dict(old[key], new[key], full_key))
         else:
             if new[key] != old[key]:
-                diffs.append({"field": full_key, "before": old[key], "after": new[key], "type": "changed"})
+                diffs.append(
+                    {
+                        "field": full_key,
+                        "before": old[key],
+                        "after": new[key],
+                        "type": "changed",
+                    }
+                )
 
     return diffs
 
