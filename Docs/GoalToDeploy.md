@@ -153,7 +153,7 @@ gs://stock-management-prod/
 ### 3-5. CI/CD (GitHub Actions)
 
 * [x] Workflow設定: `.github/workflows/google-cloudrun-docker.yml` (WIF + gcr.io)
-* [ ] IAM & Secrets設定:
+* [x] IAM & Secrets設定:
   1. `scripts/setup_wif.sh` を実行
   2. GitHub Repository Settings > Secrets and variables > Actions に以下を設定:
      * `GCP_PROJECT_ID`
