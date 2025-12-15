@@ -25,7 +25,9 @@ class GCSClient:
         self.local_data_dir = Path("data")
 
         if self.use_gcs and not GCS_AVAILABLE:
-            print("[WARNING] GCS_BUCKET_NAME is set but google-cloud-storage is not installed. Falling back to local.")
+            print(
+                "[WARNING] GCS_BUCKET_NAME is set but google-cloud-storage is not installed. Falling back to local."
+            )
             self.use_gcs = False
 
         if self.use_gcs:
@@ -34,7 +36,9 @@ class GCSClient:
                 self.bucket = self.client.bucket(self.bucket_name)
                 print(f"[INFO] GCSClient initialized for bucket: {self.bucket_name}")
             except Exception as e:
-                print(f"[ERROR] Failed to initialize GCS client: {e}. Falling back to local.")
+                print(
+                    f"[ERROR] Failed to initialize GCS client: {e}. Falling back to local."
+                )
                 self.use_gcs = False
         else:
             print("[INFO] GCSClient initialized in LOCAL mode.")
@@ -74,7 +78,8 @@ class GCSClient:
             blob = self.bucket.blob(path)
             try:
                 blob.upload_from_string(
-                    json.dumps(data, indent=2, ensure_ascii=False), content_type="application/json"
+                    json.dumps(data, indent=2, ensure_ascii=False),
+                    content_type="application/json",
                 )
                 print(f"[INFO] Saved JSON to GCS: gs://{self.bucket_name}/{path}")
             except Exception as e:
