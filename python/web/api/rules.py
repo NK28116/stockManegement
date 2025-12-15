@@ -25,12 +25,16 @@ logger.setLevel(logging.INFO)
 
 # File Handler
 file_handler = logging.FileHandler(LOG_FILE, encoding="utf-8")
-file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+file_handler.setFormatter(
+    logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+)
 logger.addHandler(file_handler)
 
 # Stream Handler (Console)
 stream_handler = logging.StreamHandler(sys.stdout)
-stream_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+stream_handler.setFormatter(
+    logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+)
 logger.addHandler(stream_handler)
 
 
@@ -43,7 +47,9 @@ INDEX_PATH = "trading_rules/history/index.json"
 router = APIRouter()
 
 
-def save_history(old_rules: Optional[Dict[str, Any]], new_rules: Dict[str, Any], meta) -> None:
+def save_history(
+    old_rules: Optional[Dict[str, Any]], new_rules: Dict[str, Any], meta
+) -> None:
     """ルールの変更履歴を保存する"""
     diff = calculate_diff(old_rules, new_rules) if old_rules else {}
 
@@ -104,23 +110,33 @@ def evaluate_rule_risk(rules: TradingRules) -> List[str]:
 
     # Market Hours Warning
     if is_market_open():
-        risks.append("Market is currently OPEN (09:00-15:00 JST). Changing rules now may disrupt the bot.")
+        risks.append(
+            "Market is currently OPEN (09:00-15:00 JST). Changing rules now may disrupt the bot."
+        )
 
     # 1. Stop Loss Check
     if rm.stop_loss_percent > 0.10:  # 10%
-        risks.append(f"Stop loss ({rm.stop_loss_percent:.1%}) is extremely loose (>10%).")
+        risks.append(
+            f"Stop loss ({rm.stop_loss_percent:.1%}) is extremely loose (>10%)."
+        )
 
     # 2. Take Profit Check
     if rm.take_profit_percent > 0.50:  # 50%
-        risks.append(f"Take profit ({rm.take_profit_percent:.1%}) is unusually high (>50%).")
+        risks.append(
+            f"Take profit ({rm.take_profit_percent:.1%}) is unusually high (>50%)."
+        )
 
     # 3. Risk Per Trade
     if rm.risk_per_trade > 0.05:  # 5%
-        risks.append(f"Risk per trade ({rm.risk_per_trade:.1%}) is very high (>5%). Standard is 1-2%.")
+        risks.append(
+            f"Risk per trade ({rm.risk_per_trade:.1%}) is very high (>5%). Standard is 1-2%."
+        )
 
     # 4. Max Daily Loss
     if rm.max_daily_loss_percent > 0.20:  # 20%
-        risks.append(f"Max daily loss ({rm.max_daily_loss_percent:.1%}) allows significant drawdown (>20%).")
+        risks.append(
+            f"Max daily loss ({rm.max_daily_loss_percent:.1%}) allows significant drawdown (>20%)."
+        )
 
     # 5. Volatility Threshold (Market Filters)
     if rules.filters.volatility_threshold > 0.05:  # 5%

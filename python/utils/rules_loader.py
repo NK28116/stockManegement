@@ -33,7 +33,9 @@ def get_active_rules() -> TradingRules:
             # Ensure it validates against the schema
             return TradingRules.model_validate(data)
         except Exception as e:
-            print(f"[WARNING] Failed to validate active rules from {ACTIVE_RULES_PATH}: {e}. using defaults.")
+            print(
+                f"[WARNING] Failed to validate active rules from {ACTIVE_RULES_PATH}: {e}. using defaults."
+            )
 
     return get_default_rules()
 
