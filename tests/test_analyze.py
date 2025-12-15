@@ -50,20 +50,26 @@ def test_analyze_daily_data_crash(mock_get_data, mock_send_alert, monkeypatch):
 @patch("python.watch.analyze.logger")
 @patch("python.watch.analyze.calculate_macd")
 @patch("python.watch.analyze.get_daily_price_data")
-def test_analyze_daily_data_macd(mock_get_data, mock_macd, mock_logger, monkeypatch):
+@patch("python.watch.analyze.get_active_rules")
+def test_analyze_daily_data_macd(mock_get_rules, mock_get_data, mock_macd, mock_logger):
     # Mock data
     mock_df = pd.DataFrame({
         "close": [100, 100], 
     }, index=pd.to_datetime(["2025-09-17", "2025-09-18"]))
     mock_get_data.return_value = mock_df
 
-    # MACD期間を短く設定してテストが実行されるようにする
-    monkeypatch.setattr("python.watch.analyze.config.macd_long_period", 2)
+    # Mock rules with short MACD period
+    from python.utils.rules_loader import get_default_rules
+    mock_rules = get_default_rules()
+    mock_rules.indicators.macd.slow_period = 2
+    mock_get_rules.return_value = mock_rules
     
     # ゴールデンクロス: prev(macd <= signal) -> current(macd > signal)
-    mock_df_macd = mock_df.copy()
-    mock_df_macd["macd"] = [0, 1]
-    mock_df_macd["macd_signal"] = [0.5, 0.5] 
+    mock_df_macd = pd.DataFrame({
+        "MACD": [0, 1],
+        "Signal": [0.5, 0.5],
+        "Histogram": [0, 0.5]
+    }, index=mock_df.index)
     mock_macd.return_value = mock_df_macd
 
     analyze_daily_data("TEST", "Test Name")
@@ -75,21 +81,27 @@ def test_analyze_daily_data_macd(mock_get_data, mock_macd, mock_logger, monkeypa
 @patch("python.watch.analyze.logger")
 @patch("python.watch.analyze.calculate_bollinger_bands")
 @patch("python.watch.analyze.get_daily_price_data")
-def test_analyze_daily_data_bollinger(mock_get_data, mock_bb, mock_logger, monkeypatch):
+@patch("python.watch.analyze.get_active_rules")
+def test_analyze_daily_data_bollinger(mock_get_rules, mock_get_data, mock_bb, mock_logger):
     # Mock data
     mock_df = pd.DataFrame({
         "close": [85, 80], 
     }, index=pd.to_datetime(["2025-09-17", "2025-09-18"]))
     mock_get_data.return_value = mock_df
 
-    # ボリンジャーバンド期間を短く設定してテストが実行されるようにする
-    monkeypatch.setattr("python.watch.analyze.config.bollinger_period", 2)
+    # Mock rules with short Bollinger period
+    from python.utils.rules_loader import get_default_rules
+    mock_rules = get_default_rules()
+    mock_rules.indicators.bollinger.period = 2
+    mock_get_rules.return_value = mock_rules
     
     # ボリンジャーバンドダミー計算結果
     # ローワーバンド下抜け: close < lower_band
-    mock_df_bb = mock_df.copy()
-    mock_df_bb["upper_band"] = [100, 100]
-    mock_df_bb["lower_band"] = [90, 85] # 80 < 85 -> 下抜け
+    mock_df_bb = pd.DataFrame({
+        "MA": [95, 92.5],
+        "Upper": [100, 100],
+        "Lower": [90, 85]  # 80 < 85 -> 下抜け
+    }, index=mock_df.index)
     mock_bb.return_value = mock_df_bb
 
     analyze_daily_data("TEST", "Test Name")
