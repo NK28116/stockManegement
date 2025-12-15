@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Optional
 from datetime import datetime
-from pydantic import BaseModel, Field, field_validator
+from typing import Optional
 
+from pydantic import BaseModel, field_validator
 
 # ---------------------------
 # Meta

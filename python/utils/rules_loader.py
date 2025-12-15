@@ -1,21 +1,22 @@
-from pathlib import Path
 import json
 from datetime import datetime
+from pathlib import Path
+
 from python.web.schemas import (
-    TradingRules,
-    RuleMeta,
-    RiskManagementRules,
+    BollingerIndicator,
     EntryRules,
     ExitRules,
+    ExitToggleRule,
     Indicators,
+    MACDFilterRule,
+    MACDIndicator,
     MarketFilters,
     PriceMomentumRule,
+    RiskManagementRules,
     RSIFilterRule,
-    MACDFilterRule,
-    ExitToggleRule,
     RSIIndicator,
-    MACDIndicator,
-    BollingerIndicator,
+    RuleMeta,
+    TradingRules,
 )
 
 # Active rules path
@@ -36,7 +37,9 @@ def get_active_rules() -> TradingRules:
             return TradingRules.model_validate(data)
         except Exception as e:
             # logging could be added here
-            print(f"[WARNING] Failed to load active rules from {ACTIVE_RULES_PATH}: {e}. using defaults.")
+            print(
+                f"[WARNING] Failed to load active rules from {ACTIVE_RULES_PATH}: {e}. using defaults."
+            )
 
     return get_default_rules()
 
