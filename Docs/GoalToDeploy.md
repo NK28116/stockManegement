@@ -16,10 +16,10 @@
 
 ### 1-1. trading_rules.json の正式スキーマ確定
 
-* [ ] version フィールド追加
-* [ ] 有効/無効フラグ
-* [ ] 数値の単位・許容範囲定義
-* [ ] UI ↔ JSON ↔ Python の完全一致
+* [x] version フィールド追加
+* [x] 有効/無効フラグ
+* [x] 数値の単位・許容範囲定義
+* [x] UI ↔ JSON ↔ Python の完全一致
 
 例（最終形）：
 
@@ -57,17 +57,17 @@
 
 ### 1-2. Python 側の完全対応
 
-* [ ] `TradingRules` schema が上記構造を読む
-* [ ] `ImprovedTradingRules.__init__` が JSON を直接受け取れる
-* [ ] config.py フォールバック確認
+* [x] `TradingRules` schema が上記構造を読む
+* [x] `ImprovedTradingRules.__init__` が JSON を直接受け取れる
+* [x] config.py フォールバック確認
 
 ---
 
 ### 1-3. ルール履歴管理
 
-* [ ] `trading_rules/active.json`
-* [ ] `trading_rules/history/YYYYMMDD_HHMMSS.json`
-* [ ] WebUI保存時に **必ず履歴保存**
+* [x] `trading_rules/active.json`
+* [x] `trading_rules/history/YYYYMMDD_HHMMSS.json`
+* [x] WebUI保存時に **必ず履歴保存**
 
 ---
 
@@ -75,7 +75,7 @@
 
 ### 2-1. GCS バケット作成
 
-* [ ] `stock-management-prod`（1バケットで十分）
+* [x] `stock-management-prod`（1バケットで十分）
 
 ---
 
@@ -97,13 +97,21 @@ gs://stock-management-prod/
 └── logs/
 ```
 
+* [x] ディレクトリ作成完了（gsutil ls で確認済み）
+
 ---
 
-### 2-3. ローカル → GCS 移行
+### 2-3. ローカル → GCS 複製
 
-* [ ] chartImg → `charts/`
-* [ ] report → `reports/`
+デバッグのためlocalは残す
+
+* [x] active.json → `trading_rules/`
+* [x] chartImg → `charts/`
+* [x] report → `reports/`
 * [ ] data 保存先を **GCSに切替**
+  * [ ] `python/utils/gcs_client.py` 実装（GCS/Local 同時書き込み or 切り替え）
+  * [ ] `rules_loader.py` を GCS 対応
+  * [ ] `charts.py` を GCS 対応（画像参照先変更）
 
 ---
 
@@ -119,23 +127,26 @@ gs://stock-management-prod/
 ### 3-2. GCS I/O 実装
 
 * [ ] rules の GET/POST が GCS 直結
-* [ ] charts は署名URL or public read
+* [ ] charts は署名URL or public read (or backend proxy)
 
 ---
 
 ### 3-3. Dockerfile 作成
 
-* [ ] Python slim
-* [ ] requirements.txt
-* [ ] gunicorn 起動
+* [ ] Base Image: `python:3.12-slim`
+* [ ] Requirements: `fastapi`, `uvicorn`, `google-cloud-storage`, `jinja2`, `python-multipart`
+* [ ] Entrypoint: `uvicorn python.web.app:app --host 0.0.0.0 --port $PORT`
+* [ ] `gunicorn` は今回は `uvicorn` 単体でも可（Cloud Run は前段にLBがいるため）
 
 ---
 
-### 3-4. Cloud Run 設定
+### 3-4. Cloud Run 設定 (コマンドラインで実行予定)
 
-* [ ] 認証：IAP or 簡易 Basic Auth
-* [ ] メモリ 512MB
-* [ ] 常時起動不要（0スケール可）
+* [ ] `gcloud builds submit --tag gcr.io/PROJECT_ID/stock-web-ui`
+* [ ] `gcloud run deploy stock-web-ui --image gcr.io/PROJECT_ID/stock-web-ui --allow-unauthenticated` (一旦、後で認証追加)
+* [ ] 環境変数設定:
+  * [ ] `GCS_BUCKET_NAME=stock-management-prod`
+  * [ ] `GOOGLE_CLOUD_PROJECT=...`
 
 ---
 
