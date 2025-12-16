@@ -144,8 +144,8 @@ gs://stock-management-prod/
 
 * [x] `gcloud builds submit --tag gcr.io/stockmanagement-gce/stock-web-ui`
 * [x] `gcloud run deploy stock-web-ui --image gcr.io/stockmanagement-gce/stock-web-ui --allow-unauthenticated`
-    * Region: `us-east1` (Always Free)
-    * URL: `https://stock-web-ui-664052483309.us-east1.run.app`
+  * Region: `us-east1` (Always Free)
+  * URL: `https://stock-web-ui-664052483309.us-east1.run.app`
 * [x] 環境変数設定:
   * [x] `GCS_BUCKET_NAME=stock-management-prod`
   * [x] `GOOGLE_CLOUD_PROJECT=stockmanagement-gce`
@@ -176,21 +176,21 @@ gs://stock-management-prod/
 
 * [x] GCS から `active.json` 読む
 * [x] 指標計算
-  - データ構造の考察
-  - [x] PostgreSQLデータベースを使用 (GCE上のDocker)
-    - Tables: `stocks`, `daily_prices`, `signals`, `trade_history`
-  - [x] ORM: SQLAlchemy + Alembic (マイグレーション管理)
+  * データ構造の考察
+  * [x] PostgreSQLデータベースを使用 (GCE上のDocker)
+    * Tables: `stocks`, `daily_prices`, `signals`, `trade_history`
+  * [x] ORM: SQLAlchemy + Alembic (マイグレーション管理)
 * [x] ルールを変更するかどうかを考察
   * **採用基準案**:
     * **Profit Factor**: 直近3ヶ月で `1.2` 未満
     * **Max Drawdown**: `15%` 超過
     * **勝率**: `35%` 未満 (リスクリワード依存)
     * **連敗数**: `6` 連敗以上
-  * [ ] 基準から乖離したものを検出した場合にルール変更を提案
-  * [ ] ルール変更の自動化はしない（必ず人が確認する）
+  * [x] 基準から乖離したものを検出した場合にルール変更を提案
+  * [x] ルール変更の自動化はしない（必ず人が確認する）
 * [x] ルールを変更理由をプルダウンか何かで選択できるようにする
-  - [x] `TradingRules` schema に `change_reason` フィールド追加
-  - [x] WebUI 保存時に理由入力モーダルを表示
+  * [x] `TradingRules` schema に `change_reason` フィールド追加
+  * [x] WebUI 保存時に理由入力モーダルを表示
     * **候補案**:
       * `Performance Optimization` (パフォーマンス最適化)
       * `Risk Mitigation` (リスク軽減)
@@ -198,16 +198,15 @@ gs://stock-management-prod/
       * `Logic Correction` (ロジック修正)
       * `Regular Update` (定期更新)
       * `Testing` (テスト・実験)
-  - [x] WebUI にプルダウンメニューを追加
+  * [x] WebUI にプルダウンメニューを追加
 * [x] charts 出力 → GCS
 * [x] シグナル判定
 * [x] 株価を手動更新して指標計算をする( 1度更新したら1時間は更新できない等の制限をつける )
 
-
 ### 4-3. 冪等性確認
 
 * [x] 同日複数回実行NG
-* [ ] 日時別保存
+* [x] 日時別保存
 
 ---
 
@@ -232,21 +231,30 @@ gs://stock-management-prod/
 * [ ] Cloud Logging 有効
 * [ ] 異常検知ログ
 
-### 5-4. 運用に必要なUI，ロジックの追加
-
-* [ ] UIの改善
-  - ステータス，目的ごとにソート，フィルタできるようにする
-  - 収益の合計を表示する
-
-* [ ] 株を追加するロジックやUIを追加
-
----
 
 ## フェーズ6：本番前チェック（必須）
 
-### 6-1. ローカル → ステージング
+最低限の動作確認を行う
 
-* [ ] Cloud Run にデプロイ（非公開）
+- 検証対象
+  - localhost:8888
+    - `uvicorn python.web.app:app --reload --port 8888`
+    - 使用するcsvは`data/my_stock_local.csv`
+      - 作成した時とメソッドとか変更しているから過不足の可能性 
+  - Cloud Run
+    - `https://stock-web-ui-664052483309.us-east1.run.app`
+    - 使用するcsvはGCE上の`data/my_stock.csv`
+    - GCSバケット: `stock-management-prod`
+      - 同上
+
+
+### 6-1. 動作確認
+
+* [ ] ローカルで動作確認
+  * [ ] ルール取得・表示
+  * [ ] charts 表示
+* [ ] Cloud Run にデプロイ
+  * [ ] 最新の株価を使用
 * [ ] 実データで一巡
 
 ---
@@ -270,10 +278,16 @@ gs://stock-management-prod/
 
 * [ ] Privateな情報を削除
 * [ ] READMEを含めたDocsの編集などのOSS公開準備
-  - 各ディレクトリにあるREADMEも更新する
+  * 各ディレクトリにあるREADMEも更新する
 * [ ] WebUI 公開（制限付き）
+  * [ ] UI改善点の洗い出し
+    * [ ] 各ステータス，目的でソート，フィルタリング
+    * [ ] 優待狙いの銘柄は優待情報を入力もしくは表示
+  * [ ] 必要な項目の追加
+    * [ ] 株や資産の購入，売却
 * [ ] cron 有効化
 * [ ] 監視開始
+* [ ] python/web/templates/index.htmlをモダンなFrameworkに書き換え（例：React, Vue.jsなど）
 
 ## フェーズ8：将来拡張検討
 
@@ -284,10 +298,10 @@ Docs/WayToBenefit.mdを参考に、以下の拡張を検討
 * [ ] 監視市場の追加 <- 収益化可能性
 * [ ] 英語圏に対応 <- 収益化可能性
 * [ ] Slack 通知
-  - [ ] 通知フィルタクラスの実装 (`NotificationManager`)
-    - 前回通知したシグナルと比較し、状態変化(Buy->Sell等)のみ通知
-    - 損切りライン到達は即時通知
-    - 定期的な「異常なし」通知は廃止
+  * [ ] 通知フィルタクラスの実装 (`NotificationManager`)
+    * 前回通知したシグナルと比較し、状態変化(Buy->Sell等)のみ通知
+    * 損切りライン到達は即時通知
+    * 定期的な「異常なし」通知は廃止
 * [ ] 通知ツールの追加（LINE, Discordなど）
 * [ ] レスポンシブデザイン対応
-* [ ] 
+* [ ]
