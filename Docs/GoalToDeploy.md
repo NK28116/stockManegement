@@ -168,30 +168,46 @@ gs://stock-management-prod/
 
 ### 4-1. 実行方式決定
 
-* [ ] GCE cron（既存）
+* [x] GCE cron（既存）
 
 ---
 
 ### 4-2. 実行時フロー整理
 
-* [ ] GCS から `active.json` 読む
-* [ ] 指標計算
+* [x] GCS から `active.json` 読む
+* [x] 指標計算
   - データ構造の考察
-  - PostgreSQLデータベースを使用する予定
-  - 上記を操作するORMの策定
-* [ ] ルールを変更するかどうかを考察
-* [ ] ルールを変更理由をプルダウンか何かで選択できるようにする
-  例） ボラリティが高く RSI 70 では早すぎる，など
-* [ ] charts 出力 → GCS
-* [ ] シグナル判定
-* [ ] Slack 通知
-  - 以前は15分ごとに`--`をslack通知していたが通知で埋まってしまったので早急に対応しなければならないもの以外通知しないようにする
-    - この対応基準は慎重に決める必要があるのでフェーズ6が終了した後，本番運用開始する前に決める
+  - [x] PostgreSQLデータベースを使用 (GCE上のDocker)
+    - Tables: `stocks`, `daily_prices`, `signals`, `trade_history`
+  - [x] ORM: SQLAlchemy + Alembic (マイグレーション管理)
+* [x] ルールを変更するかどうかを考察
+  * **採用基準案**:
+    * **Profit Factor**: 直近3ヶ月で `1.2` 未満
+    * **Max Drawdown**: `15%` 超過
+    * **勝率**: `35%` 未満 (リスクリワード依存)
+    * **連敗数**: `6` 連敗以上
+  * [ ] 基準から乖離したものを検出した場合にルール変更を提案
+  * [ ] ルール変更の自動化はしない（必ず人が確認する）
+* [x] ルールを変更理由をプルダウンか何かで選択できるようにする
+  - [x] `TradingRules` schema に `change_reason` フィールド追加
+  - [x] WebUI 保存時に理由入力モーダルを表示
+    * **候補案**:
+      * `Performance Optimization` (パフォーマンス最適化)
+      * `Risk Mitigation` (リスク軽減)
+      * `Market Regime Change` (相場環境変化)
+      * `Logic Correction` (ロジック修正)
+      * `Regular Update` (定期更新)
+      * `Testing` (テスト・実験)
+  - [x] WebUI にプルダウンメニューを追加
+* [x] charts 出力 → GCS
+* [x] シグナル判定
+* [x] 株価を手動更新して指標計算をする( 1度更新したら1時間は更新できない等の制限をつける )
+
 
 ### 4-3. 冪等性確認
 
-* [ ] 同日複数回実行OK
-* [ ] 上書き or 日時別保存
+* [x] 同日複数回実行NG
+* [ ] 日時別保存
 
 ---
 
@@ -200,7 +216,7 @@ gs://stock-management-prod/
 ### 5-1. 認証情報整理
 
 * [ ] APIキーは Secret Manager
-* [ ] KEY.json 排除
+* [ ] コード内の `KEY.json` 参照を廃止し `google-cloud-secret-manager` 経由に変更
 
 ---
 
@@ -267,5 +283,11 @@ Docs/WayToBenefit.mdを参考に、以下の拡張を検討
 * [ ] 証券会社APIなどの他ツールとの連携
 * [ ] 監視市場の追加 <- 収益化可能性
 * [ ] 英語圏に対応 <- 収益化可能性
+* [ ] Slack 通知
+  - [ ] 通知フィルタクラスの実装 (`NotificationManager`)
+    - 前回通知したシグナルと比較し、状態変化(Buy->Sell等)のみ通知
+    - 損切りライン到達は即時通知
+    - 定期的な「異常なし」通知は廃止
 * [ ] 通知ツールの追加（LINE, Discordなど）
 * [ ] レスポンシブデザイン対応
+* [ ] 

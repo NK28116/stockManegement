@@ -1,0 +1,42 @@
+from sqlalchemy import Column, String, Integer, Date, DateTime, Numeric, Text, UniqueConstraint
+from sqlalchemy.orm import declarative_base
+from datetime import datetime
+
+Base = declarative_base()
+
+class Portfolio(Base):
+    """
+    保有銘柄（ポートフォリオ）管理テーブル
+    """
+    __tablename__ = 'portfolio'
+
+    # サロゲートキー（ID）を導入し、同日同銘柄の複数取引に対応
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    
+    code = Column(String, nullable=False, index=True)
+    name = Column(String)
+    quantity = Column(Integer)
+    
+    # 金額は NUMERIC 型を使用 (全体桁数, 小数点以下桁数)
+    purchase_price = Column(Numeric(10, 2)) 
+    purchase_date = Column(Date, nullable=False)
+    
+    status = Column(String) # 'HOLD', 'SOLD' など
+    
+    current_price = Column(Numeric(10, 2))
+    profit_loss = Column(Numeric(15, 2))
+    profit_loss_percent = Column(Numeric(10, 4)) # パーセントは数値で管理
+    
+    last_updated = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+    purpose = Column(Text)
+
+    # 既存のCSVインポートロジック（code + purchase_dateでユニーク）を維持したい場合のみ有効化
+    # ただし、デイトレード等に対応するならこの制約は外すべき
+    __table_args__ = (
+        UniqueConstraint('code', 'purchase_date', name='uix_portfolio_code_date'),
+    )
+
+# 今後追加予定のテーブル（コメントアウトまたは実装）
+# class Stock(Base):
+#     __tablename__ = 'stocks'
+#     ...
