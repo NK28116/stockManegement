@@ -27,6 +27,21 @@
                     :class="['px-4 py-2 rounded', currentTab === 'settings' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700']">
                     Settings
                 </button>
+
+                <!-- Actions -->
+                <div class="border-l pl-4 flex space-x-2 items-center">
+                    <button @click="triggerUpdate" :disabled="!actionStatus.can_update || actionStatus.is_updating"
+                        :class="['px-3 py-2 rounded text-sm font-bold', (!actionStatus.can_update || actionStatus.is_updating) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700']">
+                        <span v-if="actionStatus.is_updating">Updating...</span>
+                        <span v-else-if="!actionStatus.can_update">Wait {{ actionStatus.cooldown_remaining_minutes
+                            }}m</span>
+                        <span v-else>Update Data</span>
+                    </button>
+                    <button @click="triggerAnalysis" :disabled="actionStatus.is_analyzing"
+                        :class="['px-3 py-2 rounded text-sm font-bold', actionStatus.is_analyzing ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-purple-600 text-white hover:bg-purple-700']">
+                        {{ actionStatus.is_analyzing ? 'Analyzing...' : 'Check Signals' }}
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -180,6 +195,39 @@
                                     {{ rules.meta?.active ? 'ACTIVE' : 'INACTIVE' }}
                                 </span>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Change Reason -->
+                    <div class="bg-white p-4 rounded border border-blue-200 mt-4 shadow-sm">
+                        <h3 class="font-bold text-gray-700 mb-4">変更理由 (Change Reason)</h3>
+
+                        <div class="mb-4">
+                            <label for="changeReason" class="block text-sm font-medium text-gray-700 mb-1">理由を選択</label>
+                            <select id="changeReason" v-model="rules.change_reason"
+                                class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                                <option value="Performance Optimization">パフォーマンス最適化 (Performance Optimization)</option>
+                                <option value="Risk Mitigation">リスク軽減 (Risk Mitigation)</option>
+                                <option value="Market Regime Change">相場環境への適応 (Market Regime Change)</option>
+                                <option value="Logic Correction">ロジック/バグ修正 (Logic Correction)</option>
+                                <option value="Regular Update">定期見直し (Regular Update)</option>
+                                <option value="Testing">テスト・実験 (Testing)</option>
+                                <option value="Other">その他 (Other)</option>
+                            </select>
+                        </div>
+
+                        <div v-if="rules.change_reason && changeReasonDescriptions[rules.change_reason]"
+                            class="p-3 bg-blue-50 text-blue-900 text-sm rounded border border-blue-100 mb-4">
+                            <div class="font-bold mb-1">説明:</div>
+                            {{ changeReasonDescriptions[rules.change_reason] }}
+                        </div>
+
+                        <div v-if="rules.change_reason === 'Other'">
+                            <label for="changeNote" class="block text-sm font-medium text-gray-700 mb-1">備考
+                                (Note)</label>
+                            <input type="text" id="changeNote" v-model="rules.change_note"
+                                class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                                placeholder="詳細を入力...">
                         </div>
                     </div>
 
@@ -393,12 +441,29 @@
                     diffs: [],
                     warnings: [],
                     riskFlags: [], // Flags from API
-                    originalRules: {}
+                    originalRules: {},
+                    actionStatus: {
+                        can_update: true,
+                        cooldown_remaining_minutes: 0,
+                        is_updating: false,
+                        is_analyzing: false
+                    },
+                    changeReasonDescriptions: {
+                        "Performance Optimization": "バックテストや実績に基づき、より高い利益効率を目指すための調整。",
+                        "Risk Mitigation": "ドローダウンの抑制や、損切りラインを浅くするなど、守りを固めるための調整。",
+                        "Market Regime Change": "ボラティリティの急増・急減や、トレンド相場からレンジ相場への移行などに対応するため。",
+                        "Logic Correction": "意図しない挙動や計算ミスの修正。",
+                        "Regular Update": "月次や四半期ごとの定例メンテナンスによる微調整。",
+                        "Testing": "新しいパラメータやアイデアを検証するための一時的な変更。",
+                        "Other": "上記に当てはまらない理由（備考欄への記述を推奨）。"
+                    }
                 }
             },
             mounted() {
                 this.fetchCharts()
                 this.fetchRules()
+                this.fetchActionStatus()
+                setInterval(this.fetchActionStatus, 30000) // Poll status every 30s
             },
             methods: {
                 toggleDetails(code) {
@@ -459,11 +524,54 @@
                         const res = await fetch('/api/rules/active')
                         const data = await res.json()
                         this.rules = JSON.parse(JSON.stringify(data))
+                        if (!this.rules.change_reason) {
+                            this.rules.change_reason = "Regular Update"
+                        }
                         this.originalRules = JSON.parse(JSON.stringify(data))
                     } catch (e) {
                         this.errorMessage = 'Failed to load rules: ' + e.message
                     } finally {
                         this.loadingRules = false
+                    }
+                },
+                async fetchActionStatus() {
+                    try {
+                        const res = await fetch('/api/actions/status')
+                        if (res.ok) {
+                            this.actionStatus = await res.json()
+                        }
+                    } catch (e) {
+                        console.error("Failed to fetch action status", e)
+                    }
+                },
+                async triggerUpdate() {
+                    if (!confirm("Start market data update? This may take a while.")) return
+                    try {
+                        const res = await fetch('/api/actions/update-market-data', { method: 'POST' })
+                        if (!res.ok) {
+                            const data = await res.json()
+                            alert(data.detail || "Update failed")
+                        } else {
+                            this.fetchActionStatus()
+                            alert("Update started in background.")
+                        }
+                    } catch (e) {
+                        alert("Error: " + e.message)
+                    }
+                },
+                async triggerAnalysis() {
+                    try {
+                        const res = await fetch('/api/actions/analyze-signals', { method: 'POST' })
+                        if (!res.ok) {
+                            const data = await res.json()
+                            alert(data.detail || "Analysis failed")
+                        } else {
+                            this.fetchActionStatus()
+                            // Optionally refresh charts after a delay
+                            setTimeout(this.fetchCharts, 5000)
+                        }
+                    } catch (e) {
+                        alert("Error: " + e.message)
                     }
                 },
 

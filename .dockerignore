@@ -1,0 +1,18 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.pyc
+venv/
+
+# Documentation & Dev Scripts
+Docs/
+verify_*.py
+debug_*.py
+check_*.py
+tests/
+
+# Environment variables (should be set in Cloud Run)
+.env

@@ -1,142 +1,105 @@
 import logging
+from contextlib import contextmanager
 
-import pandas as pd  # 追加
-import psycopg2
-from psycopg2 import Error as PgError
-from psycopg2.extras import execute_values
+import pandas as pd
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.dialects.postgresql import insert
 
 from python.config import config
+from python.db.models import Base, Portfolio
 
 logger = logging.getLogger(__name__)
 
+# SQLAlchemy Engine 作成
+# config.get_db_config() が dict を返すと仮定して URL を構築
+# 実際には config 側で DATABASE_URL を返すのが一般的ですが、ここでは dict から構築します
+db_conf = config.get_db_config()
+DATABASE_URL = f"postgresql://{db_conf['user']}:{db_conf['password']}@{db_conf['host']}:{db_conf['port']}/{db_conf['dbname']}"
 
-def get_db_connection():
+engine = create_engine(DATABASE_URL, echo=False)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def init_db():
     """
-    PostgreSQLデータベースへの接続を確立し、接続オブジェクトを返す。
+    テーブル作成（初回のみ使用、通常はAlembicを使う）
     """
-    conn = None
+    Base.metadata.create_all(bind=engine)
+    logger.info("✅ データベーステーブルの初期化完了")
+
+
+@contextmanager
+def get_db_session():
+    """
+    DBセッションを提供するコンテキストマネージャ
+    with get_db_session() as session: で使用
+    """
+    session = SessionLocal()
     try:
-        db_config = config.get_db_config()
-        conn = psycopg2.connect(**db_config)
-        return conn
-    except PgError as e:
-        logger.error(f"❌ データベース接続エラー: {e}")
-        raise
-
-
-def create_portfolio_table():
-    """
-    portfolioテーブルを作成する。
-    """
-    conn = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS portfolio (
-                code TEXT NOT NULL,
-                name TEXT,
-                quantity INTEGER,
-                purchase_price REAL,
-                purchase_date DATE NOT NULL,
-                status TEXT,
-                current_price REAL,
-                profit_loss REAL,
-                profit_loss_percent TEXT,
-                last_updated TIMESTAMP,
-                purpose TEXT,
-                PRIMARY KEY (code, purchase_date)
-            )
-            """
-        )
-        conn.commit()
-        logger.info("✅ portfolioテーブルが正常に作成または既に存在します。")
-    except PgError as e:
-        logger.error(f"❌ portfolioテーブル作成エラー: {e}")
+        yield session
+    except Exception as e:
+        logger.error(f"Database session error: {e}")
+        session.rollback()
         raise
     finally:
-        if conn:
-            conn.close()
+        session.close()
 
 
-def get_portfolio_data():
+def get_portfolio_data() -> pd.DataFrame:
     """
-    portfolioテーブルからすべてのデータを取得する。
+    portfolioテーブルからすべてのデータを取得し、DataFrameで返す。
     """
-    conn = None
+    query = "SELECT * FROM portfolio ORDER BY code, purchase_date"
     try:
-        conn = get_db_connection()
-        df = pd.read_sql_query(
-            "SELECT * FROM portfolio ORDER BY code, purchase_date", conn
-        )
+        # pandas の read_sql は SQLAlchemy engine を受け取れる
+        df = pd.read_sql(query, engine)
         return df
-    except PgError as e:
+    except Exception as e:
         logger.error(f"❌ portfolioデータ取得エラー: {e}")
         return pd.DataFrame()
-    finally:
-        if conn:
-            conn.close()
 
 
-def upsert_portfolio_data(data):
+def upsert_portfolio_data(data: list[dict]):
     """
     my_stock.csvから読み込んだデータをportfolioテーブルに挿入または更新する。
+    SQLAlchemy Core の upsert 機能を使用。
     """
-    conn = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-
-        # データをタプルのリストに変換
-        values = [
-            (
-                row["code"],
-                row["name"],
-                row["quantity"],
-                row["purchase_price"],
-                row[
-                    "purchase_date"
-                ],  # CSVから読み込んだ日付文字列がそのまま入ることを想定。psycopg2が自動変換
-                row["status"],
-                row["current_price"],
-                row["profit_loss"],
-                row["profit_loss_percent"],
-                row[
-                    "last_updated"
-                ],  # CSVから読み込んだタイムスタンプ文字列がそのまま入ることを想定
-                row["purpose"],
+    with get_db_session() as session:
+        for row in data:
+            # PostgreSQL特有の Upsert 構文 (INSERT ... ON CONFLICT DO UPDATE)
+            stmt = insert(Portfolio).values(
+                code=row["code"],
+                name=row["name"],
+                quantity=row["quantity"],
+                purchase_price=row["purchase_price"],
+                purchase_date=row["purchase_date"],
+                status=row["status"],
+                current_price=row["current_price"],
+                profit_loss=row["profit_loss"],
+                profit_loss_percent=row["profit_loss_percent"], # 数値型に変換されている前提
+                last_updated=row["last_updated"],
+                purpose=row["purpose"]
             )
-            for row in data
-        ]
-
-        # ON CONFLICT DO UPDATE を使用して挿入または更新
-        execute_values(
-            cur,
-            """
-            INSERT INTO portfolio (
-                code, name, quantity, purchase_price, purchase_date,
-                status, current_price, profit_loss, profit_loss_percent,
-                last_updated, purpose
-            ) VALUES %s
-            ON CONFLICT (code, purchase_date) DO UPDATE SET
-                name = EXCLUDED.name,
-                quantity = EXCLUDED.quantity,
-                purchase_price = EXCLUDED.purchase_price,
-                status = EXCLUDED.status,
-                current_price = EXCLUDED.current_price,
-                profit_loss = EXCLUDED.profit_loss,
-                profit_loss_percent = EXCLUDED.profit_loss_percent,
-                last_updated = EXCLUDED.last_updated,
-                purpose = EXCLUDED.purpose
-            """,
-            values,
-        )
-        conn.commit()
-        logger.info("✅ portfolioデータが正常に挿入または更新されました。")
-    except PgError as e:
-        logger.error(f"❌ portfolioデータ挿入/更新エラー: {e}")
-        raise
-    finally:
-        if conn:
-            conn.close()
+            
+            # code と purchase_date が重複したら更新
+            # 注意: models.py で UniqueConstraint('code', 'purchase_date') が定義されている必要があります
+            do_update_stmt = stmt.on_conflict_do_update(
+                constraint='uix_portfolio_code_date',
+                set_={
+                    "name": stmt.excluded.name,
+                    "quantity": stmt.excluded.quantity,
+                    "purchase_price": stmt.excluded.purchase_price,
+                    "status": stmt.excluded.status,
+                    "current_price": stmt.excluded.current_price,
+                    "profit_loss": stmt.excluded.profit_loss,
+                    "profit_loss_percent": stmt.excluded.profit_loss_percent,
+                    "last_updated": stmt.excluded.last_updated,
+                    "purpose": stmt.excluded.purpose,
+                }
+            )
+            
+            session.execute(do_update_stmt)
+        
+        session.commit()
+        logger.info(f"✅ {len(data)} 件のportfolioデータを処理しました。")
