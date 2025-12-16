@@ -39,3 +39,4 @@ data/practice/*.csv
 .DS_Store
 
 python/watch/dailyAggregator.py
+.pre-commit-config.yaml
