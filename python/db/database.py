@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 # 実際には config 側で DATABASE_URL を返すのが一般的ですが、ここでは dict から構築します
 db_conf = config.get_db_config()
 DATABASE_URL = (
-    f"postgresql://{db_conf['user']}:{db_conf['password']}@"
-    f"{db_conf['host']}:{db_conf['port']}/{db_conf['dbname']}"
+    f"postgresql://{db_conf.get('user', 'user')}:{db_conf.get('password', 'password')}@"
+    f"{db_conf.get('host', 'localhost')}:{db_conf.get('port', '5432')}/{db_conf.get('dbname', 'stock_db')}"
 )
 
 engine = create_engine(DATABASE_URL, echo=False)
@@ -108,3 +108,18 @@ def upsert_portfolio_data(data: list[dict]):
 
         session.commit()
         logger.info(f"✅ {len(data)} 件のportfolioデータを処理しました。")
+
+
+def get_db_connection():
+    """
+    旧コード互換用: DB接続を返す
+    """
+    return engine.connect()
+
+
+def create_portfolio_table():
+    """
+    旧コード互換用: ポートフォリオテーブル作成
+    現在は init_db() で一括作成されるため、それを呼び出す
+    """
+    init_db()

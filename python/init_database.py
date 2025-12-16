@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 # プロジェクトルートへのパスを通す（モジュール読み込み用）
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..")
 
-from python.database.models import Base  # noqa: E402
+from python.db.models import Base  # noqa: E402
 
 # 環境変数から接続情報を取得 (デフォルトはローカルDocker用)
 DB_USER = os.getenv("DB_USER", "user")

@@ -49,7 +49,29 @@ class Portfolio(Base):
     )
 
 
-# 今後追加予定のテーブル（コメントアウトまたは実装）
-# class Stock(Base):
-#     __tablename__ = 'stocks'
-#     ...
+class Stock(Base):
+    __tablename__ = "stocks"
+
+    code = Column(String, primary_key=True)
+    name = Column(String)
+    market = Column(String)
+
+
+class DailyPrice(Base):
+    __tablename__ = "daily_prices"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    stock_code = Column(String, nullable=False, index=True)
+    date = Column(Date, nullable=False)
+    open = Column(Numeric(10, 2))
+    high = Column(Numeric(10, 2))
+    low = Column(Numeric(10, 2))
+    close = Column(Numeric(10, 2))
+    volume = Column(Integer)
+    rsi = Column(Numeric(10, 2))
+    bb_upper = Column(Numeric(10, 2))
+    bb_lower = Column(Numeric(10, 2))
+
+    __table_args__ = (
+        UniqueConstraint("stock_code", "date", name="uix_daily_price_code_date"),
+    )
