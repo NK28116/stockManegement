@@ -14,8 +14,9 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../..")
 from python.analysis.formula_for_analyzer import (  # noqa: E402
     calculate_technical_indicators,
 )
-from python.database.connection import get_db  # noqa: E402
-from python.database.models import DailyPrice, Stock  # noqa: E402
+from python.db.database import get_db_connection  # noqa: E402
+from python.db.database import get_db_session as get_db  # noqa: E402
+from python.db.models import DailyPrice, Stock  # noqa: E402
 from python.utils.logger import get_logger  # noqa: E402
 
 logger = get_logger("dailyAggregator", category="watch")
@@ -81,8 +82,8 @@ def generate_and_upload_chart(stock_code, df, bucket_name="stock-management-prod
         logger.error(f"❌ Chart generation failed for {stock_code}: {e}")
 
 
-def save_daily_data_to_db(db, stock_code, df):
-    """DataFrameの最新行をDBに保存 (SQLAlchemy版)"""
+def save_daily_from_df(db, stock_code, df):
+    """DataFrameの最新行をDBに保存 (SQLAlchemy版) - run_daily_monitor用"""
     latest = df.iloc[-1]
     date_val = (
         latest.name.date() if isinstance(latest.name, pd.Timestamp) else latest.name
@@ -124,6 +125,34 @@ def save_daily_data_to_db(db, stock_code, df):
         logger.info(f"💾 Data saved for {stock_code} on {date_val}")
 
 
+def save_daily_data_to_db(
+    stock_code, date_val, open_val, high_val, low_val, close_val, volume_val
+):
+    """
+    日足データをDBに保存 (aggregate_intraday_to_daily用)
+    """
+    with get_db() as db:
+        existing = (
+            db.query(DailyPrice)
+            .filter(DailyPrice.stock_code == stock_code, DailyPrice.date == date_val)
+            .first()
+        )
+
+        if not existing:
+            daily_price = DailyPrice(
+                stock_code=stock_code,
+                date=date_val,
+                open=float(open_val),
+                high=float(high_val),
+                low=float(low_val),
+                close=float(close_val),
+                volume=int(volume_val),
+            )
+            db.add(daily_price)
+            db.commit()
+            logger.info(f"💾 Data saved for {stock_code} on {date_val}")
+
+
 def aggregate_intraday_to_daily(target_date: str, is_test_mode: bool = False):
     """
     指定された日付の分足データから日足データを集計し、DBに保存する
@@ -131,9 +160,29 @@ def aggregate_intraday_to_daily(target_date: str, is_test_mode: bool = False):
     """
     logger.info(f"{target_date} の日足データを集計開始")
 
-    # TODO: intradayテーブルもSQLAlchemyモデル化が望ましいが、
-    # ここでは既存の役割を維持しつつ、保存先をDailyPriceに向ける
-    pass
+    conn = get_db_connection()
+    try:
+        query = "SELECT code, timestamp, price, volume FROM intraday WHERE date(timestamp) = %s"
+        df = pd.read_sql_query(query, conn, params=(target_date,))
+
+        if df.empty:
+            return
+
+        for code, group in df.groupby("code"):
+            group = group.sort_values("timestamp")
+            save_daily_data_to_db(
+                code,
+                target_date,
+                group.iloc[0]["price"],
+                group["price"].max(),
+                group["price"].min(),
+                group.iloc[-1]["price"],
+                group["volume"].sum(),
+            )
+    except Exception as e:
+        logger.error(f"Aggregation failed: {e}")
+    finally:
+        conn.close()
 
 
 def run_daily_monitor(target_stocks=None):
@@ -168,7 +217,7 @@ def run_daily_monitor(target_stocks=None):
                 df = calculate_technical_indicators(df, rules)
 
                 # DB保存
-                save_daily_data_to_db(db, code, df)
+                save_daily_from_df(db, code, df)
 
                 # チャート生成
                 generate_and_upload_chart(code, df)

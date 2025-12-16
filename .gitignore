@@ -38,3 +38,4 @@ data/practice/*.csv
 # macOSメタデータファイル
 .DS_Store
 
+python/watch/dailyAggregator.py
