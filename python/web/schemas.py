@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field
 
 # ---------------------------
 # Meta
@@ -125,6 +126,19 @@ class MarketFilters(BaseModel):
 
 
 # ---------------------------
+# Change Reason
+# ---------------------------
+class ChangeReason(str, Enum):
+    PERFORMANCE = "Performance Optimization"
+    RISK = "Risk Mitigation"
+    MARKET = "Market Regime Change"
+    FIX = "Logic Correction"
+    REGULAR = "Regular Update"
+    TEST = "Testing"
+    OTHER = "Other"
+
+
+# ---------------------------
 # Root TradingRules
 # ---------------------------
 
@@ -136,6 +150,14 @@ class TradingRules(BaseModel):
     exit_rules: ExitRules
     indicators: Indicators
     filters: MarketFilters
+    change_reason: ChangeReason = Field(
+        default=ChangeReason.REGULAR,
+        description="Reason for this rule change"
+    )
+    change_note: Optional[str] = Field(
+        default="",
+        description="Optional detailed note about the change"
+    )
 
     @property
     def is_active(self) -> bool:
