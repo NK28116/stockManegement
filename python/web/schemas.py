@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, field_validator, Field
+from pydantic import BaseModel, Field, field_validator
 
 # ---------------------------
 # Meta
@@ -151,12 +151,10 @@ class TradingRules(BaseModel):
     indicators: Indicators
     filters: MarketFilters
     change_reason: ChangeReason = Field(
-        default=ChangeReason.REGULAR,
-        description="Reason for this rule change"
+        default=ChangeReason.REGULAR, description="Reason for this rule change"
     )
     change_note: Optional[str] = Field(
-        default="",
-        description="Optional detailed note about the change"
+        default="", description="Optional detailed note about the change"
     )
 
     @property
