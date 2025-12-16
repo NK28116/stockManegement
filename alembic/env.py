@@ -8,10 +8,11 @@ from sqlalchemy import pool
 from alembic import context
 
 # プロジェクトルートをパスに追加してモジュールをインポート可能にする
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+# このファイル(env.py)を格納する `alembic` ディレクトリの親、つまりプロジェクトルートをパスに追加します
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from python.database.models import Base
-from python.database.connection import DATABASE_URL
+from python.db.database import DATABASE_URL  # noqa: E402
+from python.db.models import Base  # noqa: E402
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
