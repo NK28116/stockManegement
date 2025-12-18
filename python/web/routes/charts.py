@@ -9,13 +9,18 @@ from python.utils.gcs_client import gcs
 router = APIRouter(prefix="/api/charts", tags=["charts"])
 
 
-# Map local category names to GCS paths
-# charts/indicators -> plots
-# charts/signals -> chartImg
-CATEGORY_MAP = {
-    "plots": "charts/indicators",
-    "chartImg": "charts/signals",
-}
+# Map category names to paths (GCS vs Local)
+if gcs.use_gcs:
+    CATEGORY_MAP = {
+        "plots": "charts/indicators",
+        "chartImg": "charts/signals",
+    }
+else:
+    # Local structure is slightly different (based on data/ listing)
+    CATEGORY_MAP = {
+        "plots": "plots",
+        "chartImg": "chartImg",
+    }
 
 
 @router.get("/list")
@@ -109,27 +114,19 @@ async def list_charts() -> List[Dict[str, Any]]:
                         pl_pct_str = row.get("profit_loss_percent", "")
                         if "{" in pl_pct_str or not pl_pct_str:
                             if purchase_price != 0:
-                                pl_pct = (
-                                    (current_price - purchase_price)
-                                    / purchase_price
-                                    * 100
-                                )
+                                pl_pct = (current_price - purchase_price) / purchase_price * 100
                             else:
                                 pl_pct = 0.0
                         else:
                             try:
-                                pl_pct = float(
-                                    pl_pct_str.replace("%", "").replace("+", "")
-                                )
+                                pl_pct = float(pl_pct_str.replace("%", "").replace("+", ""))
                             except ValueError:
                                 pl_pct = 0.0
 
                         # Calculate simple profit_loss if needed
                         pl_val_str = row.get("profit_loss", "")
                         if "{" in pl_val_str or not pl_val_str:
-                            pl_val = (current_price - purchase_price) * float(
-                                row.get("quantity", 1)
-                            )
+                            pl_val = (current_price - purchase_price) * float(row.get("quantity", 1))
                         else:
                             try:
                                 pl_val = float(pl_val_str)
