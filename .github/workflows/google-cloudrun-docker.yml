@@ -33,6 +33,7 @@ jobs:
         with:
           workload_identity_provider: "${{ secrets.GCP_WIF_PROVIDER }}"
           service_account: "${{ secrets.GCP_SERVICE_ACCOUNT }}"
+          token_format: 'access_token' 
 
       # Authenticate Docker to GCR using the GCLOUD credential helper or oauth token
       - name: "Docker Auth"
