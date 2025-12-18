@@ -3,6 +3,8 @@ FROM python:3.12-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
+ENV MPLBACKEND=Agg
+ENV PYTHONPATH=/app
 
 # Set working directory
 WORKDIR /app
