@@ -3,13 +3,15 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 
-from python.web.routes import actions, charts, rules
+from python.web.api import rules, simulate
+from python.web.routes import actions, charts
 
 app = FastAPI(title="Stock Management UI")
 
 # Mount API routes
 app.include_router(rules.router)
 app.include_router(charts.router)
+app.include_router(simulate.router)
 app.include_router(actions.router)
 # Setup templates
 templates_dir = Path(__file__).resolve().parent / "templates"
