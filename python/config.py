@@ -64,15 +64,9 @@ class Config:
         self.XXXX_API_SECRET = os.getenv("XXXX_API_SECRET", "")
 
         # バックグラウンドタスク間隔設定 (秒)
-        self.watch_interval_seconds = int(
-            os.getenv("WATCH_INTERVAL_SECONDS", "120")
-        )  # 2分
-        self.analyze_interval_seconds = int(
-            os.getenv("ANALYZE_INTERVAL_SECONDS", "3600")
-        )  # 1時間
-        self.monitor_interval_seconds = int(
-            os.getenv("MONITOR_INTERVAL_SECONDS", "7200")
-        )  # 2時間
+        self.watch_interval_seconds = int(os.getenv("WATCH_INTERVAL_SECONDS", "120"))  # 2分
+        self.analyze_interval_seconds = int(os.getenv("ANALYZE_INTERVAL_SECONDS", "3600"))  # 1時間
+        self.monitor_interval_seconds = int(os.getenv("MONITOR_INTERVAL_SECONDS", "7200"))  # 2時間
 
         # Matplotlib フォント設定
         self.matplotlib_font_family = os.getenv("MATPLOTLIB_FONT_FAMILY", "IPAexGothic")
@@ -82,7 +76,7 @@ class Config:
         if self.db_env == "cloud":
             return {
                 "host": os.getenv("CLOUD_PG_HOST", "{CLOUD_PG_HOST}"),
-                "port": int(os.getenv("CLOUD_PG_PORT", "{CLOUD_PG_PORT}")),
+                "port": int(os.getenv("CLOUD_PG_PORT", "5432")),
                 "database": os.getenv("CLOUD_PG_DATABASE", "{CLOUD_PG_DATABASE}"),
                 "user": os.getenv("CLOUD_PG_USER", "{CLOUD_PG_USER}"),
                 "password": os.getenv("CLOUD_PG_PASSWORD", "{CLOUD_PG_PASSWORD}"),
@@ -90,7 +84,7 @@ class Config:
         else:  # default local
             return {
                 "host": os.getenv("LOCAL_PG_HOST", "{LOCAL_PG_HOST}"),
-                "port": int(os.getenv("LOCAL_PG_PORT", "{LOCAL_PG_PORT}")),
+                "port": int(os.getenv("LOCAL_PG_PORT", "5432")),
                 "database": os.getenv("LOCAL_PG_DATABASE", "{LOCAL_PG_DATABASE}"),
                 "user": os.getenv("LOCAL_PG_USER", "{LOCAL_PG_USER}"),
                 "password": os.getenv("LOCAL_PG_PASSWORD", "{LOCAL_PG_PASSWORD}"),
@@ -108,9 +102,7 @@ class Config:
             "slack_webhook": self.slack_webhook,
             "slack_bot_token": self.slack_bot_token,
             "slack_channel": self.slack_channel,
-            "enabled": bool(
-                self.slack_webhook
-            ),  # webhookが設定されていれば有効とみなす
+            "enabled": bool(self.slack_webhook),  # webhookが設定されていれば有効とみなす
         }
 
     def get_trade_config(self) -> Dict[str, Any]:
