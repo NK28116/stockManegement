@@ -1,5 +1,8 @@
 import csv
 import io
+import json
+import logging
+import os
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, Response
@@ -7,6 +10,10 @@ from fastapi import APIRouter, HTTPException, Response
 from python.utils.gcs_client import gcs
 
 router = APIRouter(prefix="/api/charts", tags=["charts"])
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 # Map category names to paths (GCS vs Local)
@@ -48,6 +55,46 @@ async def list_charts() -> List[Dict[str, Any]]:
         name = name.replace(".png", "").replace("_indicators", "")
 
         return code, name
+
+    # Load latest_indicators.json
+    latest_indicators = {}
+    json_filename = "latest_indicators.json"
+    json_content = gcs.get_file_content(json_filename)
+
+    if not gcs.use_gcs and not json_content:
+        # For local dev, try direct file read from the expected local path
+        local_json_path = os.path.join("data", json_filename)
+        if os.path.exists(local_json_path):
+            try:
+                with open(local_json_path, "rb") as f:
+                    json_content = f.read()
+            except Exception as e:
+                logger.warning(
+                    f"Error reading local JSON fallback '{local_json_path}': {e}"
+                )
+        else:
+            logger.info(f"Local JSON file '{local_json_path}' not found.")
+
+    if json_content:
+        try:
+            latest_indicators = json.loads(json_content.decode("utf-8"))
+            logger.info(f"Loaded {len(latest_indicators)} entries from {json_filename}")
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decoding {json_filename}: {e}")
+        except Exception as e:
+            logger.error(f"Unexpected error loading {json_filename}: {e}")
+    else:
+        logger.info(
+            f"Could not load {json_filename}. Proceeding without specific indicators."
+        )
+
+    # Normalize keys in latest_indicators (remove .T) to match chart keys
+    normalized_indicators = {}
+    for k, v in latest_indicators.items():
+        # "7203.T" -> "7203"
+        norm_k = k.replace(".T", "").replace(".", "")
+        normalized_indicators[norm_k] = v
+    latest_indicators = normalized_indicators
 
     # Process Plots (MACD/BB) -> GCS: charts/indicators
     # gcs.list_files returns filenames relative to prefix
