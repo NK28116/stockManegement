@@ -13,7 +13,13 @@ try:
 except ImportError:
     watch = None
 
-router = APIRouter(prefix="/actions", tags=["actions"])
+try:
+    from python.watch import analyze
+except ImportError:
+    analyze = None
+
+
+router = APIRouter(prefix="/api/actions", tags=["actions"])
 logger = logging.getLogger(__name__)
 
 
@@ -52,6 +58,27 @@ async def _run_market_update():
         _state.is_updating = False
 
 
+async def _run_analysis():
+    """
+    バックグラウンドで実行される分析処理
+    """
+    try:
+        logger.info("Starting analysis task...")
+
+        if analyze is None:
+            raise ImportError("python.watch.analyze module could not be imported.")
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, analyze.main)
+
+        logger.info("Analysis task completed successfully.")
+
+    except Exception as e:
+        logger.error(f"Error during analysis: {e}", exc_info=True)
+    finally:
+        _state.is_analyzing = False
+
+
 @router.post("/update-market-data")
 async def trigger_market_update(background_tasks: BackgroundTasks):
     """
@@ -87,6 +114,24 @@ async def trigger_market_update(background_tasks: BackgroundTasks):
     }
 
 
+@router.post("/analyze-signals")
+async def trigger_analysis(background_tasks: BackgroundTasks):
+    """
+    分析処理を手動トリガーするエンドポイント
+    """
+    if _state.is_analyzing:
+        raise HTTPException(status_code=409, detail="Analysis already in progress")
+
+    _state.is_analyzing = True
+    background_tasks.add_task(_run_analysis)
+
+    return {
+        "status": "accepted",
+        "message": "Analysis started in background.",
+        "timestamp": datetime.now().isoformat(),
+    }
+
+
 @router.get("/status")
 async def get_action_status():
     """
@@ -94,6 +139,7 @@ async def get_action_status():
     """
     return {
         "is_updating": _state.is_updating,
+        "is_analyzing": _state.is_analyzing,
         "last_update_time": _state.last_update_time,
         "cooldown_remaining_seconds": (
             max(

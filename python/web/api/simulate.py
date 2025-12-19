@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from python.web.schemas import TradingRules
 from python.web.services.backtest import run_backtest
 
-router = APIRouter()
+router = APIRouter(prefix="/api/simulate", tags=["simulate"])
 DRAFT_PATH = Path("data/rules/trading_rules.draft.json")
 
 

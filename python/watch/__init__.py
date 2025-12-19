@@ -11,6 +11,7 @@ from .watch import (
     run_dev_mode,
     run_realtime_mode,
     save_data_to_db,
+    main,
 )
 
 __all__ = [
@@ -26,6 +27,7 @@ __all__ = [
     "calc_volatility",
     "run_realtime_mode",
     "run_dev_mode",
+    "main",
 ]
 
 __version__ = "1.0.0"
