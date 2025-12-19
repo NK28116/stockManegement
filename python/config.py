@@ -10,6 +10,8 @@ from typing import Any, Dict
 
 import dotenv
 
+from python.secret_manager import secret_manager
+
 dotenv.load_dotenv()  # .envファイルの読み込み
 
 
@@ -55,13 +57,25 @@ class Config:
         self.default_portfolio_file = self.root_dir / "data" / "my_stock.csv"
 
         # アラート設定
-        self.slack_webhook = os.getenv("SLACK_WEBHOOK", "{SLACK_WEBHOOK}")
-        self.slack_bot_token = os.getenv("SLACK_BOT_TOKEN", "")
-        self.slack_channel = os.getenv("SLACK_CHANNEL", "")
+        # アラート設定
+        self.slack_webhook = secret_manager.get_secret(
+            "SLACK_WEBHOOK", os.getenv("SLACK_WEBHOOK", "{SLACK_WEBHOOK}")
+        )
+        self.slack_bot_token = secret_manager.get_secret(
+            "SLACK_BOT_TOKEN", os.getenv("SLACK_BOT_TOKEN", "")
+        )
+        self.slack_channel = secret_manager.get_secret(
+            "SLACK_CHANNEL", os.getenv("SLACK_CHANNEL", "")
+        )
 
         # 証券会社API
-        self.XXXX_API_KEY = os.getenv("XXXX_API_KEY", "")
-        self.XXXX_API_SECRET = os.getenv("XXXX_API_SECRET", "")
+        # 証券会社API
+        self.XXXX_API_KEY = secret_manager.get_secret(
+            "XXXX_API_KEY", os.getenv("XXXX_API_KEY", "")
+        )
+        self.XXXX_API_SECRET = secret_manager.get_secret(
+            "XXXX_API_SECRET", os.getenv("XXXX_API_SECRET", "")
+        )
 
         # バックグラウンドタスク間隔設定 (秒)
         self.watch_interval_seconds = int(

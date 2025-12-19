@@ -163,12 +163,12 @@
                     <div class="flex gap-3">
                         <button @click="previewChanges"
                             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
-                            Preview Changes
+                            変更をレビュー
                         </button>
 
                         <button @click="saveRules" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
                             :disabled="saving">
-                            Save Draft
+                            下書き保存
                         </button>
                     </div>
                 </div>
@@ -186,7 +186,18 @@
                             </div>
                             <div>
                                 <span class="text-gray-500">Updated:</span>
-                                <span class="font-mono ml-2">{{ rules.meta?.updated_at }}</span>
+                                <span class="font-mono ml-2">
+  {{
+    new Date(rules.meta?.updated_at)
+      .toLocaleString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+  }}
+</span>
                             </div>
                             <div>
                                 <span class="text-gray-500">Active:</span>
@@ -194,6 +205,18 @@
                                     :class="rules.meta?.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
                                     {{ rules.meta?.active ? 'ACTIVE' : 'INACTIVE' }}
                                 </span>
+                            </div>
+                        </div>
+
+                        <!-- History Section -->
+                        <div class="mt-4 border-t pt-4">
+                            <h4 class="font-bold text-gray-600 mb-2">【更新履歴】</h4>
+                            <div v-if="loadingHistory" class="text-gray-400 text-sm">Loading history...</div>
+                            <div v-else class="text-sm space-y-1 font-mono text-gray-700 bg-white p-2 rounded border">
+                                <div v-for="h in historyLogs" :key="h.version">
+                                    {{ h.log }}
+                                </div>
+                                <div v-if="historyLogs.length === 0" class="text-gray-400">履歴なし</div>
                             </div>
                         </div>
                     </div>
@@ -359,14 +382,14 @@
         <!-- Diff Modal moved inside #app and {% raw %} -->
         <div v-if="showDiffModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
             <div class="bg-white w-full max-w-2xl rounded-lg shadow-lg p-6">
-                <h3 class="text-lg font-bold mb-4">Rule Changes Preview</h3>
+                <h3 class="text-lg font-bold mb-4">変更内容のプレビュー</h3>
 
                 <table class="w-full text-sm border">
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="p-2 text-left">Field</th>
-                            <th class="p-2">Before</th>
-                            <th class="p-2">After</th>
+                            <th class="p-2 text-left">項目 (Field)</th>
+                            <th class="p-2">変更前 (Before)</th>
+                            <th class="p-2">変更後 (After)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -403,15 +426,15 @@
 
                 <div class="flex justify-end gap-3 mt-6">
                     <button @click="showDiffModal=false" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">
-                        Cancel
+                        キャンセル
                     </button>
                     <button v-if="riskFlags.length === 0" @click="saveRules(false)"
                         class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                        Save Changes
+                        変更を保存
                     </button>
                     <button v-else @click="applyRulesConfirmed"
                         class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-bold">
-                        Force Apply (I understand the risk)
+                        強制適用 (リスクを理解しています)
                     </button>
                 </div>
             </div>
@@ -432,6 +455,8 @@
                     rules: {}, // Nested structure
                     loadingCharts: false,
                     loadingRules: false,
+                    loadingHistory: false,
+                    historyLogs: [],
                     saving: false,
                     message: '',
                     messageType: '',
@@ -462,6 +487,7 @@
             mounted() {
                 this.fetchCharts()
                 this.fetchRules()
+                this.fetchHistory()
                 this.fetchActionStatus()
                 setInterval(this.fetchActionStatus, 30000) // Poll status every 30s
             },
@@ -532,6 +558,83 @@
                         this.errorMessage = 'Failed to load rules: ' + e.message
                     } finally {
                         this.loadingRules = false
+                    }
+                },
+                async fetchHistory() {
+                    this.loadingHistory = true
+                    try {
+                        // 1. Fetch index.json (list of versions)
+                        const res = await fetch('/api/rules/history')
+                        if (!res.ok) throw new Error("Failed to fetch history list")
+                        const index = await res.json()
+
+                        // Sort by version desc
+                        index.sort((a, b) => b.version - a.version)
+
+                        const logs = []
+                        // Limit to last 5 for UI or fetch details for each
+                        // For detailed "what changed", we need the diff from the history file details or infer from index if stored?
+                        // The index only has {version, applied_at, applied_by, comment}.
+                        // The user wants "YY/MM/DD {$更新した項目}を更新".
+                        // So we need to fetch the actual history file for at least the recent ones to get the "diff".
+
+                        // Let's fetch the top 5 versions details
+                        const top5 = index.slice(0, 5)
+
+                        for (const entry of top5) {
+                            try {
+                                const detailRes = await fetch(`/api/rules/history/${entry.version}`)
+                                if (detailRes.ok) {
+                                    const detail = await detailRes.json()
+                                    // Format: YY/MM/DD {$更新した項目}を更新
+                                    // detail.diff contains keys like "risk_management.stop_loss_percent": {old: ..., new: ...}
+
+                                    const dateObj = new Date(entry.applied_at)
+                                    // yy/mm/dd
+                                    const yy = dateObj.getFullYear().toString().slice(-2)
+                                    const mm = String(dateObj.getMonth() + 1).padStart(2, '0')
+                                    const dd = String(dateObj.getDate()).padStart(2, '0')
+                                    const dateStr = `${yy}/${mm}/${dd}`
+
+                                    let changedItems = []
+                                    if (detail.diff) {
+                                        // Collect unique top-level or second-level keys for brevity
+                                        // key example: "risk_management.stop_loss_percent"
+                                        for (const key in detail.diff) {
+                                            // Extract the last part of the key or meaningful part
+                                            // "risk_management.stop_loss_percent" -> "stop_loss_percent"
+                                            const parts = key.split('.')
+                                            const lastPart = parts[parts.length - 1]
+                                            changedItems.push(lastPart)
+                                        }
+                                    }
+
+                                    // Deduplicate
+                                    changedItems = [...new Set(changedItems)]
+
+                                    let content = ""
+                                    if (changedItems.length > 0) {
+                                        content = changedItems.join(', ')
+                                    } else {
+                                        content = "初期設定または変更なし"
+                                    }
+
+                                    logs.push({
+                                        version: entry.version,
+                                        log: `${dateStr} {${content}}を更新`
+                                    })
+                                }
+                            } catch (e) {
+                                console.error(`Failed to fetch history v${entry.version}`, e)
+                            }
+                        }
+                        this.historyLogs = logs
+
+                    } catch (e) {
+                        console.error(e)
+                        // Silent fail or show empty
+                    } finally {
+                        this.loadingHistory = false
                     }
                 },
                 async fetchActionStatus() {
@@ -626,7 +729,11 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(this.rules)
                         })
-                        if (!draftRes.ok) throw new Error('Failed to save draft')
+                        if (!draftRes.ok) {
+                            const errData = await draftRes.json().catch(() => ({}))
+                            const detail = errData.detail ? JSON.stringify(errData.detail) : JSON.stringify(errData)
+                            throw new Error('Failed to save draft: ' + detail)
+                        }
 
                         // 2. Apply
                         const applyUrl = force ? '/api/rules/apply?force=true' : '/api/rules/apply'
@@ -642,8 +749,17 @@
                         }
 
                         // Success
+                        if (applyData.version) {
+                            if (!this.rules.meta) this.rules.meta = {}
+                            this.rules.meta.version = applyData.version
+                            this.rules.meta.updated_at = applyData.applied_at
+                        }
+
                         this.rules = JSON.parse(JSON.stringify(this.rules)) // Update local state if needed (usually redundant if successful)
                         this.originalRules = JSON.parse(JSON.stringify(this.rules))
+
+                        // Refresh history to show the new version
+                        this.fetchHistory()
 
                         this.message = 'Configuration saved and applied successfully!'
                         this.messageType = 'success'

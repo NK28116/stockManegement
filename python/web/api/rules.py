@@ -203,15 +203,20 @@ def apply_rules(force: bool = False):
         current_version = int(v_val) if v_val else 0
 
     new_version = current_version + 1
-    now = datetime.utcnow()
+
+    # Use JST for timestamp
+    jst = timezone(timedelta(hours=9))
+    now = datetime.now(jst)
 
     # update meta
     raw["meta"]["version"] = new_version
     raw["meta"]["updated_at"] = now.isoformat()
+
+    # update rules object as well (since it was validated before meta update)
+    # Re-validate to ensure meta is correct in returned object and history
+    updated_rules = TradingRules.model_validate(raw)
     if "updated_by" not in raw["meta"]:
         raw["meta"]["updated_by"] = "system"
-
-    updated_rules = TradingRules.model_validate(raw)
 
     # 6. 履歴保存
     save_history(old_raw, raw, updated_rules.meta)
