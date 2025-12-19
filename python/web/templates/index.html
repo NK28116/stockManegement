@@ -187,17 +187,17 @@
                             <div>
                                 <span class="text-gray-500">Updated:</span>
                                 <span class="font-mono ml-2">
-  {{
-    new Date(rules.meta?.updated_at)
-      .toLocaleString('ja-JP', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-  }}
-</span>
+                                    {{
+                                    new Date(rules.meta?.updated_at)
+                                    .toLocaleString('ja-JP', {
+                                    year: 'numeric',
+                                    month: '2-digit',
+                                    day: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                    })
+                                    }}
+                                </span>
                             </div>
                             <div>
                                 <span class="text-gray-500">Active:</span>
@@ -257,33 +257,33 @@
                     <!-- Risk Management -->
                     <div class="border-t pt-4">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">Risk Management</h3>
-                        <h4 class="font-medium text-gray-600 mb-2">stop loss percent</h4>
+                        <h4 class="font-medium text-gray-600 mb-2">stop loss ratio</h4>
                         <div>意味：損切りライン</div>
-                        <div>内容：エントリー価格から【{'stopLossPercent'}% 下がったら】自動で損切り</div>
+                        <div>内容：エントリー価格から【{'stopLossRatio'}% 下がったら】自動で損切り</div>
                         <div>目的：大損を防ぐ</div>
-                        <h4 class="font-medium text-gray-600 mb-2">take profit percent</h4>
+                        <h4 class="font-medium text-gray-600 mb-2">take profit ratio</h4>
                         <div>意味：利確ライン</div>
-                        <div>内容：エントリー価格から【{'takeProfitPercent'}% 上がったら】利益確定</div>
+                        <div>内容：エントリー価格から【{'takeProfitRatio'}% 上がったら】利益確定</div>
                         <div>目的：欲張りすぎず利益を確定</div>
-                        <h4 class="font-medium text-gray-600 mb-2">trailing stop percent</h4>
+                        <h4 class="font-medium text-gray-600 mb-2">trailing stop ratio</h4>
                         <div>意味：トレーリングストップ（追従型損切り）</div>
                         <div>内容：価格が上がると損切りラインも追従</div>
-                        <div>高値から 【{'trailingStopPercent'}% 下落したら】決済</div>
+                        <div>高値から 【{'trailingStopRatio'}% 下落したら】決済</div>
                         <div>目的：利益を伸ばしつつ、反転時に利益を守る</div>
                         <h4 class="font-medium text-gray-600 mb-2">risk per trade</h4>
                         <div>意味：1トレードあたりの許容リスク</div>
                         <div>内容：資金の【{'riskPerTrade'}%までしか損しない】ようにポジションサイズを調整</div>
                         <div>例：資金100万円 → 最大損失 2万円/1回</div>
-                        <h4 class="font-medium text-gray-600 mb-2">max daily loss percent</h4>
+                        <h4 class="font-medium text-gray-600 mb-2">max daily loss ratio</h4>
                         <div>意味：1日の最大損失制限</div>
-                        <div>内容：その日の損失が【{'maxDailyLossPercent'}% だけ減ったら】取引停止</div>
+                        <div>内容：その日の損失が【{'maxDailyLossRatio'}% だけ減ったら】取引停止</div>
                         <div>目的：メンタル崩壊＆連続損失を防ぐ</div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div class="border p-3 rounded hover:bg-gray-50" v-for="(val, key) in rules.risk_management"
                                 :key="key">
                                 <label class="block text-sm font-medium text-gray-700 mb-1 capitalize">{{ formatKey(key)
                                     }}</label>
-                                <input type="number" step="any" v-model.number="rules.risk_management[key]"
+                                <input type="number" step="0.01" v-model.number="rules.risk_management[key]"
                                     class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
                             </div>
                         </div>
@@ -292,9 +292,9 @@
                     <!-- Market Filters -->
                     <div class="border-t pt-4">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">Market Filters</h3>
-                        <h4 class="font-medium text-gray-600 mb-2">crash threshold percent</h4>
+                        <h4 class="font-medium text-gray-600 mb-2">crash threshold ratio</h4>
                         <div>意味：急落検知</div>
-                        <div>内容：短時間で【{'crashThresholdPercent'}%以上の下落があったら】「クラッシュ」と判定</div>
+                        <div>内容：短時間で【{'crashThresholdRatio'}%以上の下落があったら】「クラッシュ」と判定</div>
                         <div>用途：新規エントリーを止める</div>
                         <h4 class="font-medium text-gray-600 mb-2">volatility threshold</h4>
                         <div>意味：ボラティリティ（価格変動の大きさ）制限</div>
@@ -310,7 +310,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1 capitalize">{{
                                     formatKey(key)
                                     }}</label>
-                                <input type="number" step="any" v-model.number="rules.filters[key]"
+                                <input type="number" step="0.01" v-model.number="rules.filters[key]"
                                     class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
                             </div>
                         </div>
@@ -348,7 +348,7 @@
                                 <div v-for="(val, key) in rules.indicators?.bollinger" :key="key">
                                     <label class="block text-xs font-medium text-gray-500 mb-1 capitalize">{{
                                         formatKey(key) }}</label>
-                                    <input type="number" step="any" v-model.number="rules.indicators.bollinger[key]"
+                                    <input type="number" step="0.01" v-model.number="rules.indicators.bollinger[key]"
                                         class="w-full border p-1 rounded">
                                 </div>
                             </div>
@@ -364,7 +364,7 @@
                                         <div v-for="(val, key) in rules.indicators?.rsi" :key="key">
                                             <label class="block text-xs font-medium text-gray-500 mb-1 capitalize">{{
                                                 formatKey(key) }}</label>
-                                            <input type="number" step="any" v-model.number="rules.indicators.rsi[key]"
+                                            <input type="number" step="0.01" v-model.number="rules.indicators.rsi[key]"
                                                 class="w-full border p-1 rounded">
                                         </div>
                                     </div>
@@ -496,7 +496,7 @@
                     this.expandedCharts[code] = !this.expandedCharts[code]
                 },
                 formatKey(key) {
-                    return key.replace(/_/g, ' ')
+                    return key.replace(/_/g, ' ').replace('percent', 'ratio')
                 },
                 formatPrice(value) {
                     if (!value) return '-'
@@ -711,7 +711,7 @@
                     }
 
                     // Pre-save validations (client-side)
-                    if (this.rules.risk_management.stop_loss_percent > 0.1) {
+                    if (this.rules.risk_management.stop_loss_ratio > 0.1) {
                         this.warnings.push('High Stop Loss detected (>10%)')
                     }
 

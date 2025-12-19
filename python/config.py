@@ -57,7 +57,6 @@ class Config:
         self.default_portfolio_file = self.root_dir / "data" / "my_stock.csv"
 
         # アラート設定
-        # アラート設定
         self.slack_webhook = secret_manager.get_secret(
             "SLACK_WEBHOOK", os.getenv("SLACK_WEBHOOK", "{SLACK_WEBHOOK}")
         )
@@ -68,7 +67,6 @@ class Config:
             "SLACK_CHANNEL", os.getenv("SLACK_CHANNEL", "")
         )
 
-        # 証券会社API
         # 証券会社API
         self.XXXX_API_KEY = secret_manager.get_secret(
             "XXXX_API_KEY", os.getenv("XXXX_API_KEY", "")
