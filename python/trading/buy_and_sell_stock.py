@@ -122,7 +122,7 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
             # 全部売却の形になった場合は0で保持
             df.at[i, "quantity"] = 0
             if "status" in df.columns:
-                df.at[i, "status"] = "売却済"
+                df.at[i, "status"] = "売却"
             df = df.drop(idx).reset_index(drop=True)  # 保有数が0になったら行を削除
         else:
             # 加重平均は購入時（qty > 0）のみ計算
@@ -183,6 +183,51 @@ def add_transaction(
             conn.close()
 
 
+def sell_stock(code: str, sell_type: str) -> dict:
+    """
+    Sell a stock and update its status.
+    This is intended to be called from the API.
+    """
+    path = config.codes_path
+    try:
+        df = load_codes(path)
+    except FileNotFoundError:
+        return {"error": f"File not found: {path}"}
+
+    idx = df.index[df["code"] == code]
+    if len(idx) == 0:
+        return {"error": f"Stock code {code} not found."}
+
+    i = idx[0]
+    quantity_to_sell = int(df.at[i, "quantity"])
+
+    if quantity_to_sell <= 0:
+        return {"error": f"No quantity to sell for {code}."}
+
+    # Set status based on sell_type
+    if sell_type == "profit":
+        status = "売却（利益確定）"
+    elif sell_type == "loss":
+        status = "売却（損切り）"
+    else:
+        return {"error": "Invalid sell_type specified. Must be 'profit' or 'loss'."}
+
+    df.at[i, "quantity"] = 0
+    df.at[i, "status"] = status
+
+    # Optional: You might want to remove the row from the active portfolio view
+    # For now, we keep it with 0 quantity and a sold status.
+
+    save_codes(df, path)
+
+    message = f"Sold: {code} ({quantity_to_sell} shares) - Status: {status}"
+    print(message)
+    # from python.utils.alert import send_alert
+    # send_alert(message, level="INFO")
+
+    return {"message": message}
+
+
 def sell(
     df: pd.DataFrame, code: str, qty: int, profit_loss_status: str | None = None
 ) -> pd.DataFrame:
@@ -199,10 +244,10 @@ def sell(
     df.at[i, "quantity"] = new_q
     if new_q == 0:
         if "status" in df.columns:
-            if profit_loss_status in ["売却済（利益確定）", "売却済（損切り）"]:
+            if profit_loss_status in ["売却（利益確定）", "売却（損切り）"]:
                 df.at[i, "status"] = profit_loss_status
             else:
-                df.at[i, "status"] = "売却済"
+                df.at[i, "status"] = "売却"
         # 平均取得単価はそのまま保持（必要なら0にする: df.at[i,"purchase_price"]=0.0）
         df = df.drop(idx).reset_index(drop=True)  # 保有数が0になったら行を削除
     else:
@@ -230,8 +275,8 @@ def refresh_prices(df: pd.DataFrame, target_code: str | None = None) -> pd.DataF
         "監視中",
         "保有中",
         "次回のスイングで購入",
-        "売却済（利益確定）",
-        "売却済（損切り）",
+        "売却（利益確定）",
+        "売却（損切り）",
         "除外",
     ]
 
@@ -247,15 +292,15 @@ def refresh_prices(df: pd.DataFrame, target_code: str | None = None) -> pd.DataF
         qty = int(row.get("quantity", 0) or 0)
         status = str(row.get("status", "")).strip()
 
-        # quantityが0で、かつ有効な売却済みステータスではない場合は削除対象
+        # quantityが0で、かつ有効な売却みステータスではない場合は削除対象
         # ただし、'除外'ステータスはquantityが0でなくても残す可能性があるため、別途考慮
         if qty == 0 and status not in [
-            "売却済（利益確定）",
-            "売却済（損切り）",
+            "売却（利益確定）",
+            "売却（損切り）",
             "除外",
         ]:
             print(
-                f"銘柄 {code} は保有数が0で、かつ有効な売却済みステータスではないため削除します。"
+                f"銘柄 {code} は保有数が0で、かつ有効な売却みステータスではないため削除します。"
             )
             continue  # この行はrows_to_keepに追加しない
 
@@ -394,8 +439,8 @@ def main():
             "監視中",
             "保有中",
             "次回のスイングで購入",
-            "売却済（利益確定）",
-            "売却済（損切り）",
+            "売却（利益確定）",
+            "売却（損切り）",
             "除外",
         ],
         help="ステータスを直接指定",
@@ -408,7 +453,7 @@ def main():
         "--profit_loss_status",
         type=str,
         default=None,
-        help="売却済（利益確定） / 売却済（損切り）",
+        help="売却（利益確定） / 売却（損切り）",
     )
 
     p_refresh = sub.add_parser("refresh")
@@ -425,8 +470,8 @@ def main():
             "監視中",
             "保有中",
             "次回のスイングで購入",
-            "売却済（利益確定）",
-            "売却済（損切り）",
+            "売却（利益確定）",
+            "売却（損切り）",
             "除外",
         ],
         help="ステータスを選択",
@@ -510,8 +555,8 @@ def main():
                     "監視中",
                     "保有中",
                     "次回のスイングで購入",
-                    "売却済（利益確定）",
-                    "売却済（損切り）",
+                    "売却（利益確定）",
+                    "売却（損切り）",
                     "除外",
                 ]
                 purpose_choices = ["present", "middle", "long", "swing"]
