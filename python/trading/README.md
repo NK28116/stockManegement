@@ -46,16 +46,16 @@
 3. **株の売却 (`sell`)**:
     - 指定した銘柄を数量売却し、`my_stock.csv`を更新します。
     - 保有数が0になった場合、`my_stock.csv`から該当行を削除します。
-    - `--profit_loss_status`オプションで売却ステータス（`売却済（利益確定）`, `売却済（損切り）`）を指定できます。
+    - `--profit_loss_status`オプションで売却ステータス（`売却（利益確定）`, `売却（損切り）`）を指定できます。
 
     ```bash
-    python3 -m python.trading.buy_and_sell_stock sell 6758.T 5 --profit_loss_status 売却済（利益確定）
+    python3 -m python.trading.buy_and_sell_stock sell 6758.T 5 --profit_loss_status 売却（利益確定）
     ```
 
 4. **CSVの更新とクリーンアップ (`refresh`)**:
     - `my_stock.csv`の現在価格、損益などを更新します。
     - `my_stock.csv`に`sector`カラムが存在し`purpose`カラムが存在しない場合、`sector`を`purpose`に自動リネームします。
-    - `quantity`が0で、かつ`status`が`売却済（利益確定）`, `売却済（損切り）`, `除外`以外の行、または無効な`status`を持つ行をCSVから削除します。
+    - `quantity`が0で、かつ`status`が`売却（利益確定）`, `売却（損切り）`, `除外`以外の行、または無効な`status`を持つ行をCSVから削除します。
 
     ```bash
     python3 -m python.trading.buy_and_sell_stock refresh
