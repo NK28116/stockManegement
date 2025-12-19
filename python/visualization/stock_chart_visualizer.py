@@ -4,14 +4,17 @@
 """
 
 import datetime
+import json
 import logging
 import os
+import platform
 import sys
 import warnings
 from typing import Dict, List, Optional
 
 import matplotlib
 import matplotlib.dates as mdates
+import matplotlib.font_manager as fm
 import matplotlib.pyplot as plt
 import pandas as pd
 import yfinance as yf
@@ -19,6 +22,7 @@ from dotenv import load_dotenv
 
 from python.config import config
 from python.trading.trading_rules import ImprovedTradingRules
+from python.utils.indicators import calculate_rsi
 from python.visualization.plot_indicators import plot_macd_bollinger
 
 # from python.web.services.rule_store import get_rule_store # module missing error
@@ -33,21 +37,26 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 sys.path.append(os.path.join(parent_dir, "trading"))
 # Set font with fallbacks - suppress font warnings
+# Set font with fallbacks - suppress font warnings
 
+# Detect OS and set appropriate Japanese font
+system = platform.system()
+if system == "Darwin":  # macOS
+    # Prefer Hiragino Sans (modern macOS standard)
+    font_names = [f.name for f in fm.fontManager.ttflist]
+    if "Hiragino Sans" in font_names:
+        matplotlib.rcParams["font.family"] = "Hiragino Sans"
+    elif "Hiragino Kaku Gothic ProN" in font_names:
+        matplotlib.rcParams["font.family"] = "Hiragino Kaku Gothic ProN"
+    # Fallback to japanize_matplotlib or default if specific fonts not found
+elif system == "Windows":
+    # Windows defaults (often handled well by japanize_matplotlib, but explicit is safer)
+    matplotlib.rcParams["font.family"] = ["Meiryo", "Yu Gothic", "MS Gothic"]
 
-# font_path = "/usr/share/fonts/opentype/ipaexfont-gothic/ipaexg.ttf"
-# font_prop = fm.FontProperties(fname=font_path)
-# matplotlib.rcParams["font.family"] = (
-#     font_prop.get_name()
-# )  # 日本語対応（configから取得）
-
-# デフォルトに戻す
-matplotlib.rcParams["font.family"] = "sans-serif"
 # マイナス記号の文字化け対策
 matplotlib.rcParams["axes.unicode_minus"] = False
+
 # Suppress font warning messages
-
-
 matplotlib_logger = logging.getLogger("matplotlib.font_manager")
 matplotlib_logger.setLevel(logging.ERROR)
 
@@ -321,6 +330,7 @@ class StockChartVisualizer:
         price_data = {}
         indicators = {}
         stock_names = {}
+        latest_indicator_values = {}  # 最新の指標値を保存用
 
         for i, stock_info in enumerate(stocks, 1):
             try:
@@ -352,11 +362,72 @@ class StockChartVisualizer:
                 macd_df["Signal"] = macd_df["MACD"].ewm(span=9, adjust=False).mean()
                 macd_df["Histogram"] = macd_df["MACD"] - macd_df["Signal"]
 
+                # --- RSI ---
+                rsi_series = calculate_rsi(df["Close"])
+
                 indicators[stock_info["code"]] = {"Bollinger": bb_df, "MACD": macd_df}
+
+                # --- 最新の値を取得して保存 ---
+                if not df.empty:
+                    latest_idx = df.index[-1]
+                    latest_vals = {
+                        "date": latest_idx.strftime("%Y-%m-%d"),
+                        "close": float(df.iloc[-1]["Close"]),
+                        "macd": {
+                            "macd": (
+                                float(macd_df.iloc[-1]["MACD"])
+                                if not pd.isna(macd_df.iloc[-1]["MACD"])
+                                else None
+                            ),
+                            "signal": (
+                                float(macd_df.iloc[-1]["Signal"])
+                                if not pd.isna(macd_df.iloc[-1]["Signal"])
+                                else None
+                            ),
+                            "histogram": (
+                                float(macd_df.iloc[-1]["Histogram"])
+                                if not pd.isna(macd_df.iloc[-1]["Histogram"])
+                                else None
+                            ),
+                        },
+                        "bollinger": {
+                            "upper": (
+                                float(bb_df.iloc[-1]["Upper"])
+                                if not pd.isna(bb_df.iloc[-1]["Upper"])
+                                else None
+                            ),
+                            "middle": (
+                                float(bb_df.iloc[-1]["Middle"])
+                                if not pd.isna(bb_df.iloc[-1]["Middle"])
+                                else None
+                            ),
+                            "lower": (
+                                float(bb_df.iloc[-1]["Lower"])
+                                if not pd.isna(bb_df.iloc[-1]["Lower"])
+                                else None
+                            ),
+                        },
+                        "rsi": (
+                            float(rsi_series.iloc[-1])
+                            if not pd.isna(rsi_series.iloc[-1])
+                            else None
+                        ),
+                    }
+                    latest_indicator_values[stock_info["code"]] = latest_vals
 
             except Exception as e:
                 print(f"  エラー: {stock_info['code']} - {e}")
                 continue
+
+        # --- JSONファイルに保存 ---
+        if not self.is_test_mode and latest_indicator_values:
+            json_path = os.path.join(config.data_dir, "latest_indicators.json")
+            try:
+                with open(json_path, "w", encoding="utf-8") as f:
+                    json.dump(latest_indicator_values, f, ensure_ascii=False, indent=2)
+                print(f"最新指標値を保存しました: {json_path}")
+            except Exception as e:
+                print(f"最新指標値の保存に失敗: {e}")
 
         # --- プロット呼び出し ---
         if price_data and indicators:
@@ -541,6 +612,7 @@ def main():
     # Available portfolios
     portfolios = [
         "my_stock.csv",  # 実際の運用用
+        "data/my_stock_local.csv",  # ローカル開発用
         "portfolio_practice.csv",  # 練習用
         "portfolio_beginner.csv",
         "portfolio_diversified.csv",
@@ -553,6 +625,8 @@ def main():
     for i, portfolio in enumerate(portfolios, 1):
         if portfolio == "my_stock.csv":
             print(f"{i}. {portfolio} (実際の運用用)")
+        elif portfolio == "data/my_stock_local.csv":
+            print(f"{i}. {portfolio} (ローカル開発用)")
         else:
             print(f"{i}. {portfolio} (練習用)")
 

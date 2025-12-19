@@ -18,3 +18,5 @@ sqlalchemy
 alembic
 google-cloud-secret-manager
 google-cloud-logging
+japanize-matplotlib
+setuptools

@@ -28,7 +28,7 @@ def calculate_macd(
     return df
 
 
-__all__ = ["calculate_bollinger_bands", "detect_sharp_decline"]
+__all__ = ["calculate_bollinger_bands", "detect_sharp_decline", "calculate_rsi"]
 
 
 def calculate_bollinger_bands(
@@ -49,6 +49,27 @@ def calculate_bollinger_bands(
     lower = ma - (std * num_std)
     df = pd.DataFrame({"MA": ma, "Upper": upper, "Lower": lower})
     return df
+
+
+def calculate_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
+    """
+    RSI (Relative Strength Index) を計算する
+    Args:
+        prices: 株価シリーズ（終値）
+        period: 計算期間 (デフォルト14)
+    Returns:
+        Series: RSI値 (0-100)
+    """
+    delta = prices.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+
+    # Avoid division by zero
+    loss = loss.replace(0, 1e-10)
+
+    rs = gain / loss
+    rsi = 100 - (100 / (1 + rs))
+    return rsi
 
 
 def detect_sharp_decline(
@@ -106,6 +127,10 @@ if __name__ == "__main__":
     print("\n=== Bollinger Bands ===")
     print(bb_df.tail())
 
-    sharp_decline_df = detect_sharp_decline(prices, decline_threshold=0.02)
     print("\n=== Sharp Declines ===")
+    sharp_decline_df = detect_sharp_decline(prices)
     print(sharp_decline_df)
+
+    rsi_df = calculate_rsi(prices)
+    print("\n=== RSI ===")
+    print(rsi_df.tail())
