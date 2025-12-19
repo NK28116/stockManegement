@@ -4,14 +4,29 @@ import requests
 from dotenv import load_dotenv
 
 from python.utils.logger import get_logger
+from python.utils.secret_manager import get_secret
 
 load_dotenv()
 logger = get_logger("upload_file", category="system")
 
 
 class Slack:
-    def __init__(self, token):
+    def __init__(self, token=None):
+        """
+        Slackクライアントを初期化する。
+        tokenが指定されていない場合、環境変数 SLACK_BOT_TOKEN、
+        次に Secret Manager からの取得を試みる。
+        """
         self.token = token
+
+        if not self.token:
+            self.token = os.environ.get("SLACK_BOT_TOKEN")
+
+        if not self.token:
+            self.token = get_secret("SLACK_BOT_TOKEN")
+
+        if not self.token:
+            logger.warning("Slack token could not be found in args, env vars, or Secret Manager.")
 
     def send_message_to_slack(self, channel_id, message: str):
         """
@@ -22,6 +37,10 @@ class Slack:
         :raises ValueError: メッセージが指定されていない場合
         :raises Exception: API呼び出しが失敗した場合
         """
+        if not self.token:
+            logger.error("Slack token is not configured.")
+            return {"ok": False, "error": "token_not_configured"}
+
         if message is None or not message.strip():
             raise ValueError("メッセージが指定されていません。")
 
@@ -45,8 +64,7 @@ class Slack:
 
 
 if __name__ == "__main__":
-    token = os.environ.get("SLACK_BOT_TOKEN")
-    slack = Slack(token)
+    slack = Slack()
     slack.send_message_to_slack(
         channel_id=os.environ.get("SLACK_CHANNEL"),
         message="テストメッセージを送信します。",
