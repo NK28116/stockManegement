@@ -29,6 +29,44 @@ class SellRequest(BaseModel):
     sell_type: str  # 'profit' or 'loss'
 
 
+class BuyRequest(BaseModel):
+    quantity: int
+    price: Optional[float] = None
+    purpose: Optional[str] = None
+
+
+@router.post("/buy/{code}")
+async def buy_stock(code: str, buy_request: BuyRequest):
+    """
+    指定された銘柄コードの株を購入するAPIエンドポイント。
+    """
+    try:
+        # 既存のCSVファイルを読み込む
+        df = buy_and_sell_stock.load_codes(buy_and_sell_stock.config.codes_path)
+
+        # buy関数を呼び出してデータフレームを更新
+        updated_df = buy_and_sell_stock.buy(
+            df, code, buy_request.quantity, buy_request.price
+        )
+
+        # purposeが指定されていれば更新
+        if buy_request.purpose and code in updated_df["code"].values:
+            updated_df.loc[updated_df["code"] == code, "purpose"] = buy_request.purpose
+
+        # 更新されたデータフレームをCSVファイルに保存
+        buy_and_sell_stock.save_codes(updated_df, buy_and_sell_stock.config.codes_path)
+
+        return {
+            "status": "success",
+            "message": f"Successfully bought {buy_request.quantity} of {code}.",
+        }
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Portfolio file not found.")
+    except Exception as e:
+        logger.error(f"Error buying stock {code}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/sell/{code}")
 async def sell_stock(code: str, sell_request: SellRequest):
     try:
