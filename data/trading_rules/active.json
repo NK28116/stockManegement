@@ -1,14 +1,14 @@
 {
   "meta": {
-    "version": 4,
+    "version": 6,
     "description": "Default Rules (Fallback)",
-    "updated_at": "2025-12-19T10:02:39.520285+09:00",
+    "updated_at": "2025-12-19T10:33:46.422679+09:00",
     "updated_by": "system",
     "comment": null,
     "active": true
   },
   "risk_management": {
-    "stop_loss_percent": 2.05,
+    "stop_loss_percent": 0.06,
     "take_profit_percent": 2.1,
     "trailing_stop_percent": 2.03,
     "risk_per_trade": 0.02,
@@ -63,6 +63,6 @@
     "volatility_threshold": 3.0,
     "volume_spike_threshold": 2.0
   },
-  "change_reason": "Regular Update",
+  "change_reason": "Testing",
   "change_note": ""
 }
