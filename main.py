@@ -23,9 +23,12 @@ from python.analysis.portfolio_analyzer import PortfolioAnalyzer
 from python.config import config
 from python.db import dump_csv
 from python.trading import every_stock_buy_and_sell_timing
-from python.trading.trading_rules import generate_trading_report, ImprovedTradingRules # generate_trading_report と ImprovedTradingRules を追加
-from google.cloud import storage # Cloud Storageアップロード用
-from python.utils.decode_mojibake import decode_mojibake_file # 文字化け解消用
+from python.trading.trading_rules import (
+    generate_trading_report,
+    ImprovedTradingRules,
+)  # generate_trading_report と ImprovedTradingRules を追加
+from google.cloud import storage  # Cloud Storageアップロード用
+from python.utils.decode_mojibake import decode_mojibake_file  # 文字化け解消用
 from python.utils.logger import get_logger
 from python.utils.monitor import (  # monitorタスク用
     api_call_count,
@@ -44,7 +47,7 @@ from python.visualization import generate_all_charts
 from python.watch.analyze import analyze_daily_data as run_analyze_daily_data
 from python.watch.analyze import analyze_minute_data as run_analyze_intraday_data
 from python.watch.dailyAggregator import aggregate_intraday_to_daily
-from python.watch.file_monitor import start_file_monitor # 追加
+from python.watch.file_monitor import start_file_monitor  # 追加
 from python.watch.watch import run_once_with_crash_check  # watchタスク用
 
 load_dotenv()
@@ -62,6 +65,7 @@ logger = get_logger("main_task", category="task")
 
 analyzer = PortfolioAnalyzer()
 
+
 def upload_report_to_gcs(local_file_path: str, gcs_blob_path: str, bucket_name: str):
     """
     指定されたローカルファイルをCloud Storageにアップロードし、
@@ -72,10 +76,7 @@ def upload_report_to_gcs(local_file_path: str, gcs_blob_path: str, bucket_name: 
         bucket = client.bucket(bucket_name)
         blob = bucket.blob(gcs_blob_path)
 
-        blob.upload_from_filename(
-            local_file_path,
-            content_type="text/plain; charset=utf-8"
-        )
+        blob.upload_from_filename(local_file_path, content_type="text/plain; charset=utf-8")
         logger.info(f"レポートをGCSにアップロードしました: gs://{bucket_name}/{gcs_blob_path}")
     except Exception as e:
         logger.error(f"GCSへのレポートアップロード中にエラーが発生しました: {e}")
@@ -108,7 +109,8 @@ def run_daily_task(is_test_mode: bool = False):
 
         # 4. レポートファイルをCloud Storageにアップロード
         # バケット名はscripts/send_report.shから取得
-        GCS_BUCKET_NAME = "stock-managemet-report-file"
+        # バケット名は環境変数から取得（デフォルトは本番用）
+        GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "stock-management-prod")
 
         # サマリーレポートのアップロード
         summary_report_dir = config.root_dir / "data" / "report" / "daily" / "summary"
@@ -119,7 +121,7 @@ def run_daily_task(is_test_mode: bool = False):
                 gcs_summary_blob_path = f"data/report/daily/summary/{Path(latest_summary_report_path).name}"
                 upload_report_to_gcs(latest_summary_report_path, gcs_summary_blob_path, GCS_BUCKET_NAME)
                 logger.info(f"最新の日次サマリーレポートをデコードします: {latest_summary_report_path}")
-                decode_mojibake_file(latest_summary_report_path) # デコード処理もここに移動
+                decode_mojibake_file(latest_summary_report_path)  # デコード処理もここに移動
             else:
                 logger.info("日次サマリーレポートが見つかりませんでした。")
         else:
@@ -191,9 +193,9 @@ def run_monthly_task(is_test_mode: bool = False):
     all_trades = []
     for _, row in all_stocks_df.iterrows():
         code = row["code"]
-        df_stock = analyzer.fetch_stock_data(code, period="6mo") # 6ヶ月分のデータで分析
+        df_stock = analyzer.fetch_stock_data(code, period="6mo")  # 6ヶ月分のデータで分析
         if df_stock is not None and not df_stock.empty:
-            rules = ImprovedTradingRules() # ImprovedTradingRulesをインポートする必要がある
+            rules = ImprovedTradingRules()  # ImprovedTradingRulesをインポートする必要がある
             trades_for_stock = rules.analyze_with_improved_rules(df_stock)
             all_trades.extend(trades_for_stock)
 
