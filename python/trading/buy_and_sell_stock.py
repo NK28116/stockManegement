@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import io
 import os
 from datetime import datetime
 
@@ -8,6 +9,7 @@ from psycopg2 import Error as PgError
 
 from python.config import config
 from python.db.database import get_db_connection
+from python.utils.gcs_client import gcs
 
 try:
     import yfinance as yf
@@ -29,9 +31,20 @@ __all__ = [
 
 
 def load_codes(path: str) -> pd.DataFrame:
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"ファイルがありません: {path}")
-    df = pd.read_csv(path)
+    df = None
+    if gcs.use_gcs:
+        try:
+            content = gcs.get_file_content("my_stock.csv")
+            if content:
+                df = pd.read_csv(io.BytesIO(content))
+                print("Loaded my_stock.csv from GCS")
+        except Exception as e:
+            print(f"Failed to load from GCS: {e}")
+
+    if df is None:
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"ファイルがありません: {path}")
+        df = pd.read_csv(path)
     expected = [
         "code",
         "name",
@@ -79,6 +92,17 @@ def load_codes(path: str) -> pd.DataFrame:
 
 
 def save_codes(df: pd.DataFrame, path: str):
+    if gcs.use_gcs:
+        try:
+            csv_str = df.to_csv(index=False, encoding="utf-8")
+            blob = gcs.bucket.blob("my_stock.csv")
+            blob.upload_from_string(csv_str, content_type="text/csv")
+            print("更新完了 (GCS): my_stock.csv")
+            return
+        except Exception as e:
+            print(f"Failed to save to GCS: {e}")
+            # Fallback to local save if GCS fails (though redundant in stateless container)
+
     df.to_csv(path, index=False, encoding="utf-8")
     print(f"更新完了: {os.path.relpath(path, os.path.dirname(__file__))}")
 

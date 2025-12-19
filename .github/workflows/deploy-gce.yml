@@ -1,0 +1,24 @@
+name: Deploy to GCE
+
+on:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+
+jobs:
+    deploy-gce:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Deploy to GCE via SSH
+              uses: appleboy/ssh-action@v1.0.3
+              with:
+                  host: ${{ secrets.GCE_HOST }}
+                  username: ${{ secrets.GCE_USERNAME }}
+                  key: ${{ secrets.GCE_SSH_KEY }}
+                  port: 22
+                  script: |
+                      cd /home/${{ secrets.GCE_USERNAME }}/stockManegement
+                      git pull origin main
+                      # Optional: Update dependencies if requirements.txt changed
+                      # pip install -r requirements.txt

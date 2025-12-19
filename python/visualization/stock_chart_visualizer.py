@@ -4,6 +4,7 @@
 """
 
 import datetime
+import io
 import json
 import logging
 import os
@@ -22,6 +23,7 @@ from dotenv import load_dotenv
 
 from python.config import config
 from python.trading.trading_rules import ImprovedTradingRules
+from python.utils.gcs_client import gcs
 from python.utils.indicators import calculate_rsi
 from python.visualization.plot_indicators import plot_macd_bollinger
 
@@ -122,9 +124,20 @@ class StockChartVisualizer:
     def load_portfolio_stocks(self, portfolio_file: str) -> List[Dict]:
         """ポートフォリオファイルから株式リストを読み込み"""
         try:
+            df = None
             # 実際の運用用のmy_stock.csvを使用
             if portfolio_file == "my_stock.csv":
-                portfolio_path = config.codes_path
+                if gcs.use_gcs:
+                    try:
+                        content = gcs.get_file_content("my_stock.csv")
+                        if content:
+                            df = pd.read_csv(io.BytesIO(content))
+                            print("Loaded portfolio from GCS: my_stock.csv")
+                    except Exception as e:
+                        print(f"Failed to load portfolio from GCS: {e}")
+
+                if df is None:
+                    portfolio_path = config.codes_path
             elif portfolio_file == "data/my_stock_local.csv":
                 # Local path
                 portfolio_path = "data/my_stock_local.csv"
@@ -132,7 +145,8 @@ class StockChartVisualizer:
                 portfolio_path = str(config.data_dir) + f"/practice/{portfolio_file}"
                 # config.data_dir might be a Path object
 
-            df = pd.read_csv(portfolio_path)
+            if df is None:
+                df = pd.read_csv(portfolio_path)
 
             stocks = []
             for _, row in df.iterrows():
