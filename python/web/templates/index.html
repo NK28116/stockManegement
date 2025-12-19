@@ -23,6 +23,10 @@
                     :class="['px-4 py-2 rounded', currentTab === 'dashboard' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700']">
                     Dashboard
                 </button>
+                <button @click="currentTab = 'simulation'"
+                    :class="['px-4 py-2 rounded', currentTab === 'simulation' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700']">
+                    Simulation
+                </button>
                 <button @click="currentTab = 'settings'"
                     :class="['px-4 py-2 rounded', currentTab === 'settings' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700']">
                     Settings
@@ -155,6 +159,61 @@
             </table>
         </div>
 
+        <!-- Simulation Tab -->
+        <div v-if="currentTab === 'simulation'" class="max-w-4xl mx-auto">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">Backtest Simulation</h2>
+                <p class="text-gray-600 mb-4">
+                    Run a backtest using the current <strong>Draft Rules</strong> against historical data for
+                    <strong>7203.T</strong>.
+                </p>
+
+                <div class="flex items-center gap-4 mb-6">
+                    <button @click="runSimulation" :disabled="simulating"
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded font-bold disabled:opacity-50">
+                        {{ simulating ? 'Running Simulation...' : 'Run Backtest' }}
+                    </button>
+                    <span v-if="simulationTime" class="text-sm text-gray-500">Last run: {{ simulationTime }}</span>
+                </div>
+
+                <div v-if="simulationResult" class="border rounded p-4 bg-gray-50">
+                    <h3 class="font-bold text-lg mb-2">Results for {{ simulationResult.symbol }} ({{
+                        simulationResult.period_days }} days)</h3>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div class="bg-white p-3 rounded shadow-sm border">
+                            <div class="text-gray-500 text-xs uppercase">Total Return</div>
+                            <div class="text-2xl font-bold"
+                                :class="simulationResult.metrics.total_return >= 0 ? 'text-green-600' : 'text-red-600'">
+                                {{ formatPercent(simulationResult.metrics.total_return * 100) }}
+                            </div>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm border">
+                            <div class="text-gray-500 text-xs uppercase">Win Rate</div>
+                            <div class="text-2xl font-bold text-blue-600">
+                                {{ formatPercent(simulationResult.metrics.win_rate * 100) }}
+                            </div>
+                            <div class="text-xs text-gray-400">{{ simulationResult.trade_count }} trades</div>
+                        </div>
+                        <div class="bg-white p-3 rounded shadow-sm border">
+                            <div class="text-gray-500 text-xs uppercase">Max Drawdown</div>
+                            <div class="text-2xl font-bold text-red-600">
+                                {{ formatPercent(simulationResult.metrics.max_drawdown * 100) }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="simulationResult.risk_flags && simulationResult.risk_flags.length > 0"
+                        class="mt-4 p-3 bg-yellow-100 rounded text-yellow-800 text-sm">
+                        <div class="font-bold mb-1">⚠️ Risk Warnings Detected in Rules:</div>
+                        <ul class="list-disc ml-5">
+                            <li v-for="flag in simulationResult.risk_flags" :key="flag">{{ flag }}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Settings Tab -->
         <div v-if="currentTab === 'settings'" class="max-w-4xl mx-auto">
             <div class="bg-white p-6 rounded-lg shadow">
@@ -210,13 +269,20 @@
 
                         <!-- History Section -->
                         <div class="mt-4 border-t pt-4">
-                            <h4 class="font-bold text-gray-600 mb-2">【更新履歴】</h4>
+                            <h4 class="font-bold text-gray-600 mb-2">
+                                【更新履歴】(最新5件) :ロールバックは直前のみ許可
+                            </h4>
                             <div v-if="loadingHistory" class="text-gray-400 text-sm">Loading history...</div>
                             <div v-else class="text-sm space-y-1 font-mono text-gray-700 bg-white p-2 rounded border">
-                                <div v-for="h in historyLogs" :key="h.version">
+                                <div v-for="h in historyLogs.slice(0, 5)" :key="h.version">
                                     {{ h.log }}
                                 </div>
                                 <div v-if="historyLogs.length === 0" class="text-gray-400">履歴なし</div>
+                            </div>
+                            <div>
+                                <button @click="rollbackRules" class="mt-2 text-red-500 hover:underline">
+                                    1つ前に戻る
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -457,6 +523,7 @@
                     loadingRules: false,
                     loadingHistory: false,
                     historyLogs: [],
+                    historyList: [],
                     saving: false,
                     message: '',
                     messageType: '',
@@ -467,6 +534,9 @@
                     warnings: [],
                     riskFlags: [], // Flags from API
                     originalRules: {},
+                    simulating: false,
+                    simulationResult: null,
+                    simulationTime: null,
                     actionStatus: {
                         can_update: true,
                         cooldown_remaining_minutes: 0,
@@ -570,6 +640,7 @@
 
                         // Sort by version desc
                         index.sort((a, b) => b.version - a.version)
+                        this.historyList = index
 
                         const logs = []
                         // Limit to last 5 for UI or fetch details for each
@@ -635,6 +706,46 @@
                         // Silent fail or show empty
                     } finally {
                         this.loadingHistory = false
+                    }
+                },
+                async rollbackRules() {
+                    if (!this.historyList || this.historyList.length < 2) {
+                        alert("戻せる履歴がありません。");
+                        return;
+                    }
+                    const prev = this.historyList[1];
+                    if (!confirm(`バージョン ${prev.version} (${new Date(prev.applied_at).toLocaleString()}) の設定に戻しますか？\n現在の設定内容は上書きされます。`)) {
+                        return;
+                    }
+
+                    this.loadingRules = true;
+                    try {
+                        const res = await fetch(`/api/rules/history/${prev.version}`);
+                        if (!res.ok) throw new Error("履歴データの取得に失敗しました。");
+                        const oldData = await res.json();
+
+                        // History data is wrapped in { meta, rules, diff }
+                        // We need to extract the actual rules object
+                        if (oldData.rules) {
+                            this.rules = oldData.rules;
+                        } else {
+                            this.rules = oldData;
+                        }
+
+                        this.rules.change_reason = "Other";
+                        this.rules.change_note = `Rollback to version ${prev.version}`;
+
+                        // saveRulesを呼び出し、その完了を待つ
+                        await this.saveRules();
+
+                    } catch (e) {
+                        console.error('Rollback Error:', e);
+                        this.message = 'Rollback Error: ' + e.message;
+                        this.messageType = 'error';
+                    } finally {
+                        // 成功・失敗に関わらず、ローディング状態を解除
+                        this.loadingRules = false;
+                        console.log('Rollback process finished.');
                     }
                 },
                 async fetchActionStatus() {
@@ -777,6 +888,19 @@
                 applyRulesConfirmed() {
                     // Call saveRules with force=true
                     this.saveRules(true)
+                },
+                async runSimulation() {
+                    this.simulating = true
+                    try {
+                        const res = await fetch('/api/simulate/simulate', { method: 'POST' })
+                        if (!res.ok) throw new Error("Simulation failed")
+                        this.simulationResult = await res.json()
+                        this.simulationTime = new Date().toLocaleString()
+                    } catch (e) {
+                        alert("Simulation Error: " + e.message)
+                    } finally {
+                        this.simulating = false
+                    }
                 }
             }
         }).mount('#app')

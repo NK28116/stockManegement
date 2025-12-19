@@ -34,5 +34,71 @@
     "applied_at": "2025-12-19T10:33:46.422679+09:00",
     "applied_by": "system",
     "comment": null
+  },
+  {
+    "version": 7,
+    "applied_at": "2025-12-19T18:00:52.603985+09:00",
+    "applied_by": "system",
+    "comment": null
+  },
+  {
+    "version": 8,
+    "applied_at": "2025-12-19T18:10:29.981018+09:00",
+    "applied_by": "system",
+    "comment": null
+  },
+  {
+    "version": 9,
+    "applied_at": "2025-12-19T18:11:35.949862+09:00",
+    "applied_by": "system",
+    "comment": null
+  },
+  {
+    "version": 10,
+    "applied_at": "2025-12-19T18:12:53.337378+09:00",
+    "applied_by": "system",
+    "comment": null
+  },
+  {
+    "version": 11,
+    "applied_at": "2025-12-19T18:32:37.920827+09:00",
+    "applied_by": "system",
+    "comment": null
+  },
+  {
+    "version": 12,
+    "applied_at": "2025-12-19T18:59:29.660051+09:00",
+    "applied_by": "system",
+    "comment": null
+  },
+  {
+    "version": 13,
+    "applied_at": "2025-12-19T18:59:37.963243+09:00",
+    "applied_by": "system",
+    "comment": null
+  },
+  {
+    "version": 14,
+    "applied_at": "2025-12-19T19:02:42.855494+09:00",
+    "applied_by": "system",
+    "comment": null
+  },
+  {
+    "version": 15,
+    "applied_at": "2025-12-19T19:05:56.538337+09:00",
+    "applied_by": "system",
+    "comment": null
+  },
+  {
+    "version": 16,
+    "applied_at": "2025-12-19T19:06:13.811289+09:00",
+    "applied_by": "system",
+    "comment": null
+  },
+  {
+    "version": 17,
+    "applied_at": "2025-12-19T19:06:25.368092+09:00",
+    "applied_by": "system",
+    "comment": null
   }
 ]

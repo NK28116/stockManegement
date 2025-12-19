@@ -215,8 +215,10 @@ def apply_rules(force: bool = False):
     # update rules object as well (since it was validated before meta update)
     # Re-validate to ensure meta is correct in returned object and history
     updated_rules = TradingRules.model_validate(raw)
-    if "updated_by" not in raw["meta"]:
+    if "updated_by" not in raw["meta"] or not raw["meta"]["updated_by"]:
         raw["meta"]["updated_by"] = "system"
+    if "comment" not in raw["meta"]:
+        raw["meta"]["comment"] = ""
 
     # 6. 履歴保存
     save_history(old_raw, raw, updated_rules.meta)
