@@ -311,12 +311,12 @@ gs://stock-management-prod/
 
 * [ ] cron 有効化
 * [ ] 監視開始
-* [ ] python/web/templates/index.htmlをモダンなFrameworkに書き換え（例：React, Vue.jsなど）
 
 ## フェーズ8：将来拡張検討
 
 Docs/WayToBenefit.mdを参考に、以下の拡張を検討
 
+* [ ] python/web/templates/index.htmlをモダンなFrameworkに書き換え（例：React, Vue.jsなど
 * [ ] 高度ルール追加
 * [ ] 証券会社APIなどの他ツールとの連携
 * [ ] 監視市場の追加 <- 収益化可能性

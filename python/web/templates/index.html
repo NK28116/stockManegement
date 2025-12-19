@@ -169,7 +169,8 @@
                         <td class="px-6 py-4">
                             <div v-if="item.plots" class="w-full">
                                 <img :src="`/api/charts/image/plots/${item.plots}`" :alt="item.plots"
-                                    class="w-full h-auto rounded shadow-sm border" loading="lazy">
+                                    @click="openImageModal(`/api/charts/image/plots/${item.plots}`, item.plots, item.specific_indicators)"
+                                    class="w-full h-auto rounded shadow cursor-pointer hover:opacity-80 transition-opacity">
                                 <p class="text-xs text-center text-gray-400 mt-1">{{ item.plots }}</p>
                             </div>
                             <span v-else class="text-gray-400 text-sm">No plot</span>
@@ -177,7 +178,8 @@
                         <td class="px-6 py-4">
                             <div v-if="item.chartImg" class="w-full">
                                 <img :src="`/api/charts/image/chartImg/${item.chartImg}`" :alt="item.chartImg"
-                                    class="w-full h-auto rounded shadow-sm border" loading="lazy">
+                                    @click="openImageModal(`/api/charts/image/chartImg/${item.chartImg}`, item.chartImg, item.specific_indicators)"
+                                    class="w-full h-auto rounded shadow cursor-pointer hover:opacity-80 transition-opacity">
                                 <p class="text-xs text-center text-gray-400 mt-1">{{ item.chartImg }}</p>
                             </div>
                             <span v-else class="text-gray-400 text-sm">No chart</span>
@@ -568,6 +570,80 @@
             </div>
         </div>
 
+        <!-- Image Modal -->
+        <div v-if="showImageModal"
+            class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4"
+            @click.self="closeImageModal">
+            <div class="bg-white w-full max-w-5xl max-h-[90vh] rounded-lg shadow-lg flex flex-col overflow-hidden">
+                <div class="p-4 border-b flex justify-between items-center bg-gray-50 flex-shrink-0">
+                    <h3 class="text-lg font-bold text-gray-700">{{ modalImageTitle }}</h3>
+                    <button @click="closeImageModal" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">
+                        &times;
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-4 bg-gray-100 flex flex-col items-center">
+                    <img :src="modalImageSrc" class="max-w-full h-auto rounded shadow-lg border mb-6">
+
+                    <!-- Rule Details Display -->
+                    <!-- Specific Indicators (if available) -->
+                    <div v-if="modalSpecificIndicators" class="mb-4 bg-green-50 p-3 rounded border border-green-200">
+                        <h4 class="font-bold text-green-700 border-b border-green-300 pb-2 mb-3">
+                            Latest Indicator Values <span class="text-xs font-normal text-green-600">({{
+                                modalSpecificIndicators.date }})</span>
+                        </h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- MACD -->
+                            <div class="bg-white p-2 rounded shadow-sm">
+                                <span class="font-bold text-gray-700 block mb-1">MACD</span>
+                                <div class="text-sm">
+                                    <div class="flex justify-between"><span class="text-gray-500">MACD:</span> <span
+                                            class="font-mono">{{ modalSpecificIndicators.macd?.macd?.toFixed(2) ?? '-'
+                                            }}</span></div>
+                                    <div class="flex justify-between"><span class="text-gray-500">Signal:</span> <span
+                                            class="font-mono">{{ modalSpecificIndicators.macd?.signal?.toFixed(2) ?? '-'
+                                            }}</span></div>
+                                    <div class="flex justify-between"><span class="text-gray-500">Hist:</span> <span
+                                            class="font-mono">{{ modalSpecificIndicators.macd?.histogram?.toFixed(2) ??
+                                            '-' }}</span></div>
+                                </div>
+                            </div>
+                            <!-- Bollinger -->
+                            <div class="bg-white p-2 rounded shadow-sm">
+                                <span class="font-bold text-gray-700 block mb-1">Bollinger</span>
+                                <div class="text-sm">
+                                    <div class="flex justify-between"><span class="text-gray-500">Upper:</span> <span
+                                            class="font-mono">{{ modalSpecificIndicators.bollinger?.upper?.toFixed(0) ??
+                                            '-' }}</span></div>
+                                    <div class="flex justify-between"><span class="text-gray-500">Middle:</span> <span
+                                            class="font-mono">{{ modalSpecificIndicators.bollinger?.middle?.toFixed(0)
+                                            ?? '-' }}</span></div>
+                                    <div class="flex justify-between"><span class="text-gray-500">Lower:</span> <span
+                                            class="font-mono">{{ modalSpecificIndicators.bollinger?.lower?.toFixed(0) ??
+                                            '-' }}</span></div>
+                                    <div class="flex justify-between border-t mt-1 pt-1"><span
+                                            class="text-gray-500">Close:</span> <span class="font-mono">{{
+                                            modalSpecificIndicators.close?.toFixed(0) ?? '-' }}</span></div>
+                                </div>
+                            </div>
+                            <!-- RSI -->
+                            <div class="bg-white p-2 rounded shadow-sm">
+                                <span class="font-bold text-gray-700 block mb-1">RSI</span>
+                                <div class="text-sm flex items-center justify-between h-full">
+                                    <span class="text-gray-500">Value:</span>
+                                    <span class="font-mono text-lg font-bold"
+                                        :class="{'text-red-500': (modalSpecificIndicators.rsi >= 70 || modalSpecificIndicators.rsi <= 30)}">
+                                        {{ modalSpecificIndicators.rsi?.toFixed(1) ?? '-' }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
     </div>
     {% endraw %}
 
@@ -624,7 +700,11 @@
                         "Regular Update": "月次や四半期ごとの定例メンテナンスによる微調整。",
                         "Testing": "新しいパラメータやアイデアを検証するための一時的な変更。",
                         "Other": "上記に当てはまらない理由（備考欄への記述を推奨）。"
-                    }
+                    },
+                    showImageModal: false,
+                    modalImageSrc: '',
+                    modalImageTitle: '',
+                    modalSpecificIndicators: null, // シミュレーション
                 }
             },
             mounted() {
@@ -637,6 +717,18 @@
             methods: {
                 toggleDetails(code) {
                     this.expandedCharts[code] = !this.expandedCharts[code]
+                },
+                openImageModal(src, title, specificIndicators = null) {
+                    this.modalImageSrc = src;
+                    this.modalImageTitle = title;
+                    this.modalSpecificIndicators = specificIndicators;
+                    this.showImageModal = true;
+                },
+                closeImageModal() {
+                    this.showImageModal = false;
+                    this.modalImageSrc = '';
+                    this.modalImageTitle = '';
+                    this.modalSpecificIndicators = null;
                 },
                 formatKey(key) {
                     return key.replace(/_/g, ' ').replace('percent', 'ratio')
@@ -854,7 +946,15 @@
                     try {
                         const res = await fetch('/api/actions/status')
                         if (res.ok) {
-                            this.actionStatus = await res.json()
+                            const data = await res.json()
+                            // Backend only returns cooldown_remaining_seconds, so we calculate the rest
+                            this.actionStatus = {
+                                ...data,
+                                // Calculate minutes (rounding up)
+                                cooldown_remaining_minutes: Math.ceil((data.cooldown_remaining_seconds || 0) / 60),
+                                // Update allowed if no cooldown and not currently updating
+                                can_update: (data.cooldown_remaining_seconds || 0) <= 0 && !data.is_updating
+                            }
                         }
                     } catch (e) {
                         console.error("Failed to fetch action status", e)
