@@ -16,3 +16,5 @@ jinja2
 python-multipart
 sqlalchemy
 alembic
+google-cloud-secret-manager
+google-cloud-logging
