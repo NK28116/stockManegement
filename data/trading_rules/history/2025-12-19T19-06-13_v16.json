@@ -1,0 +1,90 @@
+{
+  "meta": {
+    "version": 16,
+    "applied_at": "2025-12-19T19:06:13.811289+09:00",
+    "applied_by": "system",
+    "comment": null
+  },
+  "rules": {
+    "meta": {
+      "version": 16,
+      "description": "Default Rules (Fallback)",
+      "updated_at": "2025-12-19T19:06:13.811289+09:00",
+      "updated_by": "system",
+      "comment": null,
+      "active": true
+    },
+    "risk_management": {
+      "stop_loss_percent": 0.06,
+      "take_profit_percent": 1.95,
+      "trailing_stop_percent": 2.17,
+      "risk_per_trade": 0.02,
+      "max_daily_loss_percent": 2.03
+    },
+    "entry_rules": {
+      "price_momentum": {
+        "enabled": true,
+        "pattern": "++"
+      },
+      "rsi_filter": {
+        "enabled": true,
+        "oversold": 30
+      },
+      "macd_filter": {
+        "enabled": true,
+        "require_cross": true
+      }
+    },
+    "exit_rules": {
+      "stop_loss": {
+        "enabled": true,
+        "pattern": null
+      },
+      "take_profit": {
+        "enabled": true,
+        "pattern": null
+      },
+      "dead_cross_exit": {
+        "enabled": true,
+        "pattern": "--"
+      }
+    },
+    "indicators": {
+      "rsi": {
+        "period": 14,
+        "overbought": 70,
+        "oversold": 30
+      },
+      "macd": {
+        "fast_period": 12,
+        "slow_period": 26,
+        "signal_period": 9
+      },
+      "bollinger": {
+        "period": 20,
+        "std": 2.0
+      }
+    },
+    "filters": {
+      "crash_threshold_percent": -3.0,
+      "volatility_threshold": 3.0,
+      "volume_spike_threshold": 2.0
+    },
+    "change_reason": "Other",
+    "change_note": "Rollback to version 13"
+  },
+  "diff": {
+    "meta.version": {
+      "before": 15,
+      "after": 16
+    },
+    "meta.updated_at": {
+      "before": "2025-12-19T19:05:56.538337+09:00",
+      "after": "2025-12-19T19:06:13.811289+09:00"
+    },
+    "risk_management.trailing_stop_percent": {
+      "before": 2.03,
+      "after": 2.17
+    }
+  }
+}

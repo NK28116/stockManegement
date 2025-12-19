@@ -27,7 +27,11 @@ __all__ = [
     "calc_volatility",
     "run_realtime_mode",
     "run_dev_mode",
+    "main",
 ]
+
+def main():
+    run_once()
 
 
 # --- データ取得 ---
