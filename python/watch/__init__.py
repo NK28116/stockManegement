@@ -8,10 +8,10 @@ from .watch import (
     calc_volatility,
     get_price_history,
     get_stock_price,
+    main,
     run_dev_mode,
     run_realtime_mode,
     save_data_to_db,
-    main,
 )
 
 __all__ = [

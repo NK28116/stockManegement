@@ -30,6 +30,7 @@ __all__ = [
     "main",
 ]
 
+
 def main():
     run_once()
 
