@@ -81,6 +81,7 @@
                                     class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full whitespace-nowrap">
                                     {{ item.status }}
                                 </span>
+                                <!-- item.purpose is also displayed as a badge, effectively showing another status-like attribute -->
                                 <span v-if="item.purpose" :class="getPurposeClass(item.purpose)"
                                     class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full whitespace-nowrap">
                                     {{ item.purpose }}
@@ -140,7 +141,7 @@
                         </td>
                         <td class="px-6 py-4">
                             <div v-if="item.plots" class="w-full">
-                                <img :src="`/api/charts/image/plots/${item.plots}`"
+                                <img :src="`/api/charts/image/plots/${item.plots}`" :alt="item.plots"
                                     class="w-full h-auto rounded shadow-sm border" loading="lazy">
                                 <p class="text-xs text-center text-gray-400 mt-1">{{ item.plots }}</p>
                             </div>
@@ -148,7 +149,7 @@
                         </td>
                         <td class="px-6 py-4">
                             <div v-if="item.chartImg" class="w-full">
-                                <img :src="`/api/charts/image/chartImg/${item.chartImg}`"
+                                <img :src="`/api/charts/image/chartImg/${item.chartImg}`" :alt="item.chartImg"
                                     class="w-full h-auto rounded shadow-sm border" loading="lazy">
                                 <p class="text-xs text-center text-gray-400 mt-1">{{ item.chartImg }}</p>
                             </div>
@@ -350,6 +351,7 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1 capitalize">{{ formatKey(key)
                                     }}</label>
                                 <input type="number" step="0.01" v-model.number="rules.risk_management[key]"
+                                    :title="formatKey(key)" :placeholder="formatKey(key)"
                                     class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
                             </div>
                         </div>
@@ -377,6 +379,7 @@
                                     formatKey(key)
                                     }}</label>
                                 <input type="number" step="0.01" v-model.number="rules.filters[key]"
+                                    :title="formatKey(key)" :placeholder="formatKey(key)"
                                     class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
                             </div>
                         </div>
@@ -398,6 +401,7 @@
                                     <label class="block text-xs font-medium text-gray-500 mb-1 capitalize">{{
                                         formatKey(key) }}</label>
                                     <input type="number" v-model.number="rules.indicators.macd[key]"
+                                        :title="formatKey(key)" :placeholder="formatKey(key)"
                                         class="w-full border p-1 rounded">
                                 </div>
                             </div>
@@ -415,6 +419,7 @@
                                     <label class="block text-xs font-medium text-gray-500 mb-1 capitalize">{{
                                         formatKey(key) }}</label>
                                     <input type="number" step="0.01" v-model.number="rules.indicators.bollinger[key]"
+                                        :title="formatKey(key)" :placeholder="formatKey(key)"
                                         class="w-full border p-1 rounded">
                                 </div>
                             </div>
@@ -431,6 +436,7 @@
                                             <label class="block text-xs font-medium text-gray-500 mb-1 capitalize">{{
                                                 formatKey(key) }}</label>
                                             <input type="number" step="0.01" v-model.number="rules.indicators.rsi[key]"
+                                                :title="formatKey(key)" :placeholder="formatKey(key)"
                                                 class="w-full border p-1 rounded">
                                         </div>
                                     </div>
@@ -581,9 +587,11 @@
                     return (value > 0 ? '+' : '') + Number(value).toFixed(2) + '%'
                 },
                 getStatusClass(status) {
-                    if (status.includes('保有')) return 'bg-blue-100 text-blue-800'
-                    if (status.includes('監視')) return 'bg-yellow-100 text-yellow-800'
-                    if (status.includes('検討')) return 'bg-purple-100 text-purple-800'
+                    if (status.includes('保有中')) return 'bg-blue-100 text-blue-800'
+                    if (status.includes('監視中')) return 'bg-yellow-100 text-yellow-800'
+                    if (status.includes('次回のスイングで購入')) return 'bg-purple-100 text-purple-800'
+                    if (status.includes('売却済（利益確定）')) return 'bg-green-100 text-green-800'
+                    if (status.includes('売却済（損切り）')) return 'bg-red-100 text-red-800'
                     return 'bg-gray-100 text-gray-800'
                 },
                 getPurposeClass(purpose) {
@@ -602,10 +610,37 @@
                 async fetchCharts() {
                     this.loadingCharts = true
                     this.errorMessage = ''
+
                     try {
                         const res = await fetch('/api/charts/list')
                         if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
+
                         this.charts = await res.json()
+
+                        const STATUS = {
+                            HOLDING: '保有中',
+                            NEXT_BUY: '次回のスイングで購入',
+                            WATCHING: '監視中',
+                            SOLD_PROFIT: '売却済（利益確定）',
+                            SOLD_LOSS: '売却済（損切り）',
+                        }
+
+                        const statusOrder = {
+                            [STATUS.HOLDING]: 0,
+                            [STATUS.NEXT_BUY]: 1,
+                            [STATUS.WATCHING]: 2,
+                            [STATUS.SOLD_PROFIT]: 3,
+                            [STATUS.SOLD_LOSS]: 4,
+                        }
+
+                        // Sort charts by status 
+
+                        this.charts.sort((a, b) => {
+                            const orderA = statusOrder[a.status] ?? 999
+                            const orderB = statusOrder[b.status] ?? 999
+                            return orderA - orderB
+                        })
+
                     } catch (e) {
                         console.error(e)
                         this.errorMessage = 'Failed to load charts: ' + e.message
