@@ -3,9 +3,11 @@ from typing import Optional
 
 try:
     from google.cloud import secretmanager
+
     SECRET_MANAGER_AVAILABLE = True
 except ImportError:
     SECRET_MANAGER_AVAILABLE = False
+
 
 def get_secret(secret_id: str, version_id: str = "latest") -> Optional[str]:
     """
