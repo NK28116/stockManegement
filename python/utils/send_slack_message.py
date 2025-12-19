@@ -26,7 +26,9 @@ class Slack:
             self.token = get_secret("SLACK_BOT_TOKEN")
 
         if not self.token:
-            logger.warning("Slack token could not be found in args, env vars, or Secret Manager.")
+            logger.warning(
+                "Slack token could not be found in args, env vars, or Secret Manager."
+            )
 
     def send_message_to_slack(self, channel_id, message: str):
         """
