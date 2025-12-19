@@ -134,7 +134,7 @@ gs://stock-management-prod/
 ### 3-3. Dockerfile 作成
 
 * [x] Base Image: `python:3.12-slim`
-* [x] Requirements: `fastapi`, `uvicorn`, `google-cloud-storage`, `jinja2`, `python-multipart`
+* [x] Requirements: `fastapi`, `uvicorn`, `google-cloud-storage`, `jinja2`, `python-multipart`, `google-cloud-secret-manager`, `sqlalchemy`, `psycopg2-binary`, `requests`
 * [x] Entrypoint: `uvicorn python.web.app:app --host 0.0.0.0 --port $PORT`
 * [x] `gunicorn` は今回は `uvicorn` 単体でも可（Cloud Run は前段にLBがいるため）
 
@@ -274,20 +274,26 @@ gs://stock-management-prod/
 
 ### 6-4. 追加修正
 
-* [ ] **`actions.py` のモック実装解除**
+* [x] **`actions.py` のモック実装解除**
   * 現状 `time.sleep` になっている `_run_market_update` 等を、実際の `python.watch` やデータ更新ロジック呼び出しに置き換える。
   * Cloud Run 上で実行する場合、タイムアウトやメモリ制限に注意が必要。
-* [ ] **Cloud Run からのデータアクセス経路の確立**
+* [x] **Cloud Run からのデータアクセス経路の確立**
   * Web UI (Cloud Run) から GCE 上の PostgreSQL や GCS 上のデータへ正しくアクセスできるか再確認（VPCコネクタやIAM権限）。
   * 特に `actions.py` でロジックを動かす場合、DB接続情報が必要になる。
-* [ ] **Secret Manager の適用 (Phase 5残件)**
+  * **設定手順メモ**:
+    1. **API有効化**: `gcloud services enable vpcaccess.googleapis.com`
+    2. **コネクタ作成**: `gcloud compute networks vpc-access connectors create stock-connector --region us-east1 --range 10.8.0.0/28 --network default`
+    3. **FW設定**: `gcloud compute firewall-rules create allow-vpc-connector --allow tcp:5432 --source-ranges 10.8.0.0/28`
+    4. **Cloud Run設定**: `gcloud run services update stock-web-ui --vpc-connector stock-connector --region us-east1`
+    5. **DB接続**: 環境変数 `DB_HOST` に GCEのプライベートIPを設定
+* [x] **Secret Manager の適用 (Phase 5残件)**
   * 本番運用において `KEY.json` を含めるのはリスクがあるため、Secret Manager 経由での取得に切り替える。
 
 ---
 
 ## フェーズ7：本番運用開始
 
-* [ ] Privateな情報を削除
+* [ ] Privateな情報をgit追跡から削除
 * [ ] READMEを含めたDocsの編集などのOSS公開準備
   * 各ディレクトリにあるREADMEも更新する
 * [ ] WebUI 公開（制限付き）
