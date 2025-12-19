@@ -55,6 +55,17 @@
             <div v-else-if="errorMessage" class="text-red-500 p-4 bg-red-50 rounded">{{ errorMessage }}</div>
             <div v-else-if="charts.length === 0" class="text-gray-500 italic">No charts found.</div>
 
+            <div>
+                株式の購入:
+                <label>
+                    銘柄<input v-model="stock">
+                    株数<input v-model="quantity">
+                    購入金額<input v-model="price">
+                    目的別<select  v-model="purpose" ></select>
+                    <button @click="buyStock">購入</button>
+                </label>
+            </div>
+
             <table v-else class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
@@ -854,16 +865,14 @@
                     }
                 },
 
-                async buyStock(code) {
-                    if (!confirm(`Are you sure you want to buy stock ${code}?`)) {
-                        return;
-                    }
+                async buyStock(code, quantity, price, purpose) {
                     try {
                         const response = await fetch(`/api/actions/buy/${code}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
-                            }
+                            },
+                            body: JSON.stringify({ quantity: quantity, price: price, purpose: purpose })
                         });
                         if (!response.ok) {
                             const errorData = await response.json();
