@@ -111,6 +111,11 @@
                                     {{ expandedCharts[item.code] ? 'Hide Details' : 'Show Details' }}
                                 </button>
 
+                                <button @click="sellStock(item.code)"
+                                    class="ml-2 text-xs text-red-600 hover:text-red-800 underline focus:outline-none">
+                                    Sell
+                                </button>
+
                                 <div v-if="expandedCharts[item.code]"
                                     class="mt-2 p-3 bg-gray-50 rounded text-xs border border-gray-100">
                                     <div class="grid grid-cols-2 gap-x-4 gap-y-2">
@@ -590,8 +595,8 @@
                     if (status.includes('保有中')) return 'bg-blue-100 text-blue-800'
                     if (status.includes('監視中')) return 'bg-yellow-100 text-yellow-800'
                     if (status.includes('次回のスイングで購入')) return 'bg-purple-100 text-purple-800'
-                    if (status.includes('売却済（利益確定）')) return 'bg-green-100 text-green-800'
-                    if (status.includes('売却済（損切り）')) return 'bg-red-100 text-red-800'
+                    if (status.includes('売却（利益確定）')) return 'bg-green-100 text-green-800'
+                    if (status.includes('売却（損切り）')) return 'bg-red-100 text-red-800'
                     return 'bg-gray-100 text-gray-800'
                 },
                 getPurposeClass(purpose) {
@@ -621,8 +626,8 @@
                             HOLDING: '保有中',
                             NEXT_BUY: '次回のスイングで購入',
                             WATCHING: '監視中',
-                            SOLD_PROFIT: '売却済（利益確定）',
-                            SOLD_LOSS: '売却済（損切り）',
+                            SOLD_PROFIT: '売却（利益確定）',
+                            SOLD_LOSS: '売却（損切り）',
                         }
 
                         const statusOrder = {
@@ -821,6 +826,93 @@
                         }
                     } catch (e) {
                         alert("Error: " + e.message)
+                    }
+                },
+
+                async sellStock(code) {
+                    const reason = prompt(`Selling ${code}. Reason:\n1: Profit\n2: Loss`, '1');
+                    if (reason !== '1' && reason !== '2') {
+                        return; // Cancelled
+                    }
+
+                    const sell_type = reason === '1' ? 'profit' : 'loss';
+
+                    try {
+                        const response = await fetch(`/api/actions/sell/${code}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ sell_type: sell_type })
+                        });
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.detail || 'Failed to sell stock');
+                        }
+                        alert(`Stock ${code} sold successfully!`);
+                        this.fetchCharts();
+                    } catch (error) {
+                        alert(`Error selling stock: ${error.message}`);
+                    }
+                },
+
+                async buyStock(code) {
+                    if (!confirm(`Are you sure you want to buy stock ${code}?`)) {
+                        return;
+                    }
+                    try {
+                        const response = await fetch(`/api/actions/buy/${code}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.detail || 'Failed to buy stock');
+                        }
+                        alert(`Stock ${code} bought successfully!`);
+                        this.fetchCharts(); // Refresh the list
+                    } catch (error) {
+                        alert(`Error buying stock: ${error.message}`);
+                    }
+                },
+
+                async prebuyStock(code) {
+                    if (!confirm(`Are you sure you want to buy stock ${code} in next swing term?`)) {
+                        return;
+                    }
+                    try {
+                        const response = await fetch(`/api/actions/pre-buy/${code}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.detail || 'Failed to pre-buy stock');
+                        }
+                        alert(`Stock ${code}  pre-bought successfully!`);
+                        this.fetchCharts(); // Refresh the list
+                    } catch (error) {
+                        alert(`Error pre-buying stock: ${error.message}`);
+                    }
+                },
+
+                async watchStock(code) {
+                    try {
+                        const response = await fetch(`/api/actions/watch/${code}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.detail || 'Failed to watch stock');
+                        }
+                        this.fetchCharts(); // Refresh the list
+                    } catch (error) {
+                        alert(`Error pre-buying stock: ${error.message}`);
                     }
                 },
 

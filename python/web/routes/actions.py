@@ -6,6 +6,12 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
+from pydantic import BaseModel
+
+from python.trading import buy_and_sell_stock
+
+router = APIRouter(prefix="/api/actions", tags=["actions"])
+logger = logging.getLogger(__name__)
 
 # 市場データ更新ロジックのインポート
 try:
@@ -19,8 +25,24 @@ except ImportError:
     analyze = None
 
 
-router = APIRouter(prefix="/api/actions", tags=["actions"])
-logger = logging.getLogger(__name__)
+class SellRequest(BaseModel):
+    sell_type: str  # 'profit' or 'loss'
+
+
+@router.post("/sell/{code}")
+async def sell_stock(code: str, sell_request: SellRequest):
+    try:
+        # Pass the sell_type to the underlying sell function
+        result = buy_and_sell_stock.sell_stock(code, sell_type=sell_request.sell_type)
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
+        return {
+            "status": "success",
+            "message": result.get("message", f"Stock {code} sold."),
+        }
+    except Exception as e:
+        logger.error(f"Error selling stock {code}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 class ActionState:
