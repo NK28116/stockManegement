@@ -30,14 +30,14 @@
 2. **監視銘柄の追加/更新 (`prebuy`)**:
     - 指定した銘柄を監視リストに追加または更新します。数量は1株で固定されます。
     - `--watch`オプションでステータスを`監視中`に設定します。
-    - `--get`オプションでステータスを`購入検討中`に設定します。
+    - `--get`オプションでステータスを`次回のスイングで購入`に設定します。
     - `--status`オプションで直接ステータスを指定することも可能です（`--watch`や`--get`が優先されます）。
     - `--purpose`オプションで目的を指定できます。
 
     ```bash
     # 監視中に追加
     python3 -m python.trading.buy_and_sell_stock prebuy 9434.T --watch --price 200 --purpose long
-    # 購入検討中に追加
+    # 次回のスイングで購入に追加
     python3 -m python.trading.buy_and_sell_stock prebuy 9434.T --get --price 200 --purpose middle
     # ステータスを直接指定
     python3 -m python.trading.buy_and_sell_stock prebuy 9434.T --status "除外" --price 200

@@ -7,10 +7,7 @@ import pandas as pd
 from python.config import config
 from python.db.database import get_db_connection
 from python.utils.alert import send_alert
-from python.utils.indicators import (
-    calculate_bollinger_bands,
-    calculate_macd,
-)
+from python.utils.indicators import calculate_bollinger_bands, calculate_macd
 from python.utils.rules_loader import get_active_rules
 
 logger = logging.getLogger("analyze")
@@ -61,7 +58,7 @@ def analyze_daily_data(code: str, name: str):
     日足データを分析し、シグナルが出ていれば通知する
     """
     logger.info(f"Analyzing daily data for {code} ({name})...")
-    
+
     # データ取得 (分析に必要な期間分)
     # MACDなど長期の指標計算のためにある程度過去分も必要
     df = get_daily_price_data(code, limit=100)
@@ -75,12 +72,12 @@ def analyze_daily_data(code: str, name: str):
     # 1. 急落検知 (単純な価格変動チェック)
     # config から閾値を取得 (-10.0 など)
     crash_threshold = config.crash_threshold
-    
+
     current_price = df.iloc[-1]["close"]
     prev_price = df.iloc[-2]["close"]
-    
+
     change_rate = (current_price - prev_price) / prev_price * 100
-    
+
     if change_rate <= crash_threshold:
         msg = f"⚠️ 【急落注意】{name} ({code}) が前日比 {change_rate:.2f}% 下落しました (現在値: {current_price})"
         send_alert(msg, level="WARNING")
@@ -91,9 +88,9 @@ def analyze_daily_data(code: str, name: str):
         df["close"],
         short_period=rules.indicators.macd.fast_period,
         long_period=rules.indicators.macd.slow_period,
-        signal_period=rules.indicators.macd.signal_period
+        signal_period=rules.indicators.macd.signal_period,
     )
-    
+
     # 直近のクロス判定
     if len(macd_df) >= 2:
         curr_macd = macd_df.iloc[-1]["MACD"]
@@ -111,14 +108,14 @@ def analyze_daily_data(code: str, name: str):
     bb_df = calculate_bollinger_bands(
         df["close"],
         period=rules.indicators.bollinger.period,
-        num_std=rules.indicators.bollinger.std
+        num_std=rules.indicators.bollinger.std,
     )
-    
+
     if len(bb_df) >= 1:
         curr_close = df.iloc[-1]["close"]
         upper = bb_df.iloc[-1]["Upper"]
         lower = bb_df.iloc[-1]["Lower"]
-        
+
         if curr_close > upper:
             logger.info(f"ボリンジャーバンド アッパーバンド突破: {name} ({code})")
         elif curr_close < lower:

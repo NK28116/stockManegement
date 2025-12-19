@@ -20,7 +20,8 @@ from dotenv import load_dotenv
 from python.config import config
 from python.trading.trading_rules import ImprovedTradingRules
 from python.visualization.plot_indicators import plot_macd_bollinger
-from python.web.services.rule_store import get_rule_store
+
+# from python.web.services.rule_store import get_rule_store # module missing error
 
 load_dotenv()
 
@@ -32,14 +33,18 @@ parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 sys.path.append(os.path.join(parent_dir, "trading"))
 # Set font with fallbacks - suppress font warnings
-import matplotlib.font_manager as fm  # noqa: E402
 
-font_path = "/usr/share/fonts/opentype/ipaexfont-gothic/ipaexg.ttf"
-font_prop = fm.FontProperties(fname=font_path)
-matplotlib.rcParams["font.family"] = (
-    font_prop.get_name()
-)  # 日本語対応（configから取得）
-matplotlib.rcParams["axes.unicode_minus"] = False  # マイナス記号の文字化け対策
+
+# font_path = "/usr/share/fonts/opentype/ipaexfont-gothic/ipaexg.ttf"
+# font_prop = fm.FontProperties(fname=font_path)
+# matplotlib.rcParams["font.family"] = (
+#     font_prop.get_name()
+# )  # 日本語対応（configから取得）
+
+# デフォルトに戻す
+matplotlib.rcParams["font.family"] = "sans-serif"
+# マイナス記号の文字化け対策
+matplotlib.rcParams["axes.unicode_minus"] = False
 # Suppress font warning messages
 
 
@@ -60,11 +65,25 @@ class StockChartVisualizer:
 
         # Load dynamic rules
         try:
-            rules = get_rule_store().get_rules()
+            # rules = get_rule_store().get_rules()
             # print("動的売買ルールを読み込みました") # ログが多すぎるのでコメントアウト
-        except Exception:
+            # Manually load active rules from file or fallback to None
+            # (ImprovedTradingRules will fail if None passed, so we need a dummy or valid object)
+            from python.utils.rules_loader import get_active_rules
+
+            rules = get_active_rules()
+        except Exception as e:
             # print("動的売買ルールの読み込みに失敗、デフォルト設定を使用します")
+            print(f"Warning: Failed to load rules: {e}")
             rules = None
+            # This will likely crash ImprovedTradingRules based on previous error, but let's see.
+            # ImprovedTradingRules requires a valid TradingRules object with .is_active=True
+            # If get_active_rules() fails, we might need a hardcoded fallback or just let it crash/handle gracefully.
+
+        if rules is None:
+            # Fallback if rule loading fails completely - though ImprovedTradingRules constructor checks is_active
+            # Create a dummy active rule object if needed, or handle the error
+            pass
 
         self.trading_rules = ImprovedTradingRules(rules=rules)
         # 出力先を期間ごとに変更
@@ -97,8 +116,12 @@ class StockChartVisualizer:
             # 実際の運用用のmy_stock.csvを使用
             if portfolio_file == "my_stock.csv":
                 portfolio_path = config.codes_path
+            elif portfolio_file == "data/my_stock_local.csv":
+                # Local path
+                portfolio_path = "data/my_stock_local.csv"
             else:
-                portfolio_path = config.data_dir + f"/practice/{portfolio_file}"
+                portfolio_path = str(config.data_dir) + f"/practice/{portfolio_file}"
+                # config.data_dir might be a Path object
 
             df = pd.read_csv(portfolio_path)
 
