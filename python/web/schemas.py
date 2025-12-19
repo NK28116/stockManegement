@@ -38,9 +38,10 @@ class RiskManagementRules(BaseModel):
         # Allow 0 for disabled/unused, otherwise expects 0 < x < 1 typically,
         # but original code enforced 0 < value < 1 strictly.
         if isinstance(v, (int, float)):
-            if not (0 < v < 1):
+            # Relaxed validation to allow values > 1 (e.g. 2.05) as requested by user
+            if v < 0:
                 # Some legacy values might be exactly 0 or 1, but original code raised ValueError
-                raise ValueError(f"{info.field_name} must be between 0 and 1, got {v}")
+                raise ValueError(f"{info.field_name} must be non-negative, got {v}")
         return v
 
 
