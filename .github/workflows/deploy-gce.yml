@@ -17,8 +17,8 @@ jobs:
                   username: ${{ secrets.GCE_USERNAME }}
                   key: ${{ secrets.GCE_SSH_KEY }}
                   port: 22
-                  script: |
-                      cd /home/${{ secrets.GCE_USERNAME }}/stockManegement
-                      git pull origin main
+        script: |
+              cd /home/${{ secrets.GCE_USERNAME }}/stockManegement
+              GIT_SSH_COMMAND="ssh -i /home/${{ secrets.GCE_USERNAME }}/.ssh/id_ed25519" git pull origin main
                       # Optional: Update dependencies if requirements.txt changed
                       # pip install -r requirements.txt
