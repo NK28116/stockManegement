@@ -89,8 +89,18 @@ async def list_charts() -> List[Dict[str, Any]]:
     # Read data/my_stock.csv for summary info
     # data/my_stock.csv is expected at the bucket root or data/ path.
     # We try reading "my_stock.csv" assuming it is placed where expected.
+    # For local dev, use my_stock_local.csv
+    csv_filename = "my_stock.csv" if gcs.use_gcs else "data/my_stock_local.csv"
+    csv_content = gcs.get_file_content(csv_filename)
+    if not gcs.use_gcs and not csv_content:
+        # If gcs_client failed to load local file via get_file_content (which might expect bucket paths),
+        # try direct file read for local dev safety net
+        try:
+            with open(csv_filename, "rb") as f:
+                csv_content = f.read()
+        except Exception as e:
+            print(f"Error reading local CSV fallback: {e}")
 
-    csv_content = gcs.get_file_content("my_stock.csv")
     stock_data = {}
 
     if csv_content:

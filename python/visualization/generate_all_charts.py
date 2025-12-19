@@ -22,7 +22,9 @@ def main(period="3mo", is_test_mode: bool = False):
     visualizer = StockChartVisualizer(period=period, is_test_mode=is_test_mode)
 
     # Generate charts for actual portfolio (my_stock.csv)
-    portfolio_file = "my_stock.csv"
+    from python.utils.gcs_client import gcs
+
+    portfolio_file = "my_stock.csv" if gcs.use_gcs else "data/my_stock_local.csv"
 
     print(f"対象ポートフォリオ: {portfolio_file} (実際の運用用)")
     print(f"期間: {period}")

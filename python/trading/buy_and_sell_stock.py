@@ -229,7 +229,7 @@ def refresh_prices(df: pd.DataFrame, target_code: str | None = None) -> pd.DataF
     valid_statuses = [
         "監視中",
         "保有中",
-        "購入検討中",
+        "次回のスイングで購入",
         "売却済（利益確定）",
         "売却済（損切り）",
         "除外",
@@ -384,7 +384,7 @@ def main():
         "--watch", action="store_true", help="ステータスを '監視中' に設定"
     )
     status_group.add_argument(
-        "--get", action="store_true", help="ステータスを '購入検討中' に設定"
+        "--get", action="store_true", help="ステータスを '次回のスイングで購入' に設定"
     )
     # --status 引数は --watch / --get と同時に指定できないようにする
     status_group.add_argument(
@@ -393,7 +393,7 @@ def main():
         choices=[
             "監視中",
             "保有中",
-            "購入検討中",
+            "次回のスイングで購入",
             "売却済（利益確定）",
             "売却済（損切り）",
             "除外",
@@ -424,7 +424,7 @@ def main():
         choices=[
             "監視中",
             "保有中",
-            "購入検討中",
+            "次回のスイングで購入",
             "売却済（利益確定）",
             "売却済（損切り）",
             "除外",
@@ -462,7 +462,7 @@ def main():
         if args.watch:
             prebuy_status = "監視中"
         elif args.get:
-            prebuy_status = "購入検討中"
+            prebuy_status = "次回のスイングで購入"
         elif args.status:  # --watch, --get が指定されていない場合のみ --status を考慮
             prebuy_status = args.status
 
@@ -509,7 +509,7 @@ def main():
                 status_choices = [
                     "監視中",
                     "保有中",
-                    "購入検討中",
+                    "次回のスイングで購入",
                     "売却済（利益確定）",
                     "売却済（損切り）",
                     "除外",
