@@ -58,11 +58,22 @@
             <div>
                 株式の購入:
                 <label>
-                    銘柄<input v-model="stock">
-                    株数<input v-model="quantity">
-                    購入金額<input v-model="price">
-                    目的別<select  v-model="purpose" ></select>
-                    <button @click="buyStock">購入</button>
+                    銘柄<input v-model="stock" v-for="stock" class="bg-blue-100 border-gray-300">
+                </label>
+                <label>
+                    株数<input v-model.number="quantity" type="text" class="bg-blue-100 border-gray-300 text-right">
+                </label>
+                <label>
+                    購入金額<input v-model.number="price" type="text" class="bg-blue-100 border-gray-300 text-right">
+                </label>
+                <label> 目的別
+                    <select v-model="purpose" class="bg-blue-100 border-gray-300">
+                        <option v-for="(value, key) in STATUS" :value="key">{{ value }}</option>
+                    </select>
+                </label>
+                <label>
+                    <button @click="buyStock(stock, quantity, price, purpose)"
+                        class="bg-blue-100 border-black-300 border-2">購入</button>
                 </label>
             </div>
 
@@ -538,6 +549,17 @@
         createApp({
             data() {
                 return {
+                    stock: '',
+                    quantity: 0,
+                    price: 0,
+                    purpose: 'HOLDING', // Set a default value from STATUS keys
+                    STATUS: {
+                        HOLDING: '保有中',
+                        NEXT_BUY: '次回のスイングで購入',
+                        WATCHING: '監視中',
+                        SOLD_PROFIT: '売却（利益確定）',
+                        SOLD_LOSS: '売却（損切り）',
+                    },
                     currentTab: 'dashboard',
                     charts: [],
                     rules: {}, // Nested structure
