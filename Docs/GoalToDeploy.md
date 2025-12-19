@@ -231,46 +231,57 @@ gs://stock-management-prod/
 * [ ] Cloud Logging 有効
 * [ ] 異常検知ログ
 
-
 ## フェーズ6：本番前チェック（必須）
 
 最低限の動作確認を行う
 
-- 検証対象
-  - localhost:8888
-    - `uvicorn python.web.app:app --reload --port 8888`
-    - 使用するcsvは`data/my_stock_local.csv`
-      - 作成した時とメソッドとか変更しているから過不足の可能性 
-  - Cloud Run
-    - `https://stock-web-ui-664052483309.us-east1.run.app`
-    - 使用するcsvはGCE上の`data/my_stock.csv`
-    - GCSバケット: `stock-management-prod`
-      - 同上
-
+* 検証対象
+  * localhost:8888
+    * `uvicorn python.web.app:app --reload --port 8888`
+    * 使用するcsvは`data/my_stock_local.csv`
+      * 作成した時とメソッドとか変更しているから過不足の可能性
+  * Cloud Run
+    * `https://stock-web-ui-664052483309.us-east1.run.app`
+    * 使用するcsvはGCE上の`data/my_stock.csv`
+    * GCSバケット: `stock-management-prod`
+      * 同上
 
 ### 6-1. 動作確認
 
-* [ ] ローカルで動作確認
-  * [ ] ルール取得・表示
-  * [ ] charts 表示
-* [ ] Cloud Run にデプロイ
-  * [ ] 最新の株価を使用
-* [ ] 実データで一巡
+* [x] ローカルで動作確認
+  * [x] ルール取得・表示
+  * [x] charts 表示
+* [x] Cloud Run にデプロイ
+  * [x] 最新の株価を使用
+* [x] 実データで一巡
 
 ---
 
 ### 6-2. ドライラン
 
-* [ ] ルール変更 → 即反映確認
-* [ ] charts 更新確認
-* [ ] 通知確認
+* [x] ルール変更 → 即反映確認
+* [x] charts 更新確認
+* [x] 通知確認
 
 ---
 
 ### 6-3. ロールバック確認
 
-* [ ] 過去ルール復元
-* [ ] active.json 差し替え
+* [x] 過去ルール復元
+* [x] active.json 差し替え
+
+---
+
+### 6-4. 追加修正
+
+* [ ] **`actions.py` のモック実装解除**
+  * 現状 `time.sleep` になっている `_run_market_update` 等を、実際の `python.watch` やデータ更新ロジック呼び出しに置き換える。
+  * Cloud Run 上で実行する場合、タイムアウトやメモリ制限に注意が必要。
+* [ ] **Cloud Run からのデータアクセス経路の確立**
+  * Web UI (Cloud Run) から GCE 上の PostgreSQL や GCS 上のデータへ正しくアクセスできるか再確認（VPCコネクタやIAM権限）。
+  * 特に `actions.py` でロジックを動かす場合、DB接続情報が必要になる。
+* [ ] **Secret Manager の適用 (Phase 5残件)**
+  * 本番運用において `KEY.json` を含めるのはリスクがあるため、Secret Manager 経由での取得に切り替える。
 
 ---
 
