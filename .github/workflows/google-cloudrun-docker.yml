@@ -15,8 +15,39 @@ env:
   SERVICE: "stock-web-ui"
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          make install
+
+      - name: Run lint and format checks
+        run: |
+          make lint
+          make check-format
+
+      - name: Run tests with pytest
+        run: |
+          make test
+
   deploy:
+    needs: test
     runs-on: "ubuntu-latest"
+    # Only deploy on push to main (not on PRs)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     permissions:
       contents: "read"
