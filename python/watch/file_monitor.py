@@ -45,7 +45,9 @@ class MyStockCSVHandler(FileSystemEventHandler):
             blob.upload_from_filename(str(self.target_file))
             logger.info(f"GCSへ同期しました: gs://{bucket_name}/{blob_name}")
         except ImportError:
-            logger.error("google-cloud-storageがインストールされていません。GCS同期をスキップします。")
+            logger.error(
+                "google-cloud-storageがインストールされていません。GCS同期をスキップします。"
+            )
         except Exception as e:
             logger.error(f"GCSへのアップロードに失敗しました: {e}")
 
@@ -75,9 +77,13 @@ def start_file_monitor():
 
     event_handler = MyStockCSVHandler(target_file)
     observer = Observer()
-    observer.schedule(event_handler, path, recursive=False)  # my_stock.csvがあるディレクトリのみ監視
+    observer.schedule(
+        event_handler, path, recursive=False
+    )  # my_stock.csvがあるディレクトリのみ監視
     observer.start()
-    logger.info(f"ファイル監視を開始しました。ディレクトリ: {path}, ファイル: {target_file}")
+    logger.info(
+        f"ファイル監視を開始しました。ディレクトリ: {path}, ファイル: {target_file}"
+    )
 
     try:
         while True:
@@ -88,5 +94,7 @@ def start_file_monitor():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+    )
     start_file_monitor()
