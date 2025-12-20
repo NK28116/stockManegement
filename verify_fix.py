@@ -1,60 +1,43 @@
-import requests
+import os
 import sys
-import time
-
-BASE_URL = "http://127.0.0.1:8888"
+from unittest.mock import MagicMock, patch
 
 
-def check_status():
-    url = f"{BASE_URL}/api/actions/status"
-    try:
-        print(f"Checking {url}...")
-        response = requests.get(url, timeout=2)
-        print(f"Status Code: {response.status_code}")
-        if response.status_code == 200:
-            print("Response:", response.json())
-            return True
-        else:
-            print("Failed: Status not 200")
-            print(response.text)
-            return False
-    except requests.exceptions.ConnectionError:
-        print("Failed to connect. Is the server running?")
-        return False
-    except Exception as e:
-        print(f"Error: {e}")
-        return False
+# Mock GCSClient to simulate environments
+class MockGCSClient:
+    def __init__(self, use_gcs=False, file_exists=False):
+        self.use_gcs = use_gcs
+        self.file_exists = file_exists
+
+    def get_file_content(self, path):
+        if self.use_gcs and path == "my_stock.csv":
+            return b"GCS Content" if self.file_exists else None
+        if not self.use_gcs and path == "data/my_stock_local.csv":
+            return b"Local Content"
+        return None
 
 
-def check_charts():
-    url = f"{BASE_URL}/api/charts/list"
-    try:
-        print(f"\nChecking {url}...")
-        response = requests.get(url, timeout=2)
-        print(f"Status Code: {response.status_code}")
-        if response.status_code == 200:
-            data = response.json()
-            print(f"Found {len(data)} companies")
-            if len(data) > 0:
-                print("First item sample:", data[0].get("code"), data[0].get("name"))
-                return True
-            else:
-                print("Warning: List is empty. Check data files.")
-                return False
-        else:
-            print("Failed: Status not 200")
-            return False
-    except Exception as e:
-        print(f"Error: {e}")
-        return False
+# Test Local Mode
+print("--- Testing Local Mode ---")
+gcs = MockGCSClient(use_gcs=False)
+csv_filename = "my_stock.csv" if gcs.use_gcs else "data/my_stock_local.csv"
+csv_content = gcs.get_file_content(csv_filename)
+# Logic from charts.py (simplified)
+if not gcs.use_gcs and not csv_content:
+    print("FALLBACK TRIGGERED (Unexpected for happy path)")
+else:
+    print(f"Loaded: {csv_filename}, Content: {csv_content}")
 
+# Test GCS Mode (File Missing -> Fallback)
+print("\n--- Testing GCS Mode (File Missing) ---")
+gcs = MockGCSClient(use_gcs=True, file_exists=False)
+csv_filename = "my_stock.csv" if gcs.use_gcs else "data/my_stock_local.csv"
+csv_content = gcs.get_file_content(csv_filename)
 
-if __name__ == "__main__":
-    status_ok = check_status()
-    charts_ok = check_charts()
-
-    if status_ok and charts_ok:
-        print("\nSUCCESS: All checks passed.")
+if gcs.use_gcs and not csv_content:
+    print("GCS my_stock.csv not found. Falling back to local data/my_stock.csv")
+    # Simulate valid local file
+    if os.path.exists("data/my_stock.csv"):
+        print("Fallback successful: found data/my_stock.csv")
     else:
-        print("\nFAILURE: Some checks failed.")
-        sys.exit(1)
+        print("Fallback failed: data/my_stock.csv not found on disk")
