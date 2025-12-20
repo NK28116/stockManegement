@@ -58,13 +58,15 @@
             <div>
                 株式の購入:
                 <label>
-                    銘柄<input v-model="stock" v-for="stock" class="bg-blue-100 border-gray-300">
+                    銘柄<input v-model="stock" class="bg-blue-100 border-gray-300" placeholder="Ext: 7203">
                 </label>
                 <label>
                     株数<input v-model.number="quantity" type="text" class="bg-blue-100 border-gray-300 text-right">
                 </label>
                 <label>
-                    購入金額<input v-model.number="price" type="text" class="bg-blue-100 border-gray-300 text-right">
+                    購入金額 (概算)<input :value="formatPrice(calculatedTotalPrice)" type="text"
+                        class="bg-gray-100 border-gray-300 text-right text-gray-500 cursor-not-allowed" readonly
+                        disabled>
                 </label>
                 <label> 目的別
                     <select v-model="purpose" class="bg-blue-100 border-gray-300">
@@ -72,7 +74,7 @@
                     </select>
                 </label>
                 <label>
-                    <button @click="buyStock(stock, quantity, price, purpose)"
+                    <button @click="buyStock(stock, quantity, calculatedTotalPrice, purpose)"
                         class="bg-blue-100 border-black-300 border-2">購入</button>
                 </label>
             </div>
@@ -713,6 +715,19 @@
                 this.fetchHistory()
                 this.fetchActionStatus()
                 setInterval(this.fetchActionStatus, 30000) // Poll status every 30s
+            },
+            computed: {
+                currentUnitStockPrice() {
+                    if (!this.stock) return 0;
+                    // Find the chart data for the currently entered stock code
+                    // loose comparison (==) to handle string/number differences
+                    const found = this.charts.find(c => c.code == this.stock);
+                    return found ? (found.current_price || 0) : 0;
+                },
+                calculatedTotalPrice() {
+                    const qty = this.quantity || 0;
+                    return this.currentUnitStockPrice * qty;
+                }
             },
             methods: {
                 toggleDetails(code) {
