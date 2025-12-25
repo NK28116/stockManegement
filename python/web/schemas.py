@@ -161,3 +161,22 @@ class TradingRules(BaseModel):
     @property
     def is_active(self) -> bool:
         return self.meta.active
+
+
+# ---------------------------
+# Analytics
+# ---------------------------
+
+
+class AnalyticsSummaryResponse(BaseModel):
+    """
+    分析サマリーレスポンス
+    総資産額と評価損益を返却
+    """
+
+    portfolio_name: str = Field(description="ポートフォリオ名")
+    total_assets: float = Field(description="総資産額（現在の評価額合計）")
+    total_investment: float = Field(description="総投資額（購入金額合計）")
+    unrealized_pnl: float = Field(description="評価損益（総資産額 - 総投資額）")
+    unrealized_pnl_percent: float = Field(description="評価損益率（パーセント）")
+    last_updated: datetime = Field(description="最終更新日時")
