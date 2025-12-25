@@ -8,7 +8,7 @@ from fastapi.templating import Jinja2Templates
 
 from python.utils.logger import get_logger
 from python.web.api import rules, simulate
-from python.web.routes import actions, charts
+from python.web.routes import actions, analytics, charts
 
 logger = get_logger("web", "app")
 
@@ -30,6 +30,7 @@ app.include_router(rules.router)
 app.include_router(charts.router)
 app.include_router(simulate.router)
 app.include_router(actions.router)
+app.include_router(analytics.router)
 # Setup templates
 templates_dir = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
