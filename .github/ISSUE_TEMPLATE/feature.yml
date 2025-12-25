@@ -1,0 +1,17 @@
+name: Feature Request
+description: 新機能の提案
+title: "[feat]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: 機能の概要
+      description: どのような機能が必要ですか？
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: 背景・目的
+      description: なぜこの機能が必要ですか？
