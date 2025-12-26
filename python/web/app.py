@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from python.utils.logger import get_logger
-from python.web.api import rules, simulate
+from python.web.api import rules, signals, simulate
 from python.web.routes import actions, analytics, charts
 
 logger = get_logger("web", "app")
@@ -27,6 +27,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 # Mount API routes
 app.include_router(rules.router)
+app.include_router(signals.router)
 app.include_router(charts.router)
 app.include_router(simulate.router)
 app.include_router(actions.router)
