@@ -75,3 +75,20 @@ class DailyPrice(Base):
     __table_args__ = (
         UniqueConstraint("stock_code", "date", name="uix_daily_price_code_date"),
     )
+
+
+class SignalHistory(Base):
+    """
+    シグナル履歴テーブル
+    売買シグナルの履歴を記録する
+    """
+
+    __tablename__ = "signal_history"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    stock_code = Column(String, nullable=False, index=True)
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    signal = Column(String, nullable=False)  # 'BUY', 'SELL', 'HOLD'
+    price = Column(Numeric(10, 2), nullable=False)
+    reason = Column(Text)  # 'パターン（++）エントリー' など
+    rule_version = Column(String)  # 使用したルールのバージョン

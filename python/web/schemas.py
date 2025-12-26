@@ -180,3 +180,31 @@ class AnalyticsSummaryResponse(BaseModel):
     unrealized_pnl: float = Field(description="評価損益（総資産額 - 総投資額）")
     unrealized_pnl_percent: float = Field(description="評価損益率（パーセント）")
     last_updated: datetime = Field(description="最終更新日時")
+
+
+# ---------------------------
+# Signal Check
+# ---------------------------
+
+
+class SignalCheckRequest(BaseModel):
+    """
+    シグナルチェックリクエスト
+    銘柄コードを受け取り、売買シグナルを生成する
+    """
+
+    stock_code: str = Field(description="チェックする銘柄コード（例: 7203.T）")
+
+
+class SignalCheckResponse(BaseModel):
+    """
+    シグナルチェックレスポンス
+    生成されたシグナル情報を返却
+    """
+
+    stock_code: str = Field(description="銘柄コード")
+    signal: str = Field(description="シグナル（BUY/SELL/HOLD）")
+    price: float = Field(description="現在の株価")
+    reason: str = Field(description="シグナル生成理由")
+    rule_version: str = Field(description="使用したルールのバージョン")
+    timestamp: datetime = Field(description="シグナル生成日時")
