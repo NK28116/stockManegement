@@ -23,6 +23,10 @@
                     :class="['px-4 py-2 rounded', currentTab === 'dashboard' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700']">
                     Dashboard
                 </button>
+                <button @click="currentTab = 'signals'"
+                    :class="['px-4 py-2 rounded', currentTab === 'signals' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700']">
+                    Signals
+                </button>
                 <button @click="currentTab = 'simulation'"
                     :class="['px-4 py-2 rounded', currentTab === 'simulation' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700']">
                     Simulation
@@ -189,6 +193,75 @@
                     </tr>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Signals Tab -->
+        <div v-if="currentTab === 'signals'" class="bg-white p-6 rounded-lg shadow">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">週足スイングトレード シグナル</h2>
+                <button id="check-signal-btn" @click="triggerSwingAnalysis"
+                    :disabled="swingAnalyzing"
+                    :class="['px-4 py-2 rounded font-bold text-sm', swingAnalyzing ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700']">
+                    <span v-if="swingAnalyzing">
+                        <svg class="inline w-4 h-4 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                        </svg>
+                        Analyzing...
+                    </span>
+                    <span v-else>Check Signal</span>
+                </button>
+            </div>
+
+            <p class="text-sm text-gray-500 mb-4">
+                登録銘柄の週足データを分析し、スイングトレードシグナルを生成します。
+                分析はバックグラウンドで実行されます（完了後にページをリロードしてください）。
+            </p>
+
+            <div id="signal-results">
+                <div v-if="loadingSignals" class="text-gray-500 text-sm">Loading signals...</div>
+                <div v-else-if="signalResults.length === 0" class="text-gray-400 italic text-sm">
+                    シグナルデータがありません。「Check Signal」を実行してください。
+                </div>
+                <table v-else class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">銘柄コード</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">シグナル</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">スコア</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">推奨アクション</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">損切り</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">利確目標</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">分析日</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <tr v-for="sig in signalResults" :key="sig.id"
+                            :class="sig.score >= 8 ? 'bg-yellow-50 font-semibold' : ''">
+                            <td class="px-4 py-3 font-mono">{{ sig.symbol }}</td>
+                            <td class="px-4 py-3">
+                                <span :class="getSignalClass(sig.signal_type)"
+                                    class="px-2 py-0.5 rounded-full text-xs font-bold">
+                                    {{ sig.signal_type }}
+                                </span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span :class="sig.score >= 8 ? 'text-orange-600 font-bold' : 'text-gray-600'">
+                                    {{ sig.score }} / 10
+                                </span>
+                            </td>
+                            <td class="px-4 py-3 text-gray-700">{{ getRecommendation(sig) }}</td>
+                            <td class="px-4 py-3 font-mono text-red-600">
+                                {{ sig.stop_loss ? formatPrice(sig.stop_loss) : '-' }}
+                            </td>
+                            <td class="px-4 py-3 font-mono text-green-600">
+                                {{ sig.take_profit ? formatPrice(sig.take_profit) : '-' }}
+                            </td>
+                            <td class="px-4 py-3 text-gray-500">{{ sig.analysis_date }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
         <!-- Simulation Tab -->
@@ -707,6 +780,10 @@
                     modalImageSrc: '',
                     modalImageTitle: '',
                     modalSpecificIndicators: null, // シミュレーション
+                    // Swing signals
+                    signalResults: [],
+                    loadingSignals: false,
+                    swingAnalyzing: false,
                 }
             },
             mounted() {
@@ -714,6 +791,7 @@
                 this.fetchRules()
                 this.fetchHistory()
                 this.fetchActionStatus()
+                this.fetchSignals()
                 setInterval(this.fetchActionStatus, 30000) // Poll status every 30s
             },
             computed: {
@@ -1203,7 +1281,56 @@
                     } finally {
                         this.simulating = false
                     }
-                }
+                },
+
+                async fetchSignals() {
+                    this.loadingSignals = true
+                    try {
+                        const res = await fetch('/api/signals/latest')
+                        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
+                        this.signalResults = await res.json()
+                    } catch (e) {
+                        console.error('Failed to load signals:', e)
+                    } finally {
+                        this.loadingSignals = false
+                    }
+                },
+
+                async triggerSwingAnalysis() {
+                    this.swingAnalyzing = true
+                    try {
+                        const res = await fetch('/api/signals/analyze', { method: 'POST' })
+                        if (res.status === 409) {
+                            alert('分析は既に実行中です。しばらくお待ちください。')
+                            return
+                        }
+                        if (!res.ok) {
+                            const data = await res.json()
+                            alert(data.detail || '分析の開始に失敗しました')
+                            return
+                        }
+                        alert('週足スイング分析を開始しました。完了後にSignalsタブをリロードしてください。')
+                        setTimeout(() => this.fetchSignals(), 3000)
+                    } catch (e) {
+                        alert('Error: ' + e.message)
+                    } finally {
+                        this.swingAnalyzing = false
+                    }
+                },
+
+                getSignalClass(signalType) {
+                    if (signalType === 'LONG') return 'bg-green-100 text-green-800'
+                    if (signalType === 'SHORT') return 'bg-red-100 text-red-800'
+                    return 'bg-gray-100 text-gray-600'
+                },
+
+                getRecommendation(sig) {
+                    if (sig.score >= 8 && sig.signal_type === 'LONG') return '買いエントリー検討'
+                    if (sig.score >= 8 && sig.signal_type === 'SHORT') return '売りエントリー検討'
+                    if (sig.signal_type === 'LONG') return '上昇トレンド（スコア不足）'
+                    if (sig.signal_type === 'SHORT') return '下降トレンド（スコア不足）'
+                    return '様子見'
+                },
             }
         }).mount('#app')
     </script>
