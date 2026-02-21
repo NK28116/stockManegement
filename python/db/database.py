@@ -1,26 +1,45 @@
 import logging
+import os
 from contextlib import contextmanager
+from pathlib import Path
 
 import pandas as pd
 from sqlalchemy import create_engine
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import sessionmaker
 
 from python.config import config
-from python.db.models import Base, Portfolio
+# 全モデルをインポートして Base.metadata に登録する（create_all に必要）
+from python.db.models import Base, DailyPrice, Portfolio, Signal, SignalHistory, Stock
 
 logger = logging.getLogger(__name__)
 
 # SQLAlchemy Engine 作成
-# config.get_db_config() が dict を返すと仮定して URL を構築
-# 実際には config 側で DATABASE_URL を返すのが一般的ですが、ここでは dict から構築します
-db_conf = config.get_db_config()
-DATABASE_URL = (
-    f"postgresql://{db_conf.get('user', 'user')}:{db_conf.get('password', 'password')}@"
-    f"{db_conf.get('host', 'localhost')}:{db_conf.get('port', '5432')}/{db_conf.get('dbname', 'stock_db')}"
-)
+# DB_TYPE=sqlite の場合はローカル SQLite を使用し、それ以外は PostgreSQL を使用する
+_db_type = os.getenv("DB_TYPE", "postgresql").lower()
 
-engine = create_engine(DATABASE_URL, echo=False)
+if _db_type == "sqlite":
+    _sqlite_path = os.getenv(
+        "SQLITE_PATH",
+        str(Path(__file__).resolve().parent.parent.parent / "test_stock.db"),
+    )
+    DATABASE_URL = f"sqlite:///{_sqlite_path}"
+    engine = create_engine(
+        DATABASE_URL, echo=False, connect_args={"check_same_thread": False}
+    )
+    logger.info(f"SQLite モードで起動: {_sqlite_path}")
+    # SQLite 環境では Alembic マイグレーションを使わないため、
+    # エンジン生成直後に全テーブルを自動作成する
+    Base.metadata.create_all(bind=engine)
+    logger.info("SQLite: テーブル自動作成完了 (create_all)")
+else:
+    # config.get_db_config() のキーは 'database' (dbname ではない)
+    db_conf = config.get_db_config()
+    DATABASE_URL = (
+        f"postgresql://{db_conf.get('user', 'user')}:{db_conf.get('password', 'password')}@"
+        f"{db_conf.get('host', 'localhost')}:{db_conf.get('port', '5432')}/{db_conf.get('database', 'stock_db')}"
+    )
+    engine = create_engine(DATABASE_URL, echo=False)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -66,45 +85,73 @@ def get_portfolio_data() -> pd.DataFrame:
 def upsert_portfolio_data(data: list[dict]):
     """
     my_stock.csvから読み込んだデータをportfolioテーブルに挿入または更新する。
-    SQLAlchemy Core の upsert 機能を使用。
+    DB_TYPE に応じて PostgreSQL / SQLite のどちらでも動作する。
     """
     with get_db_session() as session:
         for row in data:
-            # PostgreSQL特有の Upsert 構文 (INSERT ... ON CONFLICT DO UPDATE)
-            stmt = insert(Portfolio).values(
-                code=row["code"],
-                name=row["name"],
-                quantity=row["quantity"],
-                purchase_price=row["purchase_price"],
-                purchase_date=row["purchase_date"],
-                status=row["status"],
-                current_price=row["current_price"],
-                profit_loss=row["profit_loss"],
-                profit_loss_percent=row[
-                    "profit_loss_percent"
-                ],  # 数値型に変換されている前提
-                last_updated=row["last_updated"],
-                purpose=row["purpose"],
-            )
+            if _db_type == "sqlite":
+                # SQLite: INSERT OR REPLACE を利用
+                from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
-            # code と purchase_date が重複したら更新
-            # 注意: models.py で UniqueConstraint('code', 'purchase_date') が定義されている必要があります
-            do_update_stmt = stmt.on_conflict_do_update(
-                constraint="uix_portfolio_code_date",
-                set_={
-                    "name": stmt.excluded.name,
-                    "quantity": stmt.excluded.quantity,
-                    "purchase_price": stmt.excluded.purchase_price,
-                    "status": stmt.excluded.status,
-                    "current_price": stmt.excluded.current_price,
-                    "profit_loss": stmt.excluded.profit_loss,
-                    "profit_loss_percent": stmt.excluded.profit_loss_percent,
-                    "last_updated": stmt.excluded.last_updated,
-                    "purpose": stmt.excluded.purpose,
-                },
-            )
+                stmt = sqlite_insert(Portfolio).values(
+                    code=row["code"],
+                    name=row["name"],
+                    quantity=row["quantity"],
+                    purchase_price=row["purchase_price"],
+                    purchase_date=row["purchase_date"],
+                    status=row["status"],
+                    current_price=row["current_price"],
+                    profit_loss=row["profit_loss"],
+                    profit_loss_percent=row["profit_loss_percent"],
+                    last_updated=row["last_updated"],
+                    purpose=row["purpose"],
+                ).on_conflict_do_update(
+                    index_elements=["code", "purchase_date"],
+                    set_={
+                        "name": row["name"],
+                        "quantity": row["quantity"],
+                        "purchase_price": row["purchase_price"],
+                        "status": row["status"],
+                        "current_price": row["current_price"],
+                        "profit_loss": row["profit_loss"],
+                        "profit_loss_percent": row["profit_loss_percent"],
+                        "last_updated": row["last_updated"],
+                        "purpose": row["purpose"],
+                    },
+                )
+            else:
+                # PostgreSQL: INSERT ... ON CONFLICT DO UPDATE
+                from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-            session.execute(do_update_stmt)
+                stmt = pg_insert(Portfolio).values(
+                    code=row["code"],
+                    name=row["name"],
+                    quantity=row["quantity"],
+                    purchase_price=row["purchase_price"],
+                    purchase_date=row["purchase_date"],
+                    status=row["status"],
+                    current_price=row["current_price"],
+                    profit_loss=row["profit_loss"],
+                    profit_loss_percent=row["profit_loss_percent"],
+                    last_updated=row["last_updated"],
+                    purpose=row["purpose"],
+                )
+                stmt = stmt.on_conflict_do_update(
+                    constraint="uix_portfolio_code_date",
+                    set_={
+                        "name": stmt.excluded.name,
+                        "quantity": stmt.excluded.quantity,
+                        "purchase_price": stmt.excluded.purchase_price,
+                        "status": stmt.excluded.status,
+                        "current_price": stmt.excluded.current_price,
+                        "profit_loss": stmt.excluded.profit_loss,
+                        "profit_loss_percent": stmt.excluded.profit_loss_percent,
+                        "last_updated": stmt.excluded.last_updated,
+                        "purpose": stmt.excluded.purpose,
+                    },
+                )
+
+            session.execute(stmt)
 
         session.commit()
         logger.info(f"✅ {len(data)} 件のportfolioデータを処理しました。")
