@@ -2,6 +2,7 @@
 
 import json
 import logging
+import time
 from datetime import date
 from typing import Dict, List, Tuple
 
@@ -383,9 +384,16 @@ def _analyze_weekly_swing(symbol: str) -> None:
     1 銘柄の週足スイングトレード分析を実行し、signals テーブルへ保存する
     """
     df = get_weekly_price_data(symbol)
-    if df.empty or len(df) < _MA_PERIOD + 2:
-        logger.warning(f"データ不足のため週足分析スキップ: {symbol}")
+    if df.empty:
+        logger.warning(f"データ取得失敗: {symbol} (空データ)")
         return
+    if len(df) < _MA_PERIOD + 2:
+        logger.warning(
+            f"データ不足のため週足分析スキップ: {symbol} "
+            f"(取得行数={len(df)}, 必要行数={_MA_PERIOD + 2})"
+        )
+        return
+    logger.info(f"データ取得成功: {symbol} (取得行数={len(df)})")
 
     trend = environment_filter(df)
     if trend == "NONE":
@@ -397,8 +405,10 @@ def _analyze_weekly_swing(symbol: str) -> None:
     risk = calculate_risk(df, trend)
     score, rationale = score_pattern(trend, patterns, df, risk)
 
+    threshold_status = "有効シグナル" if score >= _SCORE_THRESHOLD else f"閾値未達(閾値={_SCORE_THRESHOLD})"
     logger.info(
-        f"[{symbol}] trend={trend} score={score} patterns={patterns} rationale={rationale}"
+        f"[{symbol}] trend={trend} score={score}/{_SCORE_THRESHOLD} "
+        f"[{threshold_status}] patterns={patterns}"
     )
 
     _save_signal(
@@ -453,11 +463,15 @@ def main() -> None:
         logger.error(f"銘柄リスト読み込みエラー: {e}")
         return
 
+    logger.info(f"分析対象銘柄数: {len(stock_df)}")
+
     for _, row in stock_df.iterrows():
         symbol = str(row["code"])
         try:
             _analyze_weekly_swing(symbol)
         except Exception as e:
             logger.error(f"週足分析エラー ({symbol}): {e}", exc_info=True)
+        # yfinance レートリミット回避のため銘柄間に 1 秒ウェイト
+        time.sleep(1)
 
     logger.info("週足スイングトレード分析 完了")

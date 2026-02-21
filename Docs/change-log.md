@@ -1,5 +1,118 @@
 # 変更ログ
 
+## 2026-02-22 (改訂版3 追補)
+
+### 概要
+SQLiteモード時の `signals` テーブル未作成エラーを修正
+
+### 詳細
+
+#### 1. テーブル自動作成 (`python/db/database.py`) [Section 2.5 / Priority: Critical]
+- 全モデルのインポートを追加: `Signal`, `SignalHistory`, `Stock`, `DailyPrice`
+  - `Base.metadata.create_all()` が全テーブルを認識できるようにした
+- SQLiteエンジン作成直後に `Base.metadata.create_all(bind=engine)` を自動実行
+  - `signals` テーブルが存在しない (`no such table: signals`) エラーを解消
+
+#### 2. 起動時テーブル保証 (`python/web/app.py`) [Section 2.5]
+- FastAPI `lifespan` イベントハンドラを追加
+  - `DB_TYPE=sqlite` の場合、アプリ起動時に `init_db()` を呼び出しテーブル存在を二重保証
+
+---
+
+## 2026-02-22 (改訂版3)
+
+### 概要
+DB接続バグ修正・SQLite対応・紫ボタンへのswing analysis統合
+
+### 詳細
+
+#### 1. DB接続の修正と柔軟化 (`python/db/database.py`) [Section 2.4]
+- **バグ修正**: `db_conf.get('dbname', ...)` → `db_conf.get('database', ...)` に修正
+  - `config.py` の `get_db_config()` が返すキー名と整合
+- **SQLite対応**: `DB_TYPE=sqlite` 環境変数でローカル SQLite に切り替え可能
+  - `SQLITE_PATH` 環境変数でパス指定可能（デフォルト: プロジェクトルート `test_stock.db`）
+  - SQLite の場合 `connect_args={"check_same_thread": False}` を設定
+  - `upsert_portfolio_data` を DB 種別に応じて `sqlite.insert` / `postgresql.insert` で分岐
+
+#### 2. 紫ボタンへのSwing Analysis統合 (`python/web/templates/index.html`) [Section 3.1]
+- **`triggerAnalysis()`** を `/api/signals/analyze` を呼び出す実装に更新
+  - `alert()` をトースト通知に置換
+  - 分析完了まで `_startPolling()` によるポーリングを実行
+  - `swingAnalyzing` フラグでローディングスピナー・ボタン無効化を制御
+- **ボタンの disabled 条件**を `actionStatus.is_analyzing || swingAnalyzing` に更新
+  - swing分析中はスピナー付きの「Analyzing...」表示
+- **Signals タブのボタン**を削除し、ヘッダーの紫ボタンへの案内文に統一
+- **`_startPolling()`** に二重起動防止ガードを追加
+
+## 2026-02-21 (改訂版2)
+
+### 概要
+ローカル環境検証準備・ログ強化・UI実行フィードバック改善・DISTINCT ON バグ修正
+
+### 詳細
+
+#### 0. バグ修正 (`python/web/api/signals.py`) [Section 2.3 / Priority: Critical]
+- `GET /api/signals/latest` の SQL クエリを `DISTINCT ON`（PostgreSQL 固有）から標準 SQL に書き換え
+  - 旧: `DISTINCT ON (symbol) ... ORDER BY symbol, created_at DESC`
+  - 新: `JOIN (SELECT symbol, MAX(created_at) AS max_created_at FROM signals GROUP BY symbol) t2 ON ...`
+  - ローカル SQLite 環境で発生していた `500 Internal Server Error` を解消
+
+#### 1. DB同期スクリプト作成 (`scripts/sync_local_db.py`) [Section 1.1]
+- `data/my_stock_local.csv` の内容を `test_stock.db` (SQLite) へ同期するスクリプトを新規作成
+- `stocks` および `portfolio` テーブルを自動作成（存在しない場合）
+- `INSERT ... ON CONFLICT DO UPDATE` で冪等な upsert を実現
+- `--csv` / `--db` オプションでパス指定可能（デフォルトはプロジェクトルート基準）
+
+#### 2. 分析ログ強化 (`python/watch/analyze.py`) [Section 2.2]
+- `main()`: 銘柄数ログを追加 → `分析対象銘柄数: N`
+- `_analyze_weekly_swing()`:
+  - データが空の場合と件数不足の場合のログを分離し、取得行数・必要行数を明記
+  - データ取得成功時に取得行数をログ出力
+  - スコアログに閾値比較結果を追加 → `score=N/8 [有効シグナル|閾値未達(閾値=8)]`
+
+#### 3. ステータスAPIエンドポイント追加 (`python/web/api/signals.py`)
+- `GET /api/signals/status` を追加 → `{"is_analyzing": bool}` を返す
+- フロントエンドのポーリングから分析完了を検知するために使用
+
+#### 4. UI実行フィードバック強化 (`python/web/templates/index.html`) [Section 3.1]
+- **トースト通知を実装**:
+  - 画面右上に固定表示する通知コンポーネントを追加（`toastMessage` / `toastType`）
+  - `alert()` を全廃し、`showToast()` メソッドに置き換え
+  - 6秒後に自動消去、✕ボタンで手動消去
+- **分析完了ポーリングを実装**:
+  - `_startPolling()`: 15秒間隔でステータスAPIをポーリング、最大6分
+  - `is_analyzing` が false になったタイミングで結果を再取得
+  - 0件: 「分析完了：新しいシグナルはありませんでした」、N件: 「分析完了：N件のシグナルが検出されました」
+  - `_stopPolling()`: インターバルを適切にクリア
+
+## 2026-02-21 (改訂版)
+
+### 概要
+週足スイングトレード分析機能の改訂実装（ユーザーレビュー対応）
+
+### 詳細
+
+#### 1. レートリミット対策 (`python/watch/analyze.py`)
+- `main()` のループ内で銘柄ごとに `time.sleep(1)` を追加
+- yfinance API への連続リクエストによるレート制限エラーを回避
+
+#### 2. `is_held` フィールド追加 (`python/web/api/signals.py`)
+- `SignalResponse` モデルに `is_held: bool` を追加
+- `GET /api/signals/latest` のクエリを `portfolio` テーブルと LEFT JOIN するよう変更
+  - 未売却ステータスの銘柄コードと一致する場合に `is_held = true` をセット
+  - 対象外ステータス: `SOLD_PROFIT`, `SOLD_LOSS`, `売却（利益確定）`, `売却（損切り）`
+
+#### 3. UI 視認性向上 (`python/web/templates/index.html`)
+- **行の色分けロジックを改訂**（優先順位順）:
+  - 保有中かつ SHORT シグナル → ピンク (`#ffc0cb`)
+  - LONG シグナル（保有・未保有問わず） → 青 (`#add8e6`)
+  - それ以外でスコア 8 点以上 → 黄 (`#fefce8`)
+- **詳細モーダルを実装**:
+  - 行クリックで `openSignalDetail()` を呼び出し
+  - モーダル内容: シグナル種別・スコア・推奨アクション・損切り・利確目標・検出パターン・判定根拠テキスト
+- **保有中バッジ** (`保有中` ラベル) を銘柄コード列に追加
+- **色凡例** をテーブル下部に追加
+
 ## 2026-02-21
 
 ### 概要

@@ -1,3 +1,5 @@
+import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -12,7 +14,18 @@ from python.web.routes import actions, analytics, charts
 
 logger = get_logger("web", "app")
 
-app = FastAPI(title="Stock Management UI")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # SQLite モードの場合は起動時にもテーブル存在を保証する
+    if os.getenv("DB_TYPE", "").lower() == "sqlite":
+        from python.db.database import init_db
+        init_db()
+        logger.info("lifespan: SQLite テーブル初期化完了")
+    yield
+
+
+app = FastAPI(title="Stock Management UI", lifespan=lifespan)
 
 
 @app.exception_handler(RequestValidationError)
