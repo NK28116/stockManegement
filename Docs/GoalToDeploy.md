@@ -214,8 +214,8 @@ gs://stock-management-prod/
 
 ### 5-1. 認証情報整理
 
-* [ ] APIキーは Secret Manager
-* [ ] コード内の `KEY.json` 参照を廃止し `google-cloud-secret-manager` 経由に変更
+* [x] APIキーは Secret Manager
+* [x] コード内の `KEY.json` 参照を廃止し `google-cloud-secret-manager` 経由に変更
 
 ---
 
@@ -341,4 +341,5 @@ Docs/WayToBenefit.md の「ニッチ・実運用」戦略に基づき再評価�
   * [ ] 証券会社API入力エリア
 * [ ] **(Low Priority) 国際市場・英語対応**
   * [ ] ※ `WayToBenefit.md` の「日本株スイング特化」という強みが薄れるため、優先度は下げる。あくまでオプション扱い。
-* [ ]
+* [ ] **リファクタリング**
+    [ ] 現在fastAPIのみで書かれているがこれをver1としてドキュメント作成し終わったら,フロントはnext,バックはgo，計算はpythonに業務を分割する

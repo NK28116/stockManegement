@@ -4,6 +4,7 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
+    Float,
     Integer,
     Numeric,
     String,
@@ -75,6 +76,25 @@ class DailyPrice(Base):
     __table_args__ = (
         UniqueConstraint("stock_code", "date", name="uix_daily_price_code_date"),
     )
+
+
+class Signal(Base):
+    """
+    週足スイングトレード分析シグナルテーブル
+    """
+
+    __tablename__ = "signals"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    symbol = Column(String, nullable=False, index=True)
+    analysis_date = Column(Date, nullable=False)
+    signal_type = Column(String, nullable=False)  # 'LONG', 'SHORT', 'NONE'
+    score = Column(Integer)
+    detected_patterns = Column(String)  # JSON 形式で保存
+    stop_loss = Column(Float)
+    take_profit = Column(Float)
+    rationale = Column(Text)
+    created_at = Column(DateTime, default=datetime.now)
 
 
 class SignalHistory(Base):

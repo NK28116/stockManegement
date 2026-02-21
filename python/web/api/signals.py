@@ -5,13 +5,17 @@
 売買シグナルを生成し、履歴として保存する。
 """
 
+import asyncio
+import json
 from datetime import datetime
+from typing import List, Optional
 
 import yfinance as yf
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
+from pydantic import BaseModel
 
-from python.db.database import get_db_session
-from python.db.models import SignalHistory
+from python.db.database import get_db_session, engine
+from python.db.models import Signal, SignalHistory
 from python.trading.trading_rules import ImprovedTradingRules
 from python.utils.logger import get_logger
 from python.utils.rules_loader import get_active_rules
@@ -20,6 +24,115 @@ from python.web.schemas import SignalCheckRequest, SignalCheckResponse
 logger = get_logger("web", "signals")
 
 router = APIRouter(prefix="/api/signals", tags=["signals"])
+
+
+# --- 週足スイング分析 State ---
+class _AnalyzeState:
+    is_analyzing: bool = False
+
+
+_analyze_state = _AnalyzeState()
+
+
+async def _run_swing_analysis() -> None:
+    """バックグラウンドで週足スイング分析を実行する"""
+    try:
+        logger.info("週足スイング分析 バックグラウンドタスク 開始")
+        from python.watch.analyze import main as analyze_main
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, analyze_main)
+        logger.info("週足スイング分析 バックグラウンドタスク 完了")
+    except Exception as e:
+        logger.error(f"週足スイング分析エラー: {e}", exc_info=True)
+    finally:
+        _analyze_state.is_analyzing = False
+
+
+@router.post("/analyze", status_code=202)
+async def trigger_swing_analysis(background_tasks: BackgroundTasks):
+    """
+    保有・監視銘柄の週足スイングトレード分析をバックグラウンドで開始する
+    既に実行中の場合は 409 を返す
+    """
+    if _analyze_state.is_analyzing:
+        raise HTTPException(status_code=409, detail="Analysis already in progress")
+
+    _analyze_state.is_analyzing = True
+    background_tasks.add_task(_run_swing_analysis)
+
+    return {
+        "status": "accepted",
+        "message": "週足スイング分析を開始しました。",
+        "timestamp": datetime.now().isoformat(),
+    }
+
+
+class SignalResponse(BaseModel):
+    id: int
+    symbol: str
+    analysis_date: str
+    signal_type: str
+    score: int
+    detected_patterns: List[str]
+    stop_loss: Optional[float]
+    take_profit: Optional[float]
+    rationale: Optional[str]
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
+
+@router.get("/latest", response_model=List[SignalResponse])
+async def get_latest_signals():
+    """
+    signals テーブルから銘柄ごとの最新シグナルを返す
+    """
+    try:
+        from sqlalchemy import text
+
+        query = text(
+            """
+            SELECT DISTINCT ON (symbol)
+                id, symbol, analysis_date, signal_type, score,
+                detected_patterns, stop_loss, take_profit, rationale, created_at
+            FROM signals
+            ORDER BY symbol, created_at DESC
+            """
+        )
+
+        with engine.connect() as conn:
+            rows = conn.execute(query).fetchall()
+
+        results = []
+        for row in rows:
+            patterns_raw = row.detected_patterns or "[]"
+            try:
+                patterns = json.loads(patterns_raw)
+            except (json.JSONDecodeError, TypeError):
+                patterns = []
+
+            results.append(
+                SignalResponse(
+                    id=row.id,
+                    symbol=row.symbol,
+                    analysis_date=str(row.analysis_date),
+                    signal_type=row.signal_type,
+                    score=row.score or 0,
+                    detected_patterns=patterns,
+                    stop_loss=row.stop_loss,
+                    take_profit=row.take_profit,
+                    rationale=row.rationale,
+                    created_at=str(row.created_at),
+                )
+            )
+
+        return results
+
+    except Exception as e:
+        logger.error(f"最新シグナル取得エラー: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"内部エラー: {str(e)}")
 
 
 @router.post("/check", response_model=SignalCheckResponse)
@@ -40,14 +153,12 @@ async def check_signal(request: SignalCheckRequest):
     logger.info(f"シグナルチェック開始: {stock_code}")
 
     try:
-        # 1. 最新のルールを取得
         active_rules = get_active_rules()
         rule_version = str(active_rules.meta.version)
         logger.info(f"使用するルールバージョン: {rule_version}")
 
-        # 2. yfinance APIで最新の株価データを取得
         ticker = yf.Ticker(stock_code)
-        df = ticker.history(period="3mo")  # 3ヶ月分のデータを取得
+        df = ticker.history(period="3mo")
 
         if df is None or df.empty:
             raise HTTPException(
@@ -55,7 +166,6 @@ async def check_signal(request: SignalCheckRequest):
                 detail=f"銘柄コード {stock_code} のデータが取得できませんでした",
             )
 
-        # 3. ImprovedTradingRulesクラスでシグナル分析
         trading_rules = ImprovedTradingRules(rules=active_rules)
         trades = trading_rules.analyze_with_improved_rules(df)
 
@@ -64,14 +174,12 @@ async def check_signal(request: SignalCheckRequest):
                 status_code=500, detail="シグナル生成に失敗しました（取引履歴が空です）"
             )
 
-        # 4. 最新のシグナルを取得
         latest_trade = trades[-1]
-        signal = latest_trade["action"]  # 'BUY', 'SELL', 'HOLD'
+        signal = latest_trade["action"]
         price = float(latest_trade["price"])
         reason = latest_trade["reason"]
         timestamp = datetime.utcnow()
 
-        # 5. SignalHistoryテーブルに保存
         with get_db_session() as session:
             signal_record = SignalHistory(
                 stock_code=stock_code,
@@ -85,7 +193,6 @@ async def check_signal(request: SignalCheckRequest):
             session.commit()
             logger.info(f"シグナル履歴を保存しました: {stock_code} - {signal}")
 
-        # 6. レスポンスを返却
         return SignalCheckResponse(
             stock_code=stock_code,
             signal=signal,
