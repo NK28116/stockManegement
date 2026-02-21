@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "linear": {
+      "command": "https://mcp.linear.app/mcp",
+      "args": []
+    }
+  }
+}
