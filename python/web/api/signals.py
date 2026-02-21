@@ -68,6 +68,12 @@ async def trigger_swing_analysis(background_tasks: BackgroundTasks):
     }
 
 
+@router.get("/status")
+async def get_analysis_status():
+    """分析実行状態を返す"""
+    return {"is_analyzing": _analyze_state.is_analyzing}
+
+
 class SignalResponse(BaseModel):
     id: int
     symbol: str
@@ -79,6 +85,7 @@ class SignalResponse(BaseModel):
     take_profit: Optional[float]
     rationale: Optional[str]
     created_at: str
+    is_held: bool
 
     class Config:
         from_attributes = True
@@ -87,18 +94,33 @@ class SignalResponse(BaseModel):
 @router.get("/latest", response_model=List[SignalResponse])
 async def get_latest_signals():
     """
-    signals テーブルから銘柄ごとの最新シグナルを返す
+    signals テーブルから銘柄ごとの最新シグナルを返す。
+    portfolio テーブルと結合して保有中かどうか (is_held) を付与する。
     """
     try:
         from sqlalchemy import text
 
+        # GROUP BY + MAX(created_at) で銘柄ごとの最新レコードを取得し、
+        # portfolio テーブルと LEFT JOIN して保有フラグを付与する
+        # (DISTINCT ON は PostgreSQL 固有のため、SQLite でも動く標準 SQL に変更)
         query = text(
             """
-            SELECT DISTINCT ON (symbol)
-                id, symbol, analysis_date, signal_type, score,
-                detected_patterns, stop_loss, take_profit, rationale, created_at
-            FROM signals
-            ORDER BY symbol, created_at DESC
+            SELECT
+                t1.id, t1.symbol, t1.analysis_date, t1.signal_type, t1.score,
+                t1.detected_patterns, t1.stop_loss, t1.take_profit, t1.rationale, t1.created_at,
+                CASE WHEN p.code IS NOT NULL THEN TRUE ELSE FALSE END AS is_held
+            FROM signals t1
+            JOIN (
+                SELECT symbol, MAX(created_at) AS max_created_at
+                FROM signals
+                GROUP BY symbol
+            ) t2 ON t1.symbol = t2.symbol AND t1.created_at = t2.max_created_at
+            LEFT JOIN (
+                SELECT DISTINCT code
+                FROM portfolio
+                WHERE status NOT IN ('SOLD_PROFIT', 'SOLD_LOSS', '売却（利益確定）', '売却（損切り）')
+            ) p ON t1.symbol = p.code
+            ORDER BY t1.signal_type DESC, t1.score DESC
             """
         )
 
@@ -125,6 +147,7 @@ async def get_latest_signals():
                     take_profit=row.take_profit,
                     rationale=row.rationale,
                     created_at=str(row.created_at),
+                    is_held=bool(row.is_held),
                 )
             )
 
