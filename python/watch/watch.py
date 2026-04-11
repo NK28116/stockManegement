@@ -39,13 +39,12 @@ def main():
 def get_price_history(code, limit=5):
     conn = None
     try:
+        from sqlalchemy import text
+
         conn = get_db_connection()
-        c = conn.cursor()
-        c.execute(
-            "SELECT price FROM intraday WHERE code = %s ORDER BY timestamp DESC LIMIT %s",  # プレースホルダを%sに変更
-            (code, limit),
-        )
-        history = [row[0] for row in c.fetchall()][::-1]  # 古い順に並べ替え
+        stmt = text("SELECT price FROM intraday WHERE code = :code ORDER BY timestamp DESC LIMIT :limit")
+        result = conn.execute(stmt, {"code": code, "limit": limit})
+        history = [row[0] for row in result.fetchall()][::-1]  # 古い順に並べ替え
         return history
     except Exception as e:
         logging.error(f"\n DBデータ取得エラー: {e}\n")
@@ -59,12 +58,16 @@ def get_price_history(code, limit=5):
 def save_data_to_db(code, timestamp, price, volume):
     conn = None
     try:
+        from sqlalchemy import text
+        import os
+
+        _db_type = os.getenv("DB_TYPE", "postgresql").lower()
+
         conn = get_db_connection()
-        c = conn.cursor()
-        # PostgreSQLではDATETIMEではなくTIMESTAMP WITH TIME ZONEが一般的だが、ここではTIMESTAMPで対応
-        # PRIMARY KEY (code, timestamp) はPostgreSQLでも有効
-        c.execute(
-            """
+        # Create table if not exists
+        conn.execute(
+            text(
+                """
             CREATE TABLE IF NOT EXISTS intraday (
                 code TEXT,
                 timestamp TIMESTAMP,
@@ -72,23 +75,32 @@ def save_data_to_db(code, timestamp, price, volume):
                 volume INTEGER,
                 PRIMARY KEY (code, timestamp)
             )
-        """
-        )
-        # INSERT OR REPLACE INTO はPostgreSQLにはない。代わりにON CONFLICT DO UPDATEを使用
-        c.execute(
             """
-            INSERT INTO intraday (code, timestamp, price, volume)
-            VALUES (%s, %s, %s, %s)
-            ON CONFLICT (code, timestamp) DO UPDATE
-            SET price = EXCLUDED.price, volume = EXCLUDED.volume
-        """,
-            (
-                code,
-                timestamp,
-                price,
-                volume,
-            ),  # timestampはdatetimeオブジェクトのまま渡す
+            )
         )
+
+        if _db_type == "sqlite":
+            conn.execute(
+                text(
+                    """
+                INSERT OR REPLACE INTO intraday (code, timestamp, price, volume)
+                VALUES (:code, :timestamp, :price, :volume)
+                """
+                ),
+                {"code": code, "timestamp": timestamp, "price": price, "volume": volume},
+            )
+        else:
+            conn.execute(
+                text(
+                    """
+                INSERT INTO intraday (code, timestamp, price, volume)
+                VALUES (:code, :timestamp, :price, :volume)
+                ON CONFLICT (code, timestamp) DO UPDATE
+                SET price = EXCLUDED.price, volume = EXCLUDED.volume
+                """
+                ),
+                {"code": code, "timestamp": timestamp, "price": price, "volume": volume},
+            )
 
         conn.commit()
         logger.info("\n DB保存成功: intraday にデータ追加")
@@ -125,9 +137,7 @@ def get_stock_price(symbol: str) -> float:
         # フォールバック: ランダム値
         price = round(random.uniform(1000, 5000), 2)
         volume = random.randint(100, 1000)
-        logger.warning(
-            "\n== フォールバック: ランダム値を使用 %s -> %s==\n", symbol, price
-        )
+        logger.warning("\n== フォールバック: ランダム値を使用 %s -> %s==\n", symbol, price)
         return price, volume
 
 
@@ -147,9 +157,7 @@ def _monitor_stock(
     """
     if not is_test_mode:
         save_data_to_db(code, current_dt, price, volume)
-        logger.info(
-            f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - DB保存成功: intraday にデータ追加"
-        )
+        logger.info(f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - DB保存成功: intraday にデータ追加")
     else:
         logger.info(
             f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - テストモードのため、DB保存はスキップ: intraday にデータ追加"
@@ -168,18 +176,14 @@ def _monitor_stock(
         header = f"\n### {code} ###"
     logs.append(header)
 
-    logs.append(
-        f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - 株価取得成功: {code} -> {price}\n"
-    )
+    logs.append(f"{current_dt.strftime('%Y-%m-%d %H:%M:%S')} - INFO - 株価取得成功: {code} -> {price}\n")
 
     # Load rules
     rules = get_active_rules()
 
     # === 警告系 ===
     if len(history) >= 3 and history[-1] < history[-2] < history[-3]:
-        warnings.append(
-            f"- 連続下落検出: {history[-3]:.1f} -> {history[-2]:.1f} -> {history[-1]:.1f}"
-        )
+        warnings.append(f"- 連続下落検出: {history[-3]:.1f} -> {history[-2]:.1f} -> {history[-1]:.1f}")
 
     recent_prices = history[-config.volatility_period :]
     if len(recent_prices) >= 2:
@@ -222,9 +226,7 @@ def run_dev_mode(dev_date):
             price = last_price[code] * (1 + change_pct)
             volume = random.randint(100, 1000)
 
-            last_price[code] = _monitor_stock(
-                code, current_dt, price, volume, price_history[code], last_price[code]
-            )
+            last_price[code] = _monitor_stock(code, current_dt, price, volume, price_history[code], last_price[code])
 
         current_dt += timedelta(minutes=1)
         time.sleep(0.5)  # time_module.sleep を time.sleep に変更
@@ -246,9 +248,7 @@ def run_once():
         history = get_price_history(code, limit=config.volatility_period + 2)
         last_price = history[-1] if history else None
 
-        updated_price = _monitor_stock(
-            code, current_dt, price, volume, history, last_price
-        )
+        updated_price = _monitor_stock(code, current_dt, price, volume, history, last_price)
         results.append((code, updated_price, volume))
 
     return results
@@ -264,10 +264,7 @@ def detect_intraday_crash(code, current_price, last_price):
     crash_threshold = rules.filters.crash_threshold_percent
 
     if drop_pct <= crash_threshold:
-        message = (
-            f"[分足急落] {code}: {last_price:.1f} -> {current_price:.1f} "
-            f"({drop_pct:.2f}%)"
-        )
+        message = f"[分足急落] {code}: {last_price:.1f} -> {current_price:.1f} " f"({drop_pct:.2f}%)"
         send_alert(message, level="WARNING")  # Slack に送信
         return message
     return None
@@ -326,18 +323,14 @@ def run_realtime_mode():
                 history = get_price_history(code, limit=config.volatility_period + 2)
                 last_price = history[-1] if history else None
 
-                updated_price = _monitor_stock(
-                    code, now, price, volume, history, last_price
-                )
+                updated_price = _monitor_stock(code, now, price, volume, history, last_price)
                 results.append((code, updated_price, volume))
             time.sleep(120)  # 2分待機
         elif market_open_morning_end < current_time < market_open_afternoon_start:
             # 昼休み中
             logger.info("昼休み中: 監視を一時停止し、後場開始まで待機します。")
             # 後場開始までの残り時間を計算
-            wait_seconds = (
-                datetime.combine(now.date(), market_open_afternoon_start) - now
-            ).total_seconds()
+            wait_seconds = (datetime.combine(now.date(), market_open_afternoon_start) - now).total_seconds()
             if wait_seconds > 0:
                 time.sleep(wait_seconds)
             else:
@@ -346,9 +339,7 @@ def run_realtime_mode():
             # 市場閉場中 (15:00以降または9:00以前)
             logger.info("市場閉場中: 翌日の開場まで待機します。")
             # 翌日の市場開場までの残り時間を計算
-            tomorrow_morning_open = datetime.combine(
-                now.date() + timedelta(days=1), market_open_morning_start
-            )
+            tomorrow_morning_open = datetime.combine(now.date() + timedelta(days=1), market_open_morning_start)
             wait_seconds = (tomorrow_morning_open - now).total_seconds()
             if wait_seconds > 0:
                 time.sleep(wait_seconds)

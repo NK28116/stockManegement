@@ -9,7 +9,15 @@ import os
 from typing import Dict
 
 import matplotlib
-import matplotlib.pyplot as plt
+
+# Non-interactive backend.
+# Must be set BEFORE `import matplotlib.pyplot` so that this module can be
+# safely used from worker threads (e.g. FastAPI background tasks via
+# run_in_executor). The default macOS backend raises
+# "Cannot create a GUI FigureManager outside the main thread".
+matplotlib.use("Agg")
+
+import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd
 from dotenv import load_dotenv
 

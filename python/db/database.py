@@ -4,10 +4,11 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, delete, update
 from sqlalchemy.orm import sessionmaker
 
 from python.config import config
+
 # 全モデルをインポートして Base.metadata に登録する（create_all に必要）
 from python.db.models import Base, DailyPrice, Portfolio, Signal, SignalHistory, Stock
 
@@ -23,9 +24,7 @@ if _db_type == "sqlite":
         str(Path(__file__).resolve().parent.parent.parent / "test_stock.db"),
     )
     DATABASE_URL = f"sqlite:///{_sqlite_path}"
-    engine = create_engine(
-        DATABASE_URL, echo=False, connect_args={"check_same_thread": False}
-    )
+    engine = create_engine(DATABASE_URL, echo=False, connect_args={"check_same_thread": False})
     logger.info(f"SQLite モードで起動: {_sqlite_path}")
     # SQLite 環境では Alembic マイグレーションを使わないため、
     # エンジン生成直後に全テーブルを自動作成する
@@ -93,31 +92,35 @@ def upsert_portfolio_data(data: list[dict]):
                 # SQLite: INSERT OR REPLACE を利用
                 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
-                stmt = sqlite_insert(Portfolio).values(
-                    code=row["code"],
-                    name=row["name"],
-                    quantity=row["quantity"],
-                    purchase_price=row["purchase_price"],
-                    purchase_date=row["purchase_date"],
-                    status=row["status"],
-                    current_price=row["current_price"],
-                    profit_loss=row["profit_loss"],
-                    profit_loss_percent=row["profit_loss_percent"],
-                    last_updated=row["last_updated"],
-                    purpose=row["purpose"],
-                ).on_conflict_do_update(
-                    index_elements=["code", "purchase_date"],
-                    set_={
-                        "name": row["name"],
-                        "quantity": row["quantity"],
-                        "purchase_price": row["purchase_price"],
-                        "status": row["status"],
-                        "current_price": row["current_price"],
-                        "profit_loss": row["profit_loss"],
-                        "profit_loss_percent": row["profit_loss_percent"],
-                        "last_updated": row["last_updated"],
-                        "purpose": row["purpose"],
-                    },
+                stmt = (
+                    sqlite_insert(Portfolio)
+                    .values(
+                        code=row["code"],
+                        name=row["name"],
+                        quantity=row["quantity"],
+                        purchase_price=row["purchase_price"],
+                        purchase_date=row["purchase_date"],
+                        status=row["status"],
+                        current_price=row["current_price"],
+                        profit_loss=row["profit_loss"],
+                        profit_loss_percent=row["profit_loss_percent"],
+                        last_updated=row["last_updated"],
+                        purpose=row["purpose"],
+                    )
+                    .on_conflict_do_update(
+                        index_elements=["code", "purchase_date"],
+                        set_={
+                            "name": row["name"],
+                            "quantity": row["quantity"],
+                            "purchase_price": row["purchase_price"],
+                            "status": row["status"],
+                            "current_price": row["current_price"],
+                            "profit_loss": row["profit_loss"],
+                            "profit_loss_percent": row["profit_loss_percent"],
+                            "last_updated": row["last_updated"],
+                            "purpose": row["purpose"],
+                        },
+                    )
                 )
             else:
                 # PostgreSQL: INSERT ... ON CONFLICT DO UPDATE
@@ -155,6 +158,77 @@ def upsert_portfolio_data(data: list[dict]):
 
         session.commit()
         logger.info(f"✅ {len(data)} 件のportfolioデータを処理しました。")
+
+
+def _clean_portfolio_row(row: dict) -> dict:
+    """
+    CSVから読み込んだ1行を DB 挿入前にクリーニングする。
+    - profit_loss_percent の "%" 文字列を除去して float に変換
+    - None/NaN はそのまま None に統一
+    """
+    cleaned = dict(row)
+    pct = cleaned.get("profit_loss_percent")
+    if pct is not None and pct != "" and pct is not float:
+        try:
+            cleaned["profit_loss_percent"] = float(str(pct).replace("%", "").strip())
+        except (ValueError, TypeError):
+            cleaned["profit_loss_percent"] = None
+    return cleaned
+
+
+def sync_csv_to_portfolio() -> None:
+    """
+    config.codes_path のCSVを読み込み、portfolioテーブルへ全量 Upsert する。
+    - profit_loss_percent の「%」文字列を自動除去（PostgreSQL Numeric 型対応）
+    - NaN 値は None(NULL)に変換
+    """
+    csv_path = config.codes_path
+    if not Path(csv_path).exists():
+        logger.warning(f"sync_csv_to_portfolio: CSVが見つかりません: {csv_path}")
+        return
+
+    try:
+        df = pd.read_csv(csv_path)
+        # NaN → None に統一
+        df = df.where(pd.notnull(df), None)
+        records = [_clean_portfolio_row(r) for r in df.to_dict("records")]
+        upsert_portfolio_data(records)
+        logger.info(f"✅ sync_csv_to_portfolio: {len(records)} 件を同期しました ({csv_path})")
+    except Exception as e:
+        logger.error(f"❌ sync_csv_to_portfolio エラー: {e}", exc_info=True)
+
+
+def delete_portfolio_record(code: str) -> None:
+    """
+    portfolioテーブルから指定コードの全レコードを削除する。
+    delete_stock() 呼び出し後に CSV との一貫性を保つために使用する。
+    """
+    try:
+        with get_db_session() as session:
+            stmt = delete(Portfolio).where(Portfolio.code == code)
+            result = session.execute(stmt)
+            session.commit()
+            logger.info(f"✅ delete_portfolio_record: {code} を削除しました ({result.rowcount} 件)")
+    except Exception as e:
+        logger.error(f"❌ delete_portfolio_record エラー ({code}): {e}", exc_info=True)
+
+
+def update_portfolio_status(code: str, status: str, quantity: int = 0) -> None:
+    """
+    portfolioテーブルの指定コードのステータスと数量を更新する。
+    sell_stock() 呼び出し後に CSV との一貫性を保つために使用する。
+    """
+    try:
+        with get_db_session() as session:
+            stmt = update(Portfolio).where(Portfolio.code == code).values(status=status, quantity=quantity)
+            result = session.execute(stmt)
+            session.commit()
+            logger.info(
+                f"✅ update_portfolio_status: {code} を status={status}, quantity={quantity} に更新しました "
+                f"({result.rowcount} 件)"
+            )
+    except Exception as e:
+        logger.error(f"❌ update_portfolio_status エラー ({code}): {e}", exc_info=True)
 
 
 def get_db_connection():
