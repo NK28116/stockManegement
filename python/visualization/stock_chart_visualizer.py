@@ -14,9 +14,17 @@ import warnings
 from typing import Dict, List, Optional
 
 import matplotlib
-import matplotlib.dates as mdates
-import matplotlib.font_manager as fm
-import matplotlib.pyplot as plt
+
+# Non-interactive backend.
+# Must be set BEFORE importing matplotlib.pyplot / dates / font_manager so
+# this module is safe to call from worker threads (FastAPI background
+# tasks via run_in_executor). Without this the macOS backend raises
+# "Cannot create a GUI FigureManager outside the main thread".
+matplotlib.use("Agg")
+
+import matplotlib.dates as mdates  # noqa: E402
+import matplotlib.font_manager as fm  # noqa: E402
+import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd
 import yfinance as yf
 from dotenv import load_dotenv

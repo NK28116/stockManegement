@@ -23,13 +23,17 @@ class Config:
         self.root_dir = Path(__file__).resolve().parent.parent
 
         # 固定パス
-        self.codes_path = self.root_dir / "data" / "my_stock.csv"
         self.data_dir = self.root_dir / "data"
         self.log_dir = self.root_dir / "log"
         self.archive_dir = self.root_dir / "data" / "archive"
 
-        # DB接続設定 (切り替え)
+        # DB接続設定 (切り替え) -- codes_path より先に読む
         self.db_env = os.getenv("DB_ENV", "local")
+
+        # DB_ENV に応じて参照する株式ポートフォリオ CSV を切り替える
+        # local: ローカル開発用CSV、cloud: GCE/ステージング用CSV
+        _csv_filename = "my_stock_local.csv" if self.db_env == "local" else "my_stock.csv"
+        self.codes_path = self.root_dir / "data" / _csv_filename
 
         # 分析・リスク管理・監視パラメータ（省略：既存コードそのまま）
         self.default_period = "1mo"
@@ -57,34 +61,18 @@ class Config:
         self.default_portfolio_file = self.root_dir / "data" / "my_stock.csv"
 
         # アラート設定
-        self.slack_webhook = secret_manager.get_secret(
-            "SLACK_WEBHOOK", os.getenv("SLACK_WEBHOOK", "{SLACK_WEBHOOK}")
-        )
-        self.slack_bot_token = secret_manager.get_secret(
-            "SLACK_BOT_TOKEN", os.getenv("SLACK_BOT_TOKEN", "")
-        )
-        self.slack_channel = secret_manager.get_secret(
-            "SLACK_CHANNEL", os.getenv("SLACK_CHANNEL", "")
-        )
+        self.slack_webhook = secret_manager.get_secret("SLACK_WEBHOOK", os.getenv("SLACK_WEBHOOK", "{SLACK_WEBHOOK}"))
+        self.slack_bot_token = secret_manager.get_secret("SLACK_BOT_TOKEN", os.getenv("SLACK_BOT_TOKEN", ""))
+        self.slack_channel = secret_manager.get_secret("SLACK_CHANNEL", os.getenv("SLACK_CHANNEL", ""))
 
         # 証券会社API
-        self.XXXX_API_KEY = secret_manager.get_secret(
-            "XXXX_API_KEY", os.getenv("XXXX_API_KEY", "")
-        )
-        self.XXXX_API_SECRET = secret_manager.get_secret(
-            "XXXX_API_SECRET", os.getenv("XXXX_API_SECRET", "")
-        )
+        self.XXXX_API_KEY = secret_manager.get_secret("XXXX_API_KEY", os.getenv("XXXX_API_KEY", ""))
+        self.XXXX_API_SECRET = secret_manager.get_secret("XXXX_API_SECRET", os.getenv("XXXX_API_SECRET", ""))
 
         # バックグラウンドタスク間隔設定 (秒)
-        self.watch_interval_seconds = int(
-            os.getenv("WATCH_INTERVAL_SECONDS", "120")
-        )  # 2分
-        self.analyze_interval_seconds = int(
-            os.getenv("ANALYZE_INTERVAL_SECONDS", "3600")
-        )  # 1時間
-        self.monitor_interval_seconds = int(
-            os.getenv("MONITOR_INTERVAL_SECONDS", "7200")
-        )  # 2時間
+        self.watch_interval_seconds = int(os.getenv("WATCH_INTERVAL_SECONDS", "120"))  # 2分
+        self.analyze_interval_seconds = int(os.getenv("ANALYZE_INTERVAL_SECONDS", "3600"))  # 1時間
+        self.monitor_interval_seconds = int(os.getenv("MONITOR_INTERVAL_SECONDS", "7200"))  # 2時間
 
         # Matplotlib フォント設定
         self.matplotlib_font_family = os.getenv("MATPLOTLIB_FONT_FAMILY", "IPAexGothic")
@@ -120,9 +108,7 @@ class Config:
             "slack_webhook": self.slack_webhook,
             "slack_bot_token": self.slack_bot_token,
             "slack_channel": self.slack_channel,
-            "enabled": bool(
-                self.slack_webhook
-            ),  # webhookが設定されていれば有効とみなす
+            "enabled": bool(self.slack_webhook),  # webhookが設定されていれば有効とみなす
         }
 
     def get_trade_config(self) -> Dict[str, Any]:

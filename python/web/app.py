@@ -17,11 +17,22 @@ logger = get_logger("web", "app")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # SQLite モードの場合は起動時にもテーブル存在を保証する
-    if os.getenv("DB_TYPE", "").lower() == "sqlite":
+    db_type = os.getenv("DB_TYPE", "postgresql").lower()
+    if db_type == "sqlite":
+        # SQLite モードの場合は起動時にもテーブル存在を保証する
         from python.db.database import init_db
+
         init_db()
         logger.info("lifespan: SQLite テーブル初期化完了")
+    else:
+        # PostgreSQL モードの場合は CSV → portfolio テーブルへ自動同期する
+        try:
+            from python.db.database import sync_csv_to_portfolio
+
+            sync_csv_to_portfolio()
+            logger.info("lifespan: portfolio テーブルを CSV から同期完了")
+        except Exception as e:
+            logger.warning(f"lifespan: portfolio 同期をスキップしました: {e}")
     yield
 
 
