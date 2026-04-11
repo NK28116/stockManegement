@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, Response
 
+from python.config import config
 from python.utils.gcs_client import gcs
 
 router = APIRouter(prefix="/api/charts", tags=["charts"])
@@ -16,17 +17,26 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-# Map category names to paths (GCS vs Local)
+# Map category names to paths (GCS vs Local).
+#
+# NOTE: chart generation (python.visualization.stock_chart_visualizer)
+# always writes into a period-specific subfolder, e.g. data/plots/1mo/
+# and data/chartImg/1mo/. The web UI currently targets the 1mo charts
+# (that's also what _run_market_update in web/routes/actions.py
+# regenerates), so we serve from those subdirectories. If you change
+# the regenerated period in _run_market_update, update LOCAL_CHART_PERIOD
+# here accordingly.
+LOCAL_CHART_PERIOD = "1mo"
+
 if gcs.use_gcs:
     CATEGORY_MAP = {
         "plots": "charts/indicators",
         "chartImg": "charts/signals",
     }
 else:
-    # Local structure is slightly different (based on data/ listing)
     CATEGORY_MAP = {
-        "plots": "plots",
-        "chartImg": "chartImg",
+        "plots": f"plots/{LOCAL_CHART_PERIOD}",
+        "chartImg": f"chartImg/{LOCAL_CHART_PERIOD}",
     }
 
 
@@ -69,9 +79,7 @@ async def list_charts() -> List[Dict[str, Any]]:
                 with open(local_json_path, "rb") as f:
                     json_content = f.read()
             except Exception as e:
-                logger.warning(
-                    f"Error reading local JSON fallback '{local_json_path}': {e}"
-                )
+                logger.warning(f"Error reading local JSON fallback '{local_json_path}': {e}")
         else:
             logger.info(f"Local JSON file '{local_json_path}' not found.")
 
@@ -84,9 +92,7 @@ async def list_charts() -> List[Dict[str, Any]]:
         except Exception as e:
             logger.error(f"Unexpected error loading {json_filename}: {e}")
     else:
-        logger.info(
-            f"Could not load {json_filename}. Proceeding without specific indicators."
-        )
+        logger.info(f"Could not load {json_filename}. Proceeding without specific indicators.")
 
     # Normalize keys in latest_indicators (remove .T) to match chart keys
     normalized_indicators = {}
@@ -142,9 +148,7 @@ async def list_charts() -> List[Dict[str, Any]]:
 
     # Fallback logic for GCS: If GCS file is missing, try local data/my_stock.csv
     if gcs.use_gcs and not csv_content:
-        logger.warning(
-            "GCS my_stock.csv not found. Falling back to local data/my_stock.csv"
-        )
+        logger.warning("GCS my_stock.csv not found. Falling back to local data/my_stock.csv")
         try:
             with open("data/my_stock.csv", "rb") as f:
                 csv_content = f.read()
@@ -184,27 +188,19 @@ async def list_charts() -> List[Dict[str, Any]]:
                         pl_pct_str = row.get("profit_loss_percent", "")
                         if "{" in pl_pct_str or not pl_pct_str:
                             if purchase_price != 0:
-                                pl_pct = (
-                                    (current_price - purchase_price)
-                                    / purchase_price
-                                    * 100
-                                )
+                                pl_pct = (current_price - purchase_price) / purchase_price * 100
                             else:
                                 pl_pct = 0.0
                         else:
                             try:
-                                pl_pct = float(
-                                    pl_pct_str.replace("%", "").replace("+", "")
-                                )
+                                pl_pct = float(pl_pct_str.replace("%", "").replace("+", ""))
                             except ValueError:
                                 pl_pct = 0.0
 
                         # Calculate simple profit_loss if needed
                         pl_val_str = row.get("profit_loss", "")
                         if "{" in pl_val_str or not pl_val_str:
-                            pl_val = (current_price - purchase_price) * float(
-                                row.get("quantity", 1)
-                            )
+                            pl_val = (current_price - purchase_price) * float(row.get("quantity", 1))
                         else:
                             try:
                                 pl_val = float(pl_val_str)
@@ -254,4 +250,11 @@ async def get_chart_image(category: str, filename: str):
     if not content:
         raise HTTPException(status_code=404, detail="Image not found")
 
-    return Response(content=content, media_type="image/png")
+    # チャート画像は Update Data 実行後に同じファイル名で上書きされるため、
+    # ブラウザ側キャッシュを常に無効化して最新を取得させる。
+    headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    }
+    return Response(content=content, media_type="image/png", headers=headers)

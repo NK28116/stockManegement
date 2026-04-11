@@ -78,16 +78,10 @@ def load_codes(path: str) -> pd.DataFrame:
         else:
             # 'purpose'が既に存在する場合は'sector'を削除
             df = df.drop(columns=["sector"])
-            print(
-                "CSVヘッダー: 'sector' カラムを削除しました（'purpose'が既に存在するため）。"
-            )
+            print("CSVヘッダー: 'sector' カラムを削除しました（'purpose'が既に存在するため）。")
 
-    df["quantity"] = (
-        pd.to_numeric(df["quantity"], errors="coerce").fillna(0).astype(int)
-    )
-    df["purchase_price"] = pd.to_numeric(df["purchase_price"], errors="coerce").fillna(
-        0.0
-    )
+    df["quantity"] = pd.to_numeric(df["quantity"], errors="coerce").fillna(0).astype(int)
+    df["purchase_price"] = pd.to_numeric(df["purchase_price"], errors="coerce").fillna(0.0)
     return df
 
 
@@ -171,9 +165,7 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
     return df
 
 
-def add_transaction(
-    code: str, trade_type: str, quantity: int, price: float, trade_date: str
-):
+def add_transaction(code: str, trade_type: str, quantity: int, price: float, trade_date: str):
     """
     取引履歴をtransactionsテーブルに追加する
     """
@@ -195,9 +187,7 @@ def add_transaction(
             (code, trade_type, quantity, price, trade_date),
         )
         conn.commit()
-        print(
-            f"取引履歴を追加しました: {trade_type} {code} {quantity}株 @¥{price} on {trade_date}"
-        )
+        print(f"取引履歴を追加しました: {trade_type} {code} {quantity}株 @¥{price} on {trade_date}")
     except PgError as e:
         print(f"❌ 取引履歴追加エラー: {e}")
         if conn:
@@ -252,9 +242,31 @@ def sell_stock(code: str, sell_type: str) -> dict:
     return {"message": message}
 
 
-def sell(
-    df: pd.DataFrame, code: str, qty: int, profit_loss_status: str | None = None
-) -> pd.DataFrame:
+def delete_stock(code: str) -> dict:
+    """
+    Delete a stock from the portfolio CSV entirely.
+    This removes the row from the CSV file (dashboard).
+    """
+    path = config.codes_path
+    try:
+        df = load_codes(path)
+    except FileNotFoundError:
+        return {"error": f"File not found: {path}"}
+
+    idx = df.index[df["code"] == code]
+    if len(idx) == 0:
+        return {"error": f"Stock code {code} not found."}
+
+    name = df.at[idx[0], "name"] if "name" in df.columns else code
+    df = df.drop(idx).reset_index(drop=True)
+    save_codes(df, path)
+
+    message = f"Deleted from dashboard: {code} ({name})"
+    print(message)
+    return {"message": message}
+
+
+def sell(df: pd.DataFrame, code: str, qty: int, profit_loss_status: str | None = None) -> pd.DataFrame:
     idx = df.index[df["code"] == code]
     if len(idx) == 0:
         print(f"エラー: {code} はmy_stock.csvに存在しません")
@@ -323,9 +335,7 @@ def refresh_prices(df: pd.DataFrame, target_code: str | None = None) -> pd.DataF
             "売却（損切り）",
             "除外",
         ]:
-            print(
-                f"銘柄 {code} は保有数が0で、かつ有効な売却みステータスではないため削除します。"
-            )
+            print(f"銘柄 {code} は保有数が0で、かつ有効な売却みステータスではないため削除します。")
             continue  # この行はrows_to_keepに追加しない
 
         # statusが有効なリストに含まれていない場合も削除対象
@@ -341,9 +351,7 @@ def refresh_prices(df: pd.DataFrame, target_code: str | None = None) -> pd.DataF
         if "profit_loss" in updated.columns:
             row["profit_loss"] = round((cur - pp) * qty, 2)
         if "profit_loss_percent" in updated.columns:
-            row["profit_loss_percent"] = (
-                f"{((cur-pp)/pp*100):+.2f}%" if pp > 0 else "0.00%"
-            )
+            row["profit_loss_percent"] = f"{((cur-pp)/pp*100):+.2f}%" if pp > 0 else "0.00%"
         if "last_updated" in updated.columns:
             row["last_updated"] = now_str
 
@@ -434,27 +442,19 @@ def main():
     p_buy.add_argument("code")
     p_buy.add_argument("quantity", type=int)
     p_buy.add_argument("--price", type=float, default=None)
-    p_buy.add_argument(
-        "--purpose", type=str, default=None, help="present / middle / long / swing"
-    )
+    p_buy.add_argument("--purpose", type=str, default=None, help="present / middle / long / swing")
 
     # 監視中用のパーサーを追加
     p_prebuy = sub.add_parser("prebuy")
     p_prebuy.add_argument("code")
     # quantityはpre_buy関数内で固定されるため、コマンドライン引数からは削除
     p_prebuy.add_argument("--price", type=float, default=None)
-    p_prebuy.add_argument(
-        "--purpose", type=str, default=None, help="present / middle / long / swing"
-    )
+    p_prebuy.add_argument("--purpose", type=str, default=None, help="present / middle / long / swing")
 
     # --watch と --get は排他的な引数
     status_group = p_prebuy.add_mutually_exclusive_group()
-    status_group.add_argument(
-        "--watch", action="store_true", help="ステータスを '監視中' に設定"
-    )
-    status_group.add_argument(
-        "--get", action="store_true", help="ステータスを '次回のスイングで購入' に設定"
-    )
+    status_group.add_argument("--watch", action="store_true", help="ステータスを '監視中' に設定")
+    status_group.add_argument("--get", action="store_true", help="ステータスを '次回のスイングで購入' に設定")
     # --status 引数は --watch / --get と同時に指定できないようにする
     status_group.add_argument(
         "--status",
@@ -509,9 +509,7 @@ def main():
 
     p_add_transaction = sub.add_parser("add_transaction", help="過去の取引履歴を追加")
     p_add_transaction.add_argument("code", help="銘柄コード")
-    p_add_transaction.add_argument(
-        "trade_type", choices=["buy", "sell"], help="取引タイプ (buy または sell)"
-    )
+    p_add_transaction.add_argument("trade_type", choices=["buy", "sell"], help="取引タイプ (buy または sell)")
     p_add_transaction.add_argument("quantity", type=int, help="数量")
     p_add_transaction.add_argument("price", type=float, help="取引価格")
     p_add_transaction.add_argument("trade_date", help="取引日 (YYYY-MM-DD)")
@@ -535,25 +533,19 @@ def main():
         elif args.status:  # --watch, --get が指定されていない場合のみ --status を考慮
             prebuy_status = args.status
 
-        df = pre_buy(
-            df, args.code, 1, getattr(args, "price", None)
-        )  # quantityを1に固定
+        df = pre_buy(df, args.code, 1, getattr(args, "price", None))  # quantityを1に固定
         if args.purpose and args.code in df["code"].values:
             df.loc[df["code"] == args.code, "purpose"] = args.purpose
         if args.code in df["code"].values:  # statusは常に設定される
             df.loc[df["code"] == args.code, "status"] = prebuy_status
     elif args.action == "sell":
-        df = sell(
-            df, args.code, args.quantity, getattr(args, "profit_loss_status", None)
-        )
+        df = sell(df, args.code, args.quantity, getattr(args, "profit_loss_status", None))
     elif args.action == "refresh":
         df = refresh_prices(df, getattr(args, "code", None))
     elif args.action == "fixnames":
         df = fix_names(df)
     elif args.action == "csv-check":
-        print(
-            f"CSVファイル '{config.codes_path}' の形式チェックが完了しました。問題ありません。"
-        )
+        print(f"CSVファイル '{config.codes_path}' の形式チェックが完了しました。問題ありません。")
         return  # CSVチェックは保存不要なのでここで終了
     elif args.action == "csv-edit":
         idx = df.index[df["code"] == args.code]
@@ -567,9 +559,7 @@ def main():
                 print(f"目的更新: {args.code} -> {args.purpose}")
             if not args.status and not args.purpose:
                 current_status = df.at[i, "status"] if "status" in df.columns else "N/A"
-                current_purpose = (
-                    df.at[i, "purpose"] if "purpose" in df.columns else "N/A"
-                )
+                current_purpose = df.at[i, "purpose"] if "purpose" in df.columns else "N/A"
 
                 print(f"銘柄: {args.code}")
                 print(f"現在のステータス: {current_status}")
@@ -624,9 +614,7 @@ def main():
         else:
             print(f"エラー: {args.code} はmy_stock.csvに存在しません")
     elif args.action == "add_transaction":
-        add_transaction(
-            args.code, args.trade_type, args.quantity, args.price, args.trade_date
-        )
+        add_transaction(args.code, args.trade_type, args.quantity, args.price, args.trade_date)
         return  # DBへの追加はCSV保存不要なのでここで終了
 
     save_codes(df, config.codes_path)

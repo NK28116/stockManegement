@@ -1,5 +1,140 @@
 # 変更ログ
 
+## 2026-02-22 (ユーザーレビューに基づくUI・DB連動改善)
+
+### 概要
+ユーザーからの3点のフィードバック（Check Signals安全化、Sell/Deleteトースト改善、ローカルCSV連動徹底）に対応する改善を実施。
+
+### 詳細
+
+#### 1. Check Signals ボタン安全化 (`python/web/api/signals.py`)
+- `_run_swing_analysis` 関数の先頭に `init_db()` を追加し、`signals` / `signal_history` テーブルが未作成でもエラーにならないよう保護
+
+#### 2. Sell/Delete トースト表示改善 (`python/web/templates/index.html`)
+- `sellStock()` の完了通知を `alert()` からトースト通知 (`toastMessage`) に変更
+- `deleteStock()` と `sellStock()` 双方で `await this.fetchCharts()` の完了後にトーストをセットするよう順序を修正。これによりDOMの再描画でトーストが消えるのを防止
+- エラー時もトースト通知に統一
+
+#### 3. ローカルCSV連動の徹底
+- `config.py`: `default_portfolio_file` が `my_stock.csv` にハードコーディングされていたのを `_csv_filename`（DB_ENV依存）に修正
+- `charts.py`: GCSフォールバックのパスを `data/my_stock.csv` から `config.codes_path` に修正し、`config` をインポート追加
+
+---
+
+## 2026-02-22 (Updateボタン: ローカルCSVの `last_updated` 更新対応)
+
+### 概要
+ダッシュボードの「Update」ボタン（市場データ更新）をクリックした際、バックグラウンド処理完了後に対象CSVファイル（ローカル環境では `data/my_stock_local.csv`）の全銘柄の `last_updated` カラムを現在のシステム日時に一括更新するようにした。
+
+### 詳細
+
+#### 1. バックグラウンド更新処理の拡張 (`python/web/routes/actions.py`)
+- `_run_market_update()` 関数内で `watch.main()` 完了後に CSV更新処理を追加
+- `buy_and_sell_stock.load_codes` / `save_codes` を使用し、`config.codes_path` のCSVファイルを読み書き
+- `last_updated` カラム全体を `YYYY/MM/DD HH:MM:SS` フォーマットの現在日時で上書き
+- CSV更新のエラーは独立した `try-except` で囲み、メインのバックグラウンド処理に影響しない設計
+
+---
+
+## 2026-02-22 (ダッシュボード「幽霊銘柄」問題の修正 / Log4対応)
+
+### 概要
+削除済みの銘柄がダッシュボード上に再表示され、再度削除しようとすると `404 Not Found` エラーになる問題を修正した。
+
+### 詳細
+
+#### 1. 表示対象のフィルタリング追加 (`python/web/routes/charts.py`)
+- `/api/charts/list` のレスポンス生成ロジックにフィルタリングを追加
+- 従来は画像ファイルの存在のみを基準にリスト生成していたため、CSVから削除済みの銘柄でもチャート画像が残っている限りダッシュボードに表示されていた
+- 修正後は、CSVのポートフォリオデータ (`stock_data`) に存在する銘柄のみをレスポンスに含めるようフィルタリング
+- これにより削除済み銘柄の「幽霊」表示が解消され、二重削除時の `404 Not Found` エラーが物理的に発生しなくなった
+
+---
+
+## 2026-02-22 (UIトースト延長・参照CSV環境分離)
+
+### 概要
+ユーザーレビューに基づき、トースト通知を十分な時間表示するよう延長し、ローカル開発時とクラウド環境で参照するCSVファイルを自動的に切り替える機能を実装した。
+
+### 詳細
+
+#### 1. トースト表示時間の延長 (`python/web/templates/index.html`)
+- 売却・削除成功トーストの `setTimeout` を **3000ms → 7000ms** に延長
+- 削除エラートーストの `setTimeout` を **5000ms → 7000ms** に延長
+- ルール保存成功メッセージの `setTimeout` を **3000ms → 7000ms** に延長
+- これによりユーザーが操作結果を確実に視認できるようになった
+
+#### 2. 参照CSVの環境分離 (`python/config.py`)
+- `__init__` の処理順序を修正し、`db_env` を `codes_path` より先に読み込むよう変更
+- `DB_ENV=local` (ローカル開発時): `data/my_stock_local.csv` を参照
+- `DB_ENV=cloud` (GCE/ステージング時): `data/my_stock.csv` を参照
+- `config.codes_path` を参照するすべてのバックエンド処理（`sell_stock`, `delete_stock`, `sync_csv_to_portfolio` 等）が自動的に環境に適したCSVへ切り替わる
+- `.env` に `export DB_ENV="local"` と設定されているため、ローカル起動時は即座に `my_stock_local.csv` が使用される
+
+---
+
+## 2026-02-22 (PostgreSQL portfolio テーブル自動同期実装)
+
+### 概要
+CSVファイル (`my_stock.csv`) と PostgreSQLの `portfolio` テーブルが常に同期されるようにした。
+アプリ起動時の自動同期と、売却・削除アクション時の即時反映を実装。
+
+### 詳細
+
+#### 1. 同期関数追加 (`python/db/database.py`)
+- `sync_csv_to_portfolio()` 関数を新規追加
+  - `config.codes_path` のCSVを読み込み、全量を portfolio テーブルへ Upsert する
+  - `profit_loss_percent` に混入した `%` 文字列を自動除去（PostgreSQL Numeric型エラー対策）
+  - NaN値は NULL に変換して型安全を確保
+- `delete_portfolio_record(code)` 関数を新規追加
+  - 指定銘柄コードの portfolio レコードを DB から削除する
+- `update_portfolio_status(code, status, quantity)` 関数を新規追加
+  - 売却時に portfolio レコードのステータス・数量を更新する
+- `sqlalchemy.delete` / `sqlalchemy.update` を import に追加
+
+#### 2. アプリ起動時の自動同期 (`python/web/app.py`)
+- `lifespan` 関数を更新
+  - PostgreSQLモード（デフォルト）では起動時に `sync_csv_to_portfolio()` を自動実行
+  - SQLiteモードは従来通り `init_db()` でテーブル作成のみ
+  - 同期エラーが発生してもアプリ起動は継続（WARNING ログのみ）
+
+#### 3. 売却・削除アクション時のDB同期 (`python/trading/buy_and_sell_stock.py`)
+- `sell_stock()` の末尾に `update_portfolio_status()` 呼び出しを追加
+  - CSV更新後、DBの該当レコードのステータスと数量も即時更新
+- `delete_stock()` の末尾に `delete_portfolio_record()` 呼び出しを追加
+  - CSV行削除後、DBの該当レコードも即時削除
+  - いずれもDB処理失敗はwarnログに留め、メインのCSV処理は影響しない設計
+
+---
+
+## 2026-02-22 (ダッシュボードから削除ボタン追加)
+
+### 概要
+ダッシュボードの各銘柄リスト行に「🗑️ 削除」ボタンを追加し、CSVから銘柄を完全に削除できるようにした。
+
+### 詳細
+
+#### 1. 削除ロジック追加 (`python/trading/buy_and_sell_stock.py`)
+- `delete_stock(code)` 関数を新規追加
+  - `load_codes()` → 対象code行を `df.drop()` → `save_codes()` の流れでCSVから完全削除
+  - 存在しないコードが指定された場合は `{"error": ...}` を返す
+
+#### 2. APIエンドポイント追加 (`python/web/routes/actions.py`)
+- `DELETE /api/actions/stock/{code}` エンドポイントを新規追加
+  - `buy_and_sell_stock.delete_stock()` を呼び出し
+  - 成功時: `{"status": "success", "message": "..."}`
+  - 銘柄未存在時: `404` エラー
+
+#### 3. フロントエンド更新 (`python/web/templates/index.html`)
+- ダッシュボードテーブルの各行に **🗑️ 削除** ボタンを追加（既存Sellボタンの横）
+  - `confirm()` で「本当に削除しますか？」確認ダイアログを表示
+  - API呼び出し中はボタンを無効化し「削除中...」表示
+  - 成功時: トースト通知で「〇〇をダッシュボードから削除しました」を表示、リスト自動更新
+  - エラー時: トースト通知でエラーメッセージを表示
+- `deletingCode` データプロパティを追加（処理中表示制御用）
+
+---
+
 ## 2026-02-22 (改訂版3 追補)
 
 ### 概要

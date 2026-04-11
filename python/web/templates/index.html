@@ -21,7 +21,8 @@
                 class="fixed top-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white text-sm max-w-sm"
                 :class="toastType === 'error' ? 'bg-red-500' : toastType === 'success' ? 'bg-green-600' : 'bg-indigo-600'">
                 <span>{{ toastMessage }}</span>
-                <button @click="toastMessage = ''" class="ml-2 opacity-70 hover:opacity-100 text-lg leading-none">✕</button>
+                <button @click="toastMessage = ''"
+                    class="ml-2 opacity-70 hover:opacity-100 text-lg leading-none">✕</button>
             </div>
         </transition>
 
@@ -59,7 +60,8 @@
                         :class="['px-3 py-2 rounded text-sm font-bold', (actionStatus.is_analyzing || swingAnalyzing) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-purple-600 text-white hover:bg-purple-700']">
                         <span v-if="swingAnalyzing" class="flex items-center gap-1">
                             <svg class="inline w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
                                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                             </svg>
                             Analyzing...
@@ -162,6 +164,14 @@
                                     Sell
                                 </button>
 
+                                <button @click="deleteStock(item.code, item.name)"
+                                    :disabled="deletingCode === item.code"
+                                    class="ml-2 text-xs text-red-500 hover:text-red-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                    title="ダッシュボードから削除">
+                                    <span v-if="deletingCode === item.code">削除中...</span>
+                                    <span v-else>🗑️ 削除</span>
+                                </button>
+
                                 <div v-if="expandedCharts[item.code]"
                                     class="mt-2 p-3 bg-gray-50 rounded text-xs border border-gray-100">
                                     <div class="grid grid-cols-2 gap-x-4 gap-y-2">
@@ -192,8 +202,8 @@
                         </td>
                         <td class="px-6 py-4">
                             <div v-if="item.plots" class="w-full">
-                                <img :src="`/api/charts/image/plots/${item.plots}`" :alt="item.plots"
-                                    @click="openImageModal(`/api/charts/image/plots/${item.plots}`, item.plots, item.specific_indicators)"
+                                <img :src="`/api/charts/image/plots/${item.plots}?v=${encodeURIComponent(item.last_updated || '')}&c=${imageCacheBust}`" :alt="item.plots"
+                                    @click="openImageModal(`/api/charts/image/plots/${item.plots}?v=${encodeURIComponent(item.last_updated || '')}&c=${imageCacheBust}`, item.plots, item.specific_indicators)"
                                     class="w-full h-auto rounded shadow cursor-pointer hover:opacity-80 transition-opacity">
                                 <p class="text-xs text-center text-gray-400 mt-1">{{ item.plots }}</p>
                             </div>
@@ -201,8 +211,8 @@
                         </td>
                         <td class="px-6 py-4">
                             <div v-if="item.chartImg" class="w-full">
-                                <img :src="`/api/charts/image/chartImg/${item.chartImg}`" :alt="item.chartImg"
-                                    @click="openImageModal(`/api/charts/image/chartImg/${item.chartImg}`, item.chartImg, item.specific_indicators)"
+                                <img :src="`/api/charts/image/chartImg/${item.chartImg}?v=${encodeURIComponent(item.last_updated || '')}&c=${imageCacheBust}`" :alt="item.chartImg"
+                                    @click="openImageModal(`/api/charts/image/chartImg/${item.chartImg}?v=${encodeURIComponent(item.last_updated || '')}&c=${imageCacheBust}`, item.chartImg, item.specific_indicators)"
                                     class="w-full h-auto rounded shadow cursor-pointer hover:opacity-80 transition-opacity">
                                 <p class="text-xs text-center text-gray-400 mt-1">{{ item.chartImg }}</p>
                             </div>
@@ -217,7 +227,8 @@
         <div v-if="currentTab === 'signals'" class="bg-white p-6 rounded-lg shadow">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-semibold">週足スイングトレード シグナル</h2>
-                <span class="text-sm text-gray-400">ヘッダーの <span class="font-semibold text-purple-600">Check Signals</span> ボタンで分析を実行</span>
+                <span class="text-sm text-gray-400">ヘッダーの <span class="font-semibold text-purple-600">Check
+                        Signals</span> ボタンで分析を実行</span>
             </div>
 
             <p class="text-sm text-gray-500 mb-4">
@@ -243,10 +254,8 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200">
-                        <tr v-for="sig in signalResults" :key="sig.id"
-                            :style="getRowStyle(sig)"
-                            class="cursor-pointer hover:opacity-80 transition-opacity"
-                            @click="openSignalDetail(sig)">
+                        <tr v-for="sig in signalResults" :key="sig.id" :style="getRowStyle(sig)"
+                            class="cursor-pointer hover:opacity-80 transition-opacity" @click="openSignalDetail(sig)">
                             <td class="px-4 py-3 font-mono font-medium">
                                 {{ sig.symbol }}
                                 <span v-if="sig.is_held"
@@ -344,8 +353,7 @@
                     <!-- 検出パターン -->
                     <div>
                         <div class="text-xs text-gray-400 mb-1 font-medium uppercase">検出パターン</div>
-                        <div v-if="selectedSignal.detected_patterns.length === 0"
-                            class="text-gray-400 text-xs">なし</div>
+                        <div v-if="selectedSignal.detected_patterns.length === 0" class="text-gray-400 text-xs">なし</div>
                         <div v-else class="flex flex-wrap gap-2">
                             <span v-for="p in selectedSignal.detected_patterns" :key="p"
                                 class="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs rounded-full font-mono">
@@ -357,7 +365,8 @@
                     <!-- 判定根拠 -->
                     <div>
                         <div class="text-xs text-gray-400 mb-1 font-medium uppercase">判定根拠</div>
-                        <div class="bg-gray-50 p-3 rounded border border-gray-100 text-gray-700 text-xs leading-relaxed font-mono whitespace-pre-wrap">
+                        <div
+                            class="bg-gray-50 p-3 rounded border border-gray-100 text-gray-700 text-xs leading-relaxed font-mono whitespace-pre-wrap">
                             {{ selectedSignal.rationale || 'なし' }}
                         </div>
                     </div>
@@ -562,26 +571,36 @@
                     <!-- Risk Management -->
                     <div class="border-t pt-4">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">Risk Management</h3>
-                        <h4 class="font-medium text-gray-600 mb-2">stop loss ratio</h4>
+                        <h4 class="font-medium text-gray-600 mb-2">stop loss percent</h4>
                         <div>意味：損切りライン</div>
-                        <div>内容：エントリー価格から【{'stopLossRatio'}% 下がったら】自動で損切り</div>
+                        <div>内容：エントリー価格から【{{ formatRatioAsPercent(rules.risk_management?.stop_loss_percent) }} 下がったら】自動で損切り
+                            <span class="text-gray-400">(デフォルト: {{ formatRatioAsPercent(defaultRules.risk_management?.stop_loss_percent) }})</span>
+                        </div>
                         <div>目的：大損を防ぐ</div>
-                        <h4 class="font-medium text-gray-600 mb-2">take profit ratio</h4>
+                        <h4 class="font-medium text-gray-600 mb-2">take profit percent</h4>
                         <div>意味：利確ライン</div>
-                        <div>内容：エントリー価格から【{'takeProfitRatio'}% 上がったら】利益確定</div>
+                        <div>内容：エントリー価格から【{{ formatRatioAsPercent(rules.risk_management?.take_profit_percent) }} 上がったら】利益確定
+                            <span class="text-gray-400">(デフォルト: {{ formatRatioAsPercent(defaultRules.risk_management?.take_profit_percent) }})</span>
+                        </div>
                         <div>目的：欲張りすぎず利益を確定</div>
-                        <h4 class="font-medium text-gray-600 mb-2">trailing stop ratio</h4>
+                        <h4 class="font-medium text-gray-600 mb-2">trailing stop percent</h4>
                         <div>意味：トレーリングストップ（追従型損切り）</div>
                         <div>内容：価格が上がると損切りラインも追従</div>
-                        <div>高値から 【{'trailingStopRatio'}% 下落したら】決済</div>
+                        <div>高値から 【{{ formatRatioAsPercent(rules.risk_management?.trailing_stop_percent) }} 下落したら】決済
+                            <span class="text-gray-400">(デフォルト: {{ formatRatioAsPercent(defaultRules.risk_management?.trailing_stop_percent) }})</span>
+                        </div>
                         <div>目的：利益を伸ばしつつ、反転時に利益を守る</div>
                         <h4 class="font-medium text-gray-600 mb-2">risk per trade</h4>
                         <div>意味：1トレードあたりの許容リスク</div>
-                        <div>内容：資金の【{'riskPerTrade'}%までしか損しない】ようにポジションサイズを調整</div>
+                        <div>内容：資金の【{{ formatRatioAsPercent(rules.risk_management?.risk_per_trade) }}までしか損しない】ようにポジションサイズを調整
+                            <span class="text-gray-400">(デフォルト: {{ formatRatioAsPercent(defaultRules.risk_management?.risk_per_trade) }})</span>
+                        </div>
                         <div>例：資金100万円 → 最大損失 2万円/1回</div>
-                        <h4 class="font-medium text-gray-600 mb-2">max daily loss ratio</h4>
+                        <h4 class="font-medium text-gray-600 mb-2">max daily loss percent</h4>
                         <div>意味：1日の最大損失制限</div>
-                        <div>内容：その日の損失が【{'maxDailyLossRatio'}% だけ減ったら】取引停止</div>
+                        <div>内容：その日の損失が【{{ formatRatioAsPercent(rules.risk_management?.max_daily_loss_percent) }} だけ減ったら】取引停止
+                            <span class="text-gray-400">(デフォルト: {{ formatRatioAsPercent(defaultRules.risk_management?.max_daily_loss_percent) }})</span>
+                        </div>
                         <div>目的：メンタル崩壊＆連続損失を防ぐ</div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div class="border p-3 rounded hover:bg-gray-50" v-for="(val, key) in rules.risk_management"
@@ -589,8 +608,11 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1 capitalize">{{ formatKey(key)
                                     }}</label>
                                 <input type="number" step="0.01" v-model.number="rules.risk_management[key]"
-                                    :title="formatKey(key)" :placeholder="formatKey(key)"
+                                    :title="formatKey(key)" :placeholder="getDefaultPlaceholder('risk_management', key)"
                                     class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                                <p class="mt-1 text-xs text-gray-400">
+                                    推奨値: {{ defaultRules.risk_management?.[key] ?? '-' }}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -598,17 +620,23 @@
                     <!-- Market Filters -->
                     <div class="border-t pt-4">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">Market Filters</h3>
-                        <h4 class="font-medium text-gray-600 mb-2">crash threshold ratio</h4>
+                        <h4 class="font-medium text-gray-600 mb-2">crash threshold percent</h4>
                         <div>意味：急落検知</div>
-                        <div>内容：短時間で【{'crashThresholdRatio'}%以上の下落があったら】「クラッシュ」と判定</div>
+                        <div>内容：短時間で【{{ formatPlainNumber(rules.filters?.crash_threshold_percent) }}%以上の下落があったら】「クラッシュ」と判定
+                            <span class="text-gray-400">(デフォルト: {{ formatPlainNumber(defaultRules.filters?.crash_threshold_percent) }}%)</span>
+                        </div>
                         <div>用途：新規エントリーを止める</div>
                         <h4 class="font-medium text-gray-600 mb-2">volatility threshold</h4>
                         <div>意味：ボラティリティ（価格変動の大きさ）制限</div>
-                        <div>内容：ボラティリティが【{'volatilityThreshold'}以上】なら「荒れ相場」</div>
+                        <div>内容：ボラティリティが【{{ formatPlainNumber(rules.filters?.volatility_threshold) }} 以上】なら「荒れ相場」
+                            <span class="text-gray-400">(デフォルト: {{ formatPlainNumber(defaultRules.filters?.volatility_threshold) }})</span>
+                        </div>
                         <div>用途：相場が荒れすぎている時は取引しない</div>
                         <h4 class="font-medium text-gray-600 mb-2">volume spike threshold</h4>
                         <div>意味：出来高急増の検知</div>
-                        <div>内容：通常の 【{'volumeSpikeThreshold'}倍以上の出来高 が出たら】「異常」</div>
+                        <div>内容：通常の 【{{ formatPlainNumber(rules.filters?.volume_spike_threshold) }} 倍以上の出来高 が出たら】「異常」
+                            <span class="text-gray-400">(デフォルト: {{ formatPlainNumber(defaultRules.filters?.volume_spike_threshold) }}倍)</span>
+                        </div>
                         <div>用途：大口参入・ニュース・仕掛けの可能性を検知</div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div class="border p-3 rounded hover:bg-gray-50" v-for="(val, key) in rules.filters"
@@ -617,8 +645,11 @@
                                     formatKey(key)
                                     }}</label>
                                 <input type="number" step="0.01" v-model.number="rules.filters[key]"
-                                    :title="formatKey(key)" :placeholder="formatKey(key)"
+                                    :title="formatKey(key)" :placeholder="getDefaultPlaceholder('filters', key)"
                                     class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border">
+                                <p class="mt-1 text-xs text-gray-400">
+                                    推奨値: {{ defaultRules.filters?.[key] ?? '-' }}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -639,8 +670,11 @@
                                     <label class="block text-xs font-medium text-gray-500 mb-1 capitalize">{{
                                         formatKey(key) }}</label>
                                     <input type="number" v-model.number="rules.indicators.macd[key]"
-                                        :title="formatKey(key)" :placeholder="formatKey(key)"
+                                        :title="formatKey(key)" :placeholder="getDefaultPlaceholder('indicators', key, 'macd')"
                                         class="w-full border p-1 rounded">
+                                    <p class="mt-1 text-xs text-gray-400">
+                                        推奨値: {{ defaultRules.indicators?.macd?.[key] ?? '-' }}
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -657,8 +691,11 @@
                                     <label class="block text-xs font-medium text-gray-500 mb-1 capitalize">{{
                                         formatKey(key) }}</label>
                                     <input type="number" step="0.01" v-model.number="rules.indicators.bollinger[key]"
-                                        :title="formatKey(key)" :placeholder="formatKey(key)"
+                                        :title="formatKey(key)" :placeholder="getDefaultPlaceholder('indicators', key, 'bollinger')"
                                         class="w-full border p-1 rounded">
+                                    <p class="mt-1 text-xs text-gray-400">
+                                        推奨値: {{ defaultRules.indicators?.bollinger?.[key] ?? '-' }}
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -674,8 +711,11 @@
                                             <label class="block text-xs font-medium text-gray-500 mb-1 capitalize">{{
                                                 formatKey(key) }}</label>
                                             <input type="number" step="0.01" v-model.number="rules.indicators.rsi[key]"
-                                                :title="formatKey(key)" :placeholder="formatKey(key)"
+                                                :title="formatKey(key)" :placeholder="getDefaultPlaceholder('indicators', key, 'rsi')"
                                                 class="w-full border p-1 rounded">
+                                            <p class="mt-1 text-xs text-gray-400">
+                                                推奨値: {{ defaultRules.indicators?.rsi?.[key] ?? '-' }}
+                                            </p>
                                         </div>
                                     </div>
                             </div>
@@ -894,11 +934,18 @@
                     // Toast notification
                     toastMessage: '',
                     toastType: 'info',
+                    deletingCode: null,
+                    // Update polling & image cache bust
+                    imageCacheBust: 0,
+                    _updatePollTimer: null,
+                    // Default rules (for placeholders / reference values)
+                    defaultRules: {},
                 }
             },
             mounted() {
                 this.fetchCharts()
                 this.fetchRules()
+                this.fetchDefaultRules()
                 this.fetchHistory()
                 this.fetchActionStatus()
                 this.fetchSignals()
@@ -947,6 +994,16 @@
                 formatPercent(value) {
                     if (value === undefined || value === null) return '-'
                     return (value > 0 ? '+' : '') + Number(value).toFixed(2) + '%'
+                },
+                // 比率(例: 0.05)をパーセント表記(例: "5.0%")に整形する。未定義なら '-'
+                formatRatioAsPercent(value) {
+                    if (value === undefined || value === null || isNaN(Number(value))) return '-'
+                    return (Number(value) * 100).toFixed(1) + '%'
+                },
+                // 既に単位なしの数値(例: 3.0, -3.0)をそのまま表示する。未定義なら '-'
+                formatPlainNumber(value) {
+                    if (value === undefined || value === null || isNaN(Number(value))) return '-'
+                    return Number(value).toString()
                 },
                 getStatusClass(status) {
                     if (status.includes('保有中')) return 'bg-blue-100 text-blue-800'
@@ -1025,6 +1082,36 @@
                         this.errorMessage = 'Failed to load rules: ' + e.message
                     } finally {
                         this.loadingRules = false
+                    }
+                },
+                async fetchDefaultRules() {
+                    // Settings タブの placeholder / 参考値として表示するためのデフォルト取引ルール
+                    try {
+                        const res = await fetch('/api/rules/default')
+                        if (!res.ok) return
+                        const data = await res.json()
+                        this.defaultRules = JSON.parse(JSON.stringify(data))
+                    } catch (e) {
+                        console.warn('Failed to load default rules:', e)
+                    }
+                },
+                // カテゴリ(risk_management / filters / indicators.macd ...)とキーから
+                // defaultRules を dot-path で引いて placeholder 文字列を作る
+                getDefaultPlaceholder(section, key, subSection) {
+                    try {
+                        const root = this.defaultRules || {}
+                        let node
+                        if (subSection) {
+                            node = (root[section] || {})[subSection]
+                        } else {
+                            node = root[section]
+                        }
+                        if (!node) return this.formatKey(key)
+                        const v = node[key]
+                        if (v === undefined || v === null) return this.formatKey(key)
+                        return `default: ${v}`
+                    } catch (e) {
+                        return this.formatKey(key)
                     }
                 },
                 async fetchHistory() {
@@ -1169,13 +1256,50 @@
                         const res = await fetch('/api/actions/update-market-data', { method: 'POST' })
                         if (!res.ok) {
                             const data = await res.json()
-                            alert(data.detail || "Update failed")
-                        } else {
-                            this.fetchActionStatus()
-                            alert("Update started in background.")
+                            this.toastMessage = data.detail || "Update failed"
+                            this.toastType = 'error'
+                            setTimeout(() => { this.toastMessage = '' }, 7000)
+                            return
                         }
+                        // 開始トースト
+                        this.toastMessage = "市場データ更新をバックグラウンドで開始しました…"
+                        this.toastType = 'info'
+                        await this.fetchActionStatus()
+
+                        // is_updating: true -> false の遷移を検知して charts を再取得する
+                        if (this._updatePollTimer) {
+                            clearInterval(this._updatePollTimer)
+                            this._updatePollTimer = null
+                        }
+                        // 最大 10 分(5秒 x 120回)までポーリング
+                        let ticks = 0
+                        const MAX_TICKS = 120
+                        this._updatePollTimer = setInterval(async () => {
+                            ticks += 1
+                            await this.fetchActionStatus()
+                            if (!this.actionStatus.is_updating) {
+                                clearInterval(this._updatePollTimer)
+                                this._updatePollTimer = null
+                                // キャッシュバスター更新 → 画像再読込のトリガ
+                                this.imageCacheBust = Date.now()
+                                await this.fetchCharts()
+                                this.toastMessage = "最新の株価・チャート画像を反映しました"
+                                this.toastType = 'success'
+                                setTimeout(() => { this.toastMessage = '' }, 7000)
+                                return
+                            }
+                            if (ticks >= MAX_TICKS) {
+                                clearInterval(this._updatePollTimer)
+                                this._updatePollTimer = null
+                                this.toastMessage = "更新の完了検知がタイムアウトしました。ページをリロードしてください。"
+                                this.toastType = 'error'
+                                setTimeout(() => { this.toastMessage = '' }, 10000)
+                            }
+                        }, 5000)
                     } catch (e) {
-                        alert("Error: " + e.message)
+                        this.toastMessage = "Error: " + e.message
+                        this.toastType = 'error'
+                        setTimeout(() => { this.toastMessage = '' }, 7000)
                     }
                 },
                 async triggerAnalysis() {
@@ -1220,10 +1344,40 @@
                             const errorData = await response.json();
                             throw new Error(errorData.detail || 'Failed to sell stock');
                         }
-                        alert(`Stock ${code} sold successfully!`);
-                        this.fetchCharts();
+                        await this.fetchCharts();
+                        this.toastMessage = `${code} を売却しました (${sell_type === 'profit' ? '利益確定' : '損切り'})`;
+                        this.toastType = 'success';
+                        setTimeout(() => { this.toastMessage = ''; }, 7000);
                     } catch (error) {
-                        alert(`Error selling stock: ${error.message}`);
+                        this.toastMessage = `売却エラー: ${error.message}`;
+                        this.toastType = 'error';
+                        setTimeout(() => { this.toastMessage = ''; }, 7000);
+                    }
+                },
+
+                async deleteStock(code, name) {
+                    if (!confirm(`本当に ${name || code} をダッシュボードから削除しますか？\nこの操作は取り消せません。`)) {
+                        return;
+                    }
+                    this.deletingCode = code;
+                    try {
+                        const response = await fetch(`/api/actions/stock/${code}`, {
+                            method: 'DELETE',
+                        });
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.detail || 'Failed to delete stock');
+                        }
+                        await this.fetchCharts();
+                        this.toastMessage = `${name || code} をダッシュボードから削除しました`;
+                        this.toastType = 'success';
+                        setTimeout(() => { this.toastMessage = ''; }, 7000);
+                    } catch (error) {
+                        this.toastMessage = `削除エラー: ${error.message}`;
+                        this.toastType = 'error';
+                        setTimeout(() => { this.toastMessage = ''; }, 7000);
+                    } finally {
+                        this.deletingCode = null;
                     }
                 },
 
@@ -1373,7 +1527,7 @@
                         this.message = 'Configuration saved and applied successfully!'
                         this.messageType = 'success'
                         this.showDiffModal = false
-                        setTimeout(() => this.message = '', 3000)
+                        setTimeout(() => this.message = '', 7000)
 
                     } catch (e) {
                         this.message = 'Error: ' + e.message

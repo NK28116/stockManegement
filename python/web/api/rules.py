@@ -164,6 +164,17 @@ def get_active_rules_endpoint():
     return get_active_rules()
 
 
+@router.get("/default", response_model=TradingRules)
+def get_default_rules_endpoint():
+    """
+    デフォルトの取引ルール(ハードコードされた推奨値)を返す。
+    フロントエンドで placeholder / 参考値として表示するために使用する。
+    """
+    from python.utils.rules_loader import get_default_rules
+
+    return get_default_rules()
+
+
 @router.post("/apply")
 def apply_rules(force: bool = False):
     # 1. draft 読み込み
