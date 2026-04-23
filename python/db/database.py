@@ -10,7 +10,16 @@ from sqlalchemy.orm import sessionmaker
 from python.config import config
 
 # 全モデルをインポートして Base.metadata に登録する（create_all に必要）
-from python.db.models import Base, DailyPrice, Portfolio, Signal, SignalHistory, Stock
+from python.db.models import (
+    Base,
+    DailyPrice,
+    Portfolio,
+    Signal,
+    SignalHistory,
+    Stock,
+    StockNote,
+    Watchlist,
+)
 
 logger = logging.getLogger(__name__)
 
