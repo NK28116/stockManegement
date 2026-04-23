@@ -84,6 +84,53 @@ UPTREND_LINE_BREAK_RETEST = {
     "require_successful_retest": True,
 }
 
+# --- Entry timing ---
+
+ENTRY_TIMING = {
+    "breakout_close": True,
+    "retest_pullback": True,
+    "retest_max_days": 3,
+}
+
+PATTERN_ENTRY_TIMING = {
+    "double_bottom": "neckline_break_or_pullback",
+    "inverse_head_shoulders": "neckline_break_or_pullback",
+    "ascending_flag": "channel_breakout_immediate",
+    "ascending_triangle": "resistance_break_with_volume",
+    "downtrend_line_break_retest": "retest_required",
+    "double_top": "neckline_break_down",
+    "head_and_shoulders": "neckline_break_down",
+    "descending_flag": "channel_breakdown",
+    "descending_triangle": "support_break_down",
+    "uptrend_line_break_retest": "retest_required",
+}
+
+PATTERN_ENTRY_TIMING_LABELS = {
+    "neckline_break_or_pullback": "ネックライン上抜け（終値確定）or 1〜3日後の押し目",
+    "channel_breakout_immediate": "チャネル上抜け直後（初動が命）",
+    "resistance_break_with_volume": "水平レジスタンス突破＋出来高増加",
+    "retest_required": "リテスト成功を確認してからエントリー",
+    "neckline_break_down": "ネックライン/サポート下抜け確定（終値ベース）",
+    "channel_breakdown": "チャネル下抜け確定",
+    "support_break_down": "サポートライン下抜け確定",
+}
+
+# --- Exit timing ---
+
+EXIT_TIMING = {
+    "target_reached": True,
+    "weakness_detected": True,
+    "sell_pattern_appeared": True,
+}
+
+# --- Time-based stop ---
+
+TIME_STOP = {
+    "stagnant_days": 5,
+    "sideways_days": 10,
+    "force_close_days": 14,
+}
+
 # --- Pattern registries (iterable lookup) ---
 
 LONG_PATTERNS = {

@@ -13,7 +13,7 @@ import yfinance as yf
 from python.config import config
 from python.db.database import get_db_connection, get_db_session
 from python.db.models import Signal
-from python.trading.rules import indicator_settings, risk_management
+from python.trading.rules import indicator_settings, risk_management, swing_trade_rules
 from python.utils.alert import send_alert
 from python.utils.indicators import (
     calculate_bollinger_bands,
@@ -353,6 +353,54 @@ def score_pattern(
     return score, " / ".join(reasons)
 
 
+def _get_entry_timing(patterns: List[str], trend: str) -> str:
+    """検出パターンに基づく推奨エントリータイミングを返す"""
+    labels = swing_trade_rules.PATTERN_ENTRY_TIMING_LABELS
+    mapping = swing_trade_rules.PATTERN_ENTRY_TIMING
+    lines: List[str] = []
+
+    for p in patterns:
+        if p == "volume_surge":
+            continue
+        key = mapping.get(p)
+        if key and key in labels:
+            lines.append(f"[{p}] {labels[key]}")
+
+    if not lines:
+        if trend == "LONG":
+            lines.append("ブレイク当日の終値確定 or 1〜3日後のリテスト押し目")
+        else:
+            lines.append("ブレイク下抜け確定（終値ベース）or 1〜3日後の戻り売り")
+
+    lines.append("※出来高が直近5日平均の1.2倍以上あること")
+    direction = "購入" if trend == "LONG" else "売却"
+    return f"【{direction}推奨タイミング】\n" + "\n".join(lines)
+
+
+def _get_exit_guidance(trend: str) -> str:
+    """ポジション方向に応じた利確/損切りガイダンスを返す"""
+    ts = swing_trade_rules.TIME_STOP
+    if trend == "LONG":
+        return (
+            "【利確/撤退ガイド】\n"
+            f"① 目標到達: RR 1.5倍 or 直近高値\n"
+            f"② 弱さ検知: RSI 70→低下 / 上ヒゲ連発 / 出来高減少+上昇\n"
+            f"③ 売りパターン出現: ダブルトップ・三尊 → 即撤退\n"
+            f"④ 時間損切り: {ts['stagnant_days']}日伸びず→一部撤退 / "
+            f"{ts['sideways_days']}日横ばい→全撤退 / "
+            f"{ts['force_close_days']}日→強制クローズ検討"
+        )
+    return (
+        "【利確/撤退ガイド】\n"
+        f"① 目標到達: RR 1.5倍 or 直近安値\n"
+        f"② 弱さ検知: RSI 30→反発 / 下ヒゲ連発 / 出来高減少+下落\n"
+        f"③ 買いパターン出現: ダブルボトム・逆三尊 → 即撤退\n"
+        f"④ 時間損切り: {ts['stagnant_days']}日伸びず→一部撤退 / "
+        f"{ts['sideways_days']}日横ばい→全撤退 / "
+        f"{ts['force_close_days']}日→強制クローズ検討"
+    )
+
+
 def analyze_daily_data(code: str, name: str, is_test_mode: bool = False):
     """
     日足データを分析し、シグナルが出ていれば通知する
@@ -436,6 +484,11 @@ def _analyze_weekly_swing(symbol: str) -> None:
     patterns = detect_patterns(df)
     risk = calculate_risk(df, trend)
     score, rationale = score_pattern(trend, patterns, df, risk)
+
+    if score >= _SCORE_THRESHOLD:
+        entry_timing = _get_entry_timing(patterns, trend)
+        exit_guidance = _get_exit_guidance(trend)
+        rationale = f"{rationale}\n---\n{entry_timing}\n{exit_guidance}"
 
     threshold_status = (
         "有効シグナル"
