@@ -3,10 +3,7 @@ set -e
 
 # Configuration
 PROJECT_ID=$(gcloud config get-value project)
-GITHUB_REPO="niwa-kazuhiro/stockManegement" # Assuming based on path, but user should verify
-# If user typically uses a different username, they should update this. 
-# Since I am not 100% sure of the GitHub Owner/Repo, I will make it an input or try to detect.
-# Better to ask user to set it or detect from git.
+GITHUB_REPO="${GITHUB_REPO:-<owner>/<repo>}" # Overridden by git remote auto-detection below.
 
 # Detect git remote
 REMOTE_URL=$(git config --get remote.origin.url)

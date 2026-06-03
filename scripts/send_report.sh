@@ -10,8 +10,8 @@ set -euo pipefail
 
 # SlackのIncoming Webhook URL（環境変数から読み込み）
 SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:?SLACK_WEBHOOK_URL is required}"
-# GCSバケット名
-BUCKET="stock-managemet-report-file"
+# GCSバケット名（環境変数から読み込み）
+BUCKET="${GCS_BUCKET_NAME:?GCS_BUCKET_NAME is required}"
 
 # ========================
 # 日付の取得

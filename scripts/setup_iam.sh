@@ -2,10 +2,10 @@
 # scripts/setup_iam.sh
 
 # Configuration
-PROJECT_ID="stockmanagement-gce"
-SERVICE_ACCOUNT_NAME="stock-web-ui-sa"
-BUCKET_NAME="stock-management-prod"
-CRON_SA_NAME="stock-cron-sa"
+PROJECT_ID="${PROJECT_ID:?PROJECT_ID is required (e.g. export PROJECT_ID=my-gcp-project)}"
+SERVICE_ACCOUNT_NAME="${SERVICE_ACCOUNT_NAME:-stock-web-ui-sa}"
+BUCKET_NAME="${BUCKET_NAME:?BUCKET_NAME is required (e.g. export BUCKET_NAME=my-bucket)}"
+CRON_SA_NAME="${CRON_SA_NAME:-stock-cron-sa}"
 
 echo "Setting up IAM for Project: $PROJECT_ID"
 
