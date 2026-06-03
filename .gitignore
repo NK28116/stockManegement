@@ -45,3 +45,6 @@ python/watch/dailyAggregator.py
 .pre-commit-config.yaml
 .ai/tmp_diff.txt
 .ai/prompts/serena-review.txt
+
+# Antigravity CLI（ローカルツール作業領域）
+.antigravitycli/
