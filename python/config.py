@@ -11,6 +11,7 @@ from typing import Any, Dict
 import dotenv
 
 from python.secret_manager import secret_manager
+from python.trading.rules import indicator_settings, risk_management
 
 dotenv.load_dotenv()  # .envファイルの読み込み
 
@@ -35,28 +36,27 @@ class Config:
         _csv_filename = "my_stock_local.csv" if self.db_env == "local" else "my_stock.csv"
         self.codes_path = self.root_dir / "data" / _csv_filename
 
-        # 分析・リスク管理・監視パラメータ（省略：既存コードそのまま）
+        # 分析パラメータ（定数は python/trading/rules/ から参照）
         self.default_period = "1mo"
-        self.ma_short = 5
-        self.ma_long = 25
+        self.ma_short = indicator_settings.EMA_SHORT_PERIOD
+        self.ma_long = indicator_settings.EMA_LONG_PERIOD
         self.volatility_period = 10
-        self.max_loss_percent = 3.0
-        self.risk_per_trade = 1.0
-        self.take_profit_percent = 8.0
-        self.stop_loss_percent = 0.05
-        self.take_profit_percent = 0.10
-        self.trailing_stop_percent = 0.03
-        self.crash_threshold = -3.0
-        self.volatility_threshold = 3.0
-        self.volume_spike_threshold = 2.0
-        self.rsi_overbought_threshold = 70.0
-        self.rsi_oversold_threshold = 30.0
-        self.macd_fast_period = 12
-        self.macd_slow_period = 26
-        self.macd_long_period = 26
-        self.macd_signal_period = 9
-        self.bollinger_period = 20
-        self.bollinger_std = 2
+        self.max_loss_percent = risk_management.MAX_DAILY_LOSS_PCT * 100
+        self.risk_per_trade = risk_management.RISK_PER_TRADE * 100
+        self.stop_loss_percent = risk_management.STOP_LOSS_PERCENT_LEGACY
+        self.take_profit_percent = risk_management.TAKE_PROFIT_PERCENT_LEGACY
+        self.trailing_stop_percent = risk_management.TRAILING_STOP_PERCENT
+        self.crash_threshold = indicator_settings.CRASH_THRESHOLD_PCT
+        self.volatility_threshold = indicator_settings.VOLATILITY_THRESHOLD_PCT
+        self.volume_spike_threshold = indicator_settings.VOLUME_SPIKE_THRESHOLD
+        self.rsi_overbought_threshold = float(indicator_settings.RSI_OVERBOUGHT)
+        self.rsi_oversold_threshold = float(indicator_settings.RSI_OVERSOLD)
+        self.macd_fast_period = indicator_settings.MACD_FAST_PERIOD
+        self.macd_slow_period = indicator_settings.MACD_SLOW_PERIOD
+        self.macd_long_period = indicator_settings.MACD_SLOW_PERIOD
+        self.macd_signal_period = indicator_settings.MACD_SIGNAL_PERIOD
+        self.bollinger_period = indicator_settings.BOLLINGER_PERIOD
+        self.bollinger_std = indicator_settings.BOLLINGER_STD
         self.risk_free_rate = 0.001
         self.default_portfolio_file = self.root_dir / "data" / "my_stock.csv"
 
