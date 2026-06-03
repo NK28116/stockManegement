@@ -8,8 +8,8 @@ set -euo pipefail
 # 設定
 # ========================
 
-# SlackのIncoming Webhook URL
-SLACK_WEBHOOK_URL="https://example.invalid/REDACTED_SLACK_WEBHOOK"
+# SlackのIncoming Webhook URL（環境変数から読み込み）
+SLACK_WEBHOOK_URL="${SLACK_WEBHOOK_URL:?SLACK_WEBHOOK_URL is required}"
 # GCSバケット名
 BUCKET="stock-managemet-report-file"
 
