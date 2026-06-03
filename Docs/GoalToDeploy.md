@@ -142,13 +142,13 @@ gs://stock-management-prod/
 
 ### 3-4. Cloud Run 設定 (コマンドラインで実行予定)
 
-* [x] `gcloud builds submit --tag gcr.io/stockmanagement-gce/stock-web-ui`
-* [x] `gcloud run deploy stock-web-ui --image gcr.io/stockmanagement-gce/stock-web-ui --allow-unauthenticated`
+* [x] `gcloud builds submit --tag gcr.io/<GCP_PROJECT_ID>/stock-web-ui`
+* [x] `gcloud run deploy stock-web-ui --image gcr.io/<GCP_PROJECT_ID>/stock-web-ui --allow-unauthenticated`
   * Region: `us-east1` (Always Free)
   * URL: `https://stock-web-ui-664052483309.us-east1.run.app`
 * [x] 環境変数設定:
   * [x] `GCS_BUCKET_NAME=stock-management-prod`
-  * [x] `GOOGLE_CLOUD_PROJECT=stockmanagement-gce`
+  * [x] `GOOGLE_CLOUD_PROJECT=<GCP_PROJECT_ID>`
 
 ### 3-5. CI/CD (GitHub Actions)
 
@@ -312,7 +312,7 @@ gs://stock-management-prod/
 * [ ] **セキュリティ・コンプライアンス対応 (必須)**
   * [ ] **今後も保守開発をするためにgit追跡自体は続ける**
   * [ ] **Git履歴の浄化**: 過去のコミットに含まれる `KEY.json` や `.env` などの機密情報を完全に削除 (BFG Repo-Cleaner や `git filter-repo` を使用、あるいは `.git` 再作成)。
-  * [x] **ハードコードされたパスの修正**: `/Users/niwa_kazuhiro/...` などの絶対パスを相対パスや環境変数利用に書き換え。
+  * [x] **ハードコードされたパスの修正**: `/Users/<username>/...` などの絶対パスを相対パスや環境変数利用に書き換え。
   * [ ] **個人につながる情報の削除**
   * [ ] **シークレットスキャン**: `trufflehog` 等でリポジトリをスキャンし、漏洩がないか確認。
   * [ ] **LICENSEファイルの追加**: MIT License 等、適切なライセンスを配置。

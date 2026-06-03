@@ -28,6 +28,9 @@ KEY.json
 
 # 設定ファイル (機密情報を含む場合)
 
+# ローカルデスクトップ依存設定（OSS外）
+mcp/
+
 # API設定ファイル
 data/API/kabu_STATION_API.yaml
 

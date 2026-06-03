@@ -1,7 +1,7 @@
 ## log
 
 ```log
-INFO:     Will watch for changes in these directories: ['/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement']
+INFO:     Will watch for changes in these directories: ['/Users/<username>/Documents/PrivateDevelop/stockManegement']
 INFO:     Uvicorn running on http://127.0.0.1:8888 (Press CTRL+C to quit)
 INFO:     Started reloader process [45948] using StatReload
 [INFO] GCSClient initialized in LOCAL mode.
@@ -39,9 +39,9 @@ LINE 6:             FROM signals t1
             ]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 psycopg2.errors.UndefinedTable: relation "signals" does not exist
 LINE 6:             FROM signals t1
@@ -51,28 +51,28 @@ LINE 6:             FROM signals t1
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
+  File "/Users/<username>/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
     rows = conn.execute(query).fetchall()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
     return meth(
            ^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
     return connection._execute_clauseelement(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
     ret = self._execute_context(
           ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
     return self._exec_single_context(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
     self._handle_dbapi_exception(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedTable) relation "signals" does not exist
 LINE 6:             FROM signals t1
@@ -301,9 +301,9 @@ LINE 6:             FROM signals t1
             ]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 psycopg2.errors.UndefinedTable: relation "signals" does not exist
 LINE 6:             FROM signals t1
@@ -313,28 +313,28 @@ LINE 6:             FROM signals t1
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
+  File "/Users/<username>/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
     rows = conn.execute(query).fetchall()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
     return meth(
            ^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
     return connection._execute_clauseelement(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
     ret = self._execute_context(
           ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
     return self._exec_single_context(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
     self._handle_dbapi_exception(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedTable) relation "signals" does not exist
 LINE 6:             FROM signals t1
@@ -536,9 +536,9 @@ LINE 6:             FROM signals t1
             ]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 psycopg2.errors.UndefinedTable: relation "signals" does not exist
 LINE 6:             FROM signals t1
@@ -548,28 +548,28 @@ LINE 6:             FROM signals t1
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
+  File "/Users/<username>/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
     rows = conn.execute(query).fetchall()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
     return meth(
            ^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
     return connection._execute_clauseelement(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
     ret = self._execute_context(
           ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
     return self._exec_single_context(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
     self._handle_dbapi_exception(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedTable) relation "signals" does not exist
 LINE 6:             FROM signals t1
@@ -637,37 +637,37 @@ INFO:     127.0.0.1:59028 - "GET /api/actions/status HTTP/1.1" 200 OK
             ]
 (Background on this error at: https://sqlalche.me/e/20/e3q8)
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 sqlite3.OperationalError: no such table: signals
 
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
+  File "/Users/<username>/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
     rows = conn.execute(query).fetchall()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
     return meth(
            ^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
     return connection._execute_clauseelement(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
     ret = self._execute_context(
           ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
     return self._exec_single_context(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
     self._handle_dbapi_exception(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such table: signals
 [SQL: 
@@ -835,37 +835,37 @@ INFO:     127.0.0.1:59131 - "GET /api/signals/status HTTP/1.1" 200 OK
             ]
 (Background on this error at: https://sqlalche.me/e/20/e3q8)
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 sqlite3.OperationalError: no such table: signals
 
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
+  File "/Users/<username>/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
     rows = conn.execute(query).fetchall()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
     return meth(
            ^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
     return connection._execute_clauseelement(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
     ret = self._execute_context(
           ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
     return self._exec_single_context(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
     self._handle_dbapi_exception(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 sqlalchemy.exc.OperationalError: (sqlite3.OperationalError) no such table: signals
 [SQL: 
@@ -894,7 +894,7 @@ INFO:     127.0.0.1:59194 - "GET /api/actions/status HTTP/1.1" 200 OK
 
  ## Log3
  ```log
- INFO:     Will watch for changes in these directories: ['/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement']
+ INFO:     Will watch for changes in these directories: ['/Users/<username>/Documents/PrivateDevelop/stockManegement']
 INFO:     Uvicorn running on http://127.0.0.1:8888 (Press CTRL+C to quit)
 INFO:     Started reloader process [45948] using StatReload
 [INFO] GCSClient initialized in LOCAL mode.
@@ -932,9 +932,9 @@ LINE 6:             FROM signals t1
             ]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 psycopg2.errors.UndefinedTable: relation "signals" does not exist
 LINE 6:             FROM signals t1
@@ -944,28 +944,28 @@ LINE 6:             FROM signals t1
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
+  File "/Users/<username>/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
     rows = conn.execute(query).fetchall()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
     return meth(
            ^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
     return connection._execute_clauseelement(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
     ret = self._execute_context(
           ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
     return self._exec_single_context(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
     self._handle_dbapi_exception(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedTable) relation "signals" does not exist
 LINE 6:             FROM signals t1
@@ -1194,9 +1194,9 @@ LINE 6:             FROM signals t1
             ]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 psycopg2.errors.UndefinedTable: relation "signals" does not exist
 LINE 6:             FROM signals t1
@@ -1206,28 +1206,28 @@ LINE 6:             FROM signals t1
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
+  File "/Users/<username>/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
     rows = conn.execute(query).fetchall()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
     return meth(
            ^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
     return connection._execute_clauseelement(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
     ret = self._execute_context(
           ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
     return self._exec_single_context(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
     self._handle_dbapi_exception(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedTable) relation "signals" does not exist
 LINE 6:             FROM signals t1
@@ -1429,9 +1429,9 @@ LINE 6:             FROM signals t1
             ]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 psycopg2.errors.UndefinedTable: relation "signals" does not exist
 LINE 6:             FROM signals t1
@@ -1441,28 +1441,28 @@ LINE 6:             FROM signals t1
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
+  File "/Users/<username>/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
     rows = conn.execute(query).fetchall()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
     return meth(
            ^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
     return connection._execute_clauseelement(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
     ret = self._execute_context(
           ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
     return self._exec_single_context(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
     self._handle_dbapi_exception(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedTable) relation "signals" does not exist
 LINE 6:             FROM signals t1
@@ -1559,9 +1559,9 @@ LINE 15:                 WHERE status NOT IN ('SOLD_PROFIT', 'SOLD_LO...
             ]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 psycopg2.errors.UndefinedColumn: column "status" does not exist
 LINE 15:                 WHERE status NOT IN ('SOLD_PROFIT', 'SOLD_LO...
@@ -1571,28 +1571,28 @@ LINE 15:                 WHERE status NOT IN ('SOLD_PROFIT', 'SOLD_LO...
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
+  File "/Users/<username>/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
     rows = conn.execute(query).fetchall()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
     return meth(
            ^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
     return connection._execute_clauseelement(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
     ret = self._execute_context(
           ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
     return self._exec_single_context(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
     self._handle_dbapi_exception(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column "status" does not exist
 LINE 15:                 WHERE status NOT IN ('SOLD_PROFIT', 'SOLD_LO...
@@ -1708,9 +1708,9 @@ LINE 15:                 WHERE status NOT IN ('SOLD_PROFIT', 'SOLD_LO...
             ]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 psycopg2.errors.UndefinedColumn: column "status" does not exist
 LINE 15:                 WHERE status NOT IN ('SOLD_PROFIT', 'SOLD_LO...
@@ -1720,28 +1720,28 @@ LINE 15:                 WHERE status NOT IN ('SOLD_PROFIT', 'SOLD_LO...
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
+  File "/Users/<username>/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
     rows = conn.execute(query).fetchall()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
     return meth(
            ^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
     return connection._execute_clauseelement(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
     ret = self._execute_context(
           ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
     return self._exec_single_context(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
     self._handle_dbapi_exception(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column "status" does not exist
 LINE 15:                 WHERE status NOT IN ('SOLD_PROFIT', 'SOLD_LO...
@@ -1853,9 +1853,9 @@ LINE 15:                 WHERE status NOT IN ('SOLD_PROFIT', 'SOLD_LO...
             ]
 (Background on this error at: https://sqlalche.me/e/20/f405)
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 psycopg2.errors.UndefinedColumn: column "status" does not exist
 LINE 15:                 WHERE status NOT IN ('SOLD_PROFIT', 'SOLD_LO...
@@ -1865,28 +1865,28 @@ LINE 15:                 WHERE status NOT IN ('SOLD_PROFIT', 'SOLD_LO...
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
+  File "/Users/<username>/Documents/PrivateDevelop/stockManegement/python/web/api/signals.py", line 128, in get_latest_signals
     rows = conn.execute(query).fetchall()
            ^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1418, in execute
     return meth(
            ^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
     return connection._execute_clauseelement(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1640, in _execute_clauseelement
     ret = self._execute_context(
           ^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1846, in _execute_context
     return self._exec_single_context(
            ^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1986, in _exec_single_context
     self._handle_dbapi_exception(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 2355, in _handle_dbapi_exception
     raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/base.py", line 1967, in _exec_single_context
     self.dialect.do_execute(
-  File "/Users/niwa_kazuhiro/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
+  File "/Users/<username>/anaconda3/lib/python3.12/site-packages/sqlalchemy/engine/default.py", line 941, in do_execute
     cursor.execute(statement, parameters)
 sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedColumn) column "status" does not exist
 LINE 15:                 WHERE status NOT IN ('SOLD_PROFIT', 'SOLD_LO...
@@ -1949,14 +1949,14 @@ INFO:     127.0.0.1:49357 - "GET /api/actions/sta
 ## Log5
 
 ```log
-INFO:     Will watch for changes in these directories: ['/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement']
+INFO:     Will watch for changes in these directories: ['/Users/<username>/Documents/PrivateDevelop/stockManegement']
 INFO:     Uvicorn running on http://127.0.0.1:8888 (Press CTRL+C to quit)
 INFO:     Started reloader process [60171] using StatReload
 [INFO] GCSClient initialized in LOCAL mode.
 INFO:     Started server process [60173]
 INFO:     Waiting for application startup.
 INFO:python.db.database:✅ 10 件のportfolioデータを処理しました。
-INFO:python.db.database:✅ sync_csv_to_portfolio: 10 件を同期しました (/Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement/data/my_stock_local.csv)
+INFO:python.db.database:✅ sync_csv_to_portfolio: 10 件を同期しました (/Users/<username>/Documents/PrivateDevelop/stockManegement/data/my_stock_local.csv)
 2026-02-22 01:30 - INFO - lifespan: portfolio テーブルを CSV から同期完了
 INFO:     Application startup complete.
 INFO:     127.0.0.1:52289 - "GET / HTTP/1.1" 200 OK
@@ -2067,7 +2067,7 @@ ERROR:root:
 2026-02-22 01:30 - INFO - 2026-02-22 01:30:26 - INFO - DB保存成功: intraday にデータ追加
 INFO:python.web.routes.actions:Market data update task completed successfully.
 更新完了: ../../data/my_stock_local.csv
-INFO:python.web.routes.actions:Successfully updated 'last_updated' field in /Users/niwa_kazuhiro/Documents/PrivateDevelop/stockManegement/data/my_stock_local.csv
+INFO:python.web.routes.actions:Successfully updated 'last_updated' field in /Users/<username>/Documents/PrivateDevelop/stockManegement/data/my_stock_local.csv
 INFO:     127.0.0.1:52341 - "GET /api/actions/status HTTP/1.1" 200 OK
 INFO:     127.0.0.1:52412 - "GET /api/actions/status HTTP/1.1" 200 OK
 ^CINFO:     Shutting down
