@@ -13,20 +13,27 @@ import yfinance as yf
 from python.config import config
 from python.db.database import get_db_connection, get_db_session
 from python.db.models import Signal
+from python.trading.rules import indicator_settings, risk_management, swing_trade_rules
 from python.utils.alert import send_alert
-from python.utils.indicators import calculate_bollinger_bands, calculate_macd, calculate_rsi
+from python.utils.indicators import (
+    calculate_bollinger_bands,
+    calculate_macd,
+    calculate_rsi,
+)
 from python.utils.rules_loader import get_active_rules
 
 logger = logging.getLogger("analyze")
 
-# 週足分析パラメータ
-_MA_PERIOD = 40
-_ATR_PERIOD = 14
-_ATR_STOP_MULTIPLIER = 1.5
-_ATR_TP_MULTIPLIER = 3.0  # RR 1:2 = stop * 2.0
-_VOLUME_MA_PERIOD = 20
-_SCORE_THRESHOLD = 8
-_RSI_PERIOD = 14
+# 週足トレンド判定用MA期間（週足40週 ≈ 日足200日に相当）
+_WEEKLY_MA_PERIOD = 40
+_ATR_PERIOD = indicator_settings.ATR_PERIOD
+_ATR_STOP_MULTIPLIER = risk_management.ATR_STOP_MULTIPLIER
+_ATR_TP_MULTIPLIER = risk_management.ATR_TP_MULTIPLIER
+_VOLUME_MA_PERIOD = indicator_settings.VOLUME_MA_PERIOD_LONG
+_SCORE_THRESHOLD = risk_management.SCORE_THRESHOLD_ENTRY
+_RSI_PERIOD = indicator_settings.RSI_PERIOD
+_RSI_LONG_RANGE = indicator_settings.RSI_LONG_RANGE
+_RSI_SHORT_RANGE = indicator_settings.RSI_SHORT_RANGE
 
 
 def get_daily_price_data(code: str, limit: int = 100) -> pd.DataFrame:
@@ -96,11 +103,11 @@ def environment_filter(df: pd.DataFrame) -> str:
     Returns:
         'LONG' | 'SHORT' | 'NONE'
     """
-    if len(df) < _MA_PERIOD + 2:
+    if len(df) < _WEEKLY_MA_PERIOD + 2:
         return "NONE"
 
     close = df["close"]
-    ma40 = close.rolling(window=_MA_PERIOD).mean()
+    ma40 = close.rolling(window=_WEEKLY_MA_PERIOD).mean()
 
     current_close = close.iloc[-1]
     current_ma = ma40.iloc[-1]
@@ -172,7 +179,11 @@ def detect_patterns(df: pd.DataFrame) -> List[str]:
     if len(close) >= 10:
         recent = close.tail(10)
         high_range = df["high"].tail(10).max() - df["low"].tail(10).min()
-        prev_range = df["high"].iloc[-20:-10].max() - df["low"].iloc[-20:-10].min() if len(df) >= 20 else None
+        prev_range = (
+            df["high"].iloc[-20:-10].max() - df["low"].iloc[-20:-10].min()
+            if len(df) >= 20
+            else None
+        )
         if prev_range is not None and prev_range > 0 and high_range / prev_range < 0.6:
             patterns.append("flag")
 
@@ -268,57 +279,126 @@ def score_pattern(
     risk: Dict[str, float],
 ) -> Tuple[int, str]:
     """
-    各条件を加点してスコアと根拠テキストを返す
-    スコア基準:
-        トレンド一致 +3
-        パターン完成 +3 (いずれか1つ以上)
-        出来高増加   +2
-        RSI 適正     +1
-        RR良好       +1
-    合計 10 点満点、8 点以上を有効シグナルとする
+    スコア基準 (python/trading/rules/risk_management.py SCORE_WEIGHTS):
+        パターン成立 +2
+        出来高条件   +1
+        RSI 一致     +1
+        MACD 一致    +1
+        トレンド一致 +2
+    合計 7 点満点、SCORE_THRESHOLD_ENTRY 点以上を有効シグナルとする
     """
+    weights = risk_management.SCORE_WEIGHTS
     score = 0
     reasons: List[str] = []
 
     # トレンド一致
     if trend in ("LONG", "SHORT"):
-        score += 3
-        reasons.append(f"トレンド一致({trend}): +3")
+        w = weights["trend_match"]
+        score += w
+        reasons.append(f"トレンド一致({trend}): +{w}")
 
-    # パターン完成 (double_bottom, inverse_head_and_shoulders, flag, triangle)
+    # パターン成立 (volume_surge以外のチャートパターン)
     structural_patterns = [p for p in patterns if p != "volume_surge"]
     if structural_patterns:
-        score += 3
-        reasons.append(f"パターン検出({','.join(structural_patterns)}): +3")
+        w = weights["pattern_match"]
+        score += w
+        reasons.append(f"パターン検出({','.join(structural_patterns)}): +{w}")
 
-    # 出来高増加
+    # 出来高条件
     if "volume_surge" in patterns:
-        score += 2
-        reasons.append("出来高増加: +2")
+        w = weights["volume_match"]
+        score += w
+        reasons.append(f"出来高条件: +{w}")
 
-    # RSI 適正 (LONG: 40-65, SHORT: 35-60)
+    # RSI 一致
     if len(df) >= _RSI_PERIOD + 1:
         rsi_series = calculate_rsi(df["close"], period=_RSI_PERIOD)
         rsi_val = float(rsi_series.iloc[-1]) if not rsi_series.empty else None
         if rsi_val is not None and not pd.isna(rsi_val):
-            if trend == "LONG" and 40 <= rsi_val <= 65:
-                score += 1
-                reasons.append(f"RSI適正({rsi_val:.1f}): +1")
-            elif trend == "SHORT" and 35 <= rsi_val <= 60:
-                score += 1
-                reasons.append(f"RSI適正({rsi_val:.1f}): +1")
+            lo_long, hi_long = _RSI_LONG_RANGE
+            lo_short, hi_short = _RSI_SHORT_RANGE
+            if trend == "LONG" and lo_long <= rsi_val <= hi_long:
+                w = weights["rsi_match"]
+                score += w
+                reasons.append(f"RSI適正({rsi_val:.1f}): +{w}")
+            elif trend == "SHORT" and lo_short <= rsi_val <= hi_short:
+                w = weights["rsi_match"]
+                score += w
+                reasons.append(f"RSI適正({rsi_val:.1f}): +{w}")
 
-    # RR 良好 (risk.reward >= 2.0)
-    entry = risk.get("entry", 0)
-    stop_loss = risk.get("stop_loss", 0)
-    take_profit = risk.get("take_profit", 0)
-    if entry > 0 and stop_loss > 0 and abs(entry - stop_loss) > 0:
-        rr = abs(take_profit - entry) / abs(entry - stop_loss)
-        if rr >= 2.0:
-            score += 1
-            reasons.append(f"RR良好({rr:.1f}): +1")
+    # MACD 一致 (トレンド方向と整合するクロス状態)
+    macd_long_period = max(
+        indicator_settings.MACD_FAST_PERIOD,
+        indicator_settings.MACD_SLOW_PERIOD,
+    )
+    if len(df) >= macd_long_period + indicator_settings.MACD_SIGNAL_PERIOD + 1:
+        macd_df = calculate_macd(
+            df["close"],
+            short_period=indicator_settings.MACD_FAST_PERIOD,
+            long_period=indicator_settings.MACD_SLOW_PERIOD,
+            signal_period=indicator_settings.MACD_SIGNAL_PERIOD,
+        )
+        if len(macd_df) >= 1:
+            macd_val = float(macd_df.iloc[-1]["MACD"])
+            signal_val = float(macd_df.iloc[-1]["Signal"])
+            if trend == "LONG" and macd_val > signal_val:
+                w = weights["macd_match"]
+                score += w
+                reasons.append(f"MACD陽転: +{w}")
+            elif trend == "SHORT" and macd_val < signal_val:
+                w = weights["macd_match"]
+                score += w
+                reasons.append(f"MACD陰転: +{w}")
 
     return score, " / ".join(reasons)
+
+
+def _get_entry_timing(patterns: List[str], trend: str) -> str:
+    """検出パターンに基づく推奨エントリータイミングを返す"""
+    labels = swing_trade_rules.PATTERN_ENTRY_TIMING_LABELS
+    mapping = swing_trade_rules.PATTERN_ENTRY_TIMING
+    lines: List[str] = []
+
+    for p in patterns:
+        if p == "volume_surge":
+            continue
+        key = mapping.get(p)
+        if key and key in labels:
+            lines.append(f"[{p}] {labels[key]}")
+
+    if not lines:
+        if trend == "LONG":
+            lines.append("ブレイク当日の終値確定 or 1〜3日後のリテスト押し目")
+        else:
+            lines.append("ブレイク下抜け確定（終値ベース）or 1〜3日後の戻り売り")
+
+    lines.append("※出来高が直近5日平均の1.2倍以上あること")
+    direction = "購入" if trend == "LONG" else "売却"
+    return f"【{direction}推奨タイミング】\n" + "\n".join(lines)
+
+
+def _get_exit_guidance(trend: str) -> str:
+    """ポジション方向に応じた利確/損切りガイダンスを返す"""
+    ts = swing_trade_rules.TIME_STOP
+    if trend == "LONG":
+        return (
+            "【利確/撤退ガイド】\n"
+            f"① 目標到達: RR 1.5倍 or 直近高値\n"
+            f"② 弱さ検知: RSI 70→低下 / 上ヒゲ連発 / 出来高減少+上昇\n"
+            f"③ 売りパターン出現: ダブルトップ・三尊 → 即撤退\n"
+            f"④ 時間損切り: {ts['stagnant_days']}日伸びず→一部撤退 / "
+            f"{ts['sideways_days']}日横ばい→全撤退 / "
+            f"{ts['force_close_days']}日→強制クローズ検討"
+        )
+    return (
+        "【利確/撤退ガイド】\n"
+        f"① 目標到達: RR 1.5倍 or 直近安値\n"
+        f"② 弱さ検知: RSI 30→反発 / 下ヒゲ連発 / 出来高減少+下落\n"
+        f"③ 買いパターン出現: ダブルボトム・逆三尊 → 即撤退\n"
+        f"④ 時間損切り: {ts['stagnant_days']}日伸びず→一部撤退 / "
+        f"{ts['sideways_days']}日横ばい→全撤退 / "
+        f"{ts['force_close_days']}日→強制クローズ検討"
+    )
 
 
 def analyze_daily_data(code: str, name: str, is_test_mode: bool = False):
@@ -387,10 +467,10 @@ def _analyze_weekly_swing(symbol: str) -> None:
     if df.empty:
         logger.warning(f"データ取得失敗: {symbol} (空データ)")
         return
-    if len(df) < _MA_PERIOD + 2:
+    if len(df) < _WEEKLY_MA_PERIOD + 2:
         logger.warning(
             f"データ不足のため週足分析スキップ: {symbol} "
-            f"(取得行数={len(df)}, 必要行数={_MA_PERIOD + 2})"
+            f"(取得行数={len(df)}, 必要行数={_WEEKLY_MA_PERIOD + 2})"
         )
         return
     logger.info(f"データ取得成功: {symbol} (取得行数={len(df)})")
@@ -405,9 +485,18 @@ def _analyze_weekly_swing(symbol: str) -> None:
     risk = calculate_risk(df, trend)
     score, rationale = score_pattern(trend, patterns, df, risk)
 
-    threshold_status = "有効シグナル" if score >= _SCORE_THRESHOLD else f"閾値未達(閾値={_SCORE_THRESHOLD})"
+    if score >= _SCORE_THRESHOLD:
+        entry_timing = _get_entry_timing(patterns, trend)
+        exit_guidance = _get_exit_guidance(trend)
+        rationale = f"{rationale}\n---\n{entry_timing}\n{exit_guidance}"
+
+    threshold_status = (
+        "有効シグナル"
+        if score >= _SCORE_THRESHOLD
+        else f"閾値未達(閾値={_SCORE_THRESHOLD})"
+    )
     logger.info(
-        f"[{symbol}] trend={trend} score={score}/{_SCORE_THRESHOLD} "
+        f"[{symbol}] trend={trend} score={score}/{risk_management.SCORE_MAX} "
         f"[{threshold_status}] patterns={patterns}"
     )
 
