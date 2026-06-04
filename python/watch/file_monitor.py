@@ -1,4 +1,5 @@
 import logging
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -34,7 +35,7 @@ class MyStockCSVHandler(FileSystemEventHandler):
         """
         変更されたファイルをGCSにアップロードする (GCE -> Cloud Run同期用)
         """
-        bucket_name = "stock-management-prod"
+        bucket_name = os.getenv("GCS_BUCKET_NAME", "stock-management-494305-prod")
         blob_name = "my_stock.csv"
         try:
             from google.cloud import storage

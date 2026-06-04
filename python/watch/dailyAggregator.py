@@ -24,7 +24,9 @@ logger = get_logger("dailyAggregator", category="watch")
 __all__ = ["aggregate_intraday_to_daily", "run_daily_monitor"]
 
 
-def load_rules_from_gcs(bucket_name="stock-management-prod"):
+def load_rules_from_gcs(bucket_name=None):
+    if bucket_name is None:
+        bucket_name = os.getenv("GCS_BUCKET_NAME", "stock-management-494305-prod")
     """GCSから最新の取引ルールを読み込む"""
     try:
         client = storage.Client()
@@ -39,8 +41,10 @@ def load_rules_from_gcs(bucket_name="stock-management-prod"):
     return {}
 
 
-def generate_and_upload_chart(stock_code, df, bucket_name="stock-management-prod"):
+def generate_and_upload_chart(stock_code, df, bucket_name=None):
     """チャートを生成してGCSにアップロード"""
+    if bucket_name is None:
+        bucket_name = os.getenv("GCS_BUCKET_NAME", "stock-management-494305-prod")
     try:
         plt.figure(figsize=(10, 6))
 

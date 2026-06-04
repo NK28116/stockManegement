@@ -14,9 +14,9 @@ def run_command(cmd):
 
 def sync_to_gcs():
     """
-    Synchronizes local data to GCS bucket 'stock-management-prod' using gcloud CLI.
+    Synchronizes local data to the GCS bucket defined by GCS_BUCKET_NAME using gcloud CLI.
     """
-    bucket_name = "stock-management-prod"
+    bucket_name = os.getenv("GCS_BUCKET_NAME", "stock-management-494305-prod")
     print(f"Starting sync to GCS bucket: {bucket_name}")
 
     # Mappings: Local Path -> GCS Path

@@ -6,6 +6,18 @@
 __pycache__
 *.pyc
 venv/
+.venv/
+.pytest_cache/
+
+# 認証情報（イメージに含めない）
+KEY.json
+*.json.key
+cloud-sql-proxy
+
+# ローカル作業物
+.history/
+log/
+*.db
 
 # Documentation & Dev Scripts
 Docs/
