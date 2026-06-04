@@ -268,8 +268,8 @@
                                 </span>
                             </td>
                             <td class="px-4 py-3">
-                                <span :class="sig.score >= 8 ? 'text-orange-600 font-bold' : 'text-gray-600'">
-                                    {{ sig.score }} / 10
+                                <span :class="sig.score >= 5 ? 'text-orange-600 font-bold' : 'text-gray-600'">
+                                    {{ sig.score }} / 7
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-gray-700 font-medium">{{ getRecommendation(sig) }}</td>
@@ -294,7 +294,7 @@
                     <span class="inline-block w-4 h-4 rounded" style="background:#ffc0cb"></span> 保有中かつ売り推奨 (Short)
                 </span>
                 <span class="flex items-center gap-1">
-                    <span class="inline-block w-4 h-4 rounded" style="background:#fefce8"></span> 高スコア (8点以上)
+                    <span class="inline-block w-4 h-4 rounded" style="background:#fefce8"></span> エントリー推奨 (5点以上)
                 </span>
                 <span class="text-gray-400">※行クリックで詳細表示</span>
             </div>
@@ -322,8 +322,8 @@
                             {{ selectedSignal.signal_type }}
                         </span>
                         <span class="text-2xl font-bold"
-                            :class="selectedSignal.score >= 8 ? 'text-orange-600' : 'text-gray-600'">
-                            {{ selectedSignal.score }} / 10
+                            :class="selectedSignal.score >= 5 ? 'text-orange-600' : 'text-gray-600'">
+                            {{ selectedSignal.score }} / 7
                         </span>
                         <span class="text-gray-500">{{ selectedSignal.analysis_date }}</span>
                     </div>
@@ -346,6 +346,25 @@
                             <div class="text-xs text-gray-400 mb-1">利確目標 (Take Profit)</div>
                             <div class="font-mono font-bold text-green-700">
                                 {{ selectedSignal.take_profit ? formatPrice(selectedSignal.take_profit) : '-' }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 推奨タイミング -->
+                    <div v-if="selectedSignal.signal_type !== 'NONE'">
+                        <div class="text-xs text-gray-400 mb-1 font-medium uppercase">推奨タイミング</div>
+                        <div class="bg-blue-50 p-3 rounded border border-blue-100 space-y-2 text-sm">
+                            <div v-if="selectedSignal.signal_type === 'LONG'" class="space-y-1">
+                                <div class="font-semibold text-blue-800">購入タイミング</div>
+                                <div class="text-blue-700 whitespace-pre-wrap text-xs">{{ getEntryTimingDetail(selectedSignal) }}</div>
+                            </div>
+                            <div v-if="selectedSignal.signal_type === 'SHORT'" class="space-y-1">
+                                <div class="font-semibold text-red-800">売却タイミング</div>
+                                <div class="text-red-700 whitespace-pre-wrap text-xs">{{ getExitTimingDetail(selectedSignal, false) }}</div>
+                            </div>
+                            <div v-if="selectedSignal.is_held" class="space-y-1">
+                                <div class="font-semibold text-amber-800">保有中の利確/撤退ガイド</div>
+                                <div class="text-amber-700 whitespace-pre-wrap text-xs">{{ getExitTimingDetail(selectedSignal, true) }}</div>
                             </div>
                         </div>
                     </div>
@@ -1649,20 +1668,75 @@
                     if (sig.signal_type === 'LONG') {
                         return { background: '#add8e6' }  // 薄い青
                     }
-                    if (sig.score >= 8) {
+                    if (sig.score >= 5) {
                         return { background: '#fefce8' }  // 薄い黄
                     }
                     return {}
                 },
 
                 getRecommendation(sig) {
-                    if (sig.score >= 8 && sig.signal_type === 'LONG') return '買いエントリー検討'
-                    if (sig.score >= 8 && sig.signal_type === 'SHORT' && sig.is_held) return '保有中 → 売り検討'
-                    if (sig.score >= 8 && sig.signal_type === 'SHORT') return '売りエントリー検討'
-                    if (sig.signal_type === 'LONG') return '上昇トレンド（スコア不足）'
-                    if (sig.signal_type === 'SHORT' && sig.is_held) return '保有中 → 様子見'
-                    if (sig.signal_type === 'SHORT') return '下降トレンド（スコア不足）'
+                    const score = sig.score
+                    const type = sig.signal_type
+                    const held = sig.is_held
+                    const patterns = sig.detected_patterns || []
+
+                    if (score >= 5 && type === 'LONG') {
+                        return '買い推奨 — ' + this._entryLabel(patterns)
+                    }
+                    if (score >= 5 && type === 'SHORT' && held) return '売り推奨 — 利確/損切り検討'
+                    if (score >= 5 && type === 'SHORT') return '売り推奨 — ブレイク確定後'
+                    if (score >= 4 && type === 'LONG') return 'ウォッチ（買い候補）'
+                    if (score >= 4 && type === 'SHORT' && held) return 'ウォッチ（保有注意）'
+                    if (score >= 4 && type === 'SHORT') return 'ウォッチ（売り候補）'
+                    if (type === 'LONG') return '上昇トレンド（スコア不足）'
+                    if (type === 'SHORT' && held) return '保有中 → 様子見'
+                    if (type === 'SHORT') return '下降トレンド（スコア不足）'
                     return '様子見'
+                },
+
+                _entryLabel(patterns) {
+                    if (patterns.includes('ascending_flag')) return 'チャネル上抜け直後'
+                    if (patterns.includes('downtrend_line_break_retest')) return 'リテスト成功時'
+                    if (patterns.includes('ascending_triangle')) return 'レジスタンス突破+出来高増'
+                    if (patterns.includes('double_bottom') || patterns.includes('inverse_head_and_shoulders'))
+                        return 'ネックライン上抜け or 押し目'
+                    return 'ブレイク終値 or リテスト'
+                },
+
+                getEntryTimingDetail(sig) {
+                    const patterns = sig.detected_patterns || []
+                    const lines = []
+
+                    if (patterns.includes('double_bottom') || patterns.includes('inverse_head_and_shoulders'))
+                        lines.push('① ネックライン上抜け（終値確定）or 1〜3日後の押し目')
+                    if (patterns.includes('ascending_flag'))
+                        lines.push('① チャネル上抜け直後（初動が命）')
+                    if (patterns.includes('ascending_triangle'))
+                        lines.push('① 水平レジスタンス突破＋出来高増加')
+                    if (patterns.includes('downtrend_line_break_retest'))
+                        lines.push('① リテスト成功を必ず確認')
+
+                    if (lines.length === 0)
+                        lines.push('① ブレイク当日の終値確定')
+
+                    lines.push('② 出来高が直近5日平均の1.2倍以上あること')
+                    lines.push('※ 予測で入らず、確認で入る')
+                    return lines.join('\n')
+                },
+
+                getExitTimingDetail(sig, isHeld) {
+                    const lines = []
+                    if (isHeld) {
+                        lines.push('① 目標到達: RR 1.5倍 or 直近高値')
+                        lines.push('② 弱さ検知: RSI 70→低下 / 上ヒゲ連発 / 出来高減+上昇')
+                        lines.push('③ 売りパターン出現: ダブルトップ・三尊 → 即撤退')
+                        lines.push('④ 時間: 5日伸びず→一部撤退 / 10日横ばい→全撤退 / 14日→強制クローズ')
+                    } else {
+                        lines.push('① ネックライン/サポート下抜け確定（終値ベース）')
+                        lines.push('② または1〜3日後の戻り売り')
+                        lines.push('※ 期待で持たず、崩れで出る')
+                    }
+                    return lines.join('\n')
                 },
 
                 openSignalDetail(sig) {

@@ -112,3 +112,33 @@ class SignalHistory(Base):
     price = Column(Numeric(10, 2), nullable=False)
     reason = Column(Text)  # 'パターン（++）エントリー' など
     rule_version = Column(String)  # 使用したルールのバージョン
+
+
+class Watchlist(Base):
+    """
+    監視銘柄（ウォッチリスト）テーブル
+    保有していないが追跡したい銘柄を登録する
+    """
+
+    __tablename__ = "watchlist"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String, nullable=False, unique=True, index=True)
+    added_at = Column(DateTime, default=datetime.now, nullable=False)
+    tags = Column(String)
+    priority = Column(Integer, default=0, nullable=False)
+
+
+class StockNote(Base):
+    """
+    銘柄メモテーブル
+    1 銘柄に対して複数のフリーテキストメモを保持する
+    """
+
+    __tablename__ = "stock_notes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    code = Column(String, nullable=False, index=True)
+    body = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.now, nullable=False)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
