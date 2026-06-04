@@ -110,7 +110,7 @@ def run_daily_task(is_test_mode: bool = False):
         # 4. レポートファイルをCloud Storageにアップロード
         # バケット名はscripts/send_report.shから取得
         # バケット名は環境変数から取得（デフォルトは本番用）
-        GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "stock-management-prod")
+        GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "stock-management-494305-prod")
 
         # サマリーレポートのアップロード
         summary_report_dir = config.root_dir / "data" / "report" / "daily" / "summary"

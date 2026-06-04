@@ -86,6 +86,8 @@ class Config:
                 "database": os.getenv("CLOUD_PG_DATABASE", "{CLOUD_PG_DATABASE}"),
                 "user": os.getenv("CLOUD_PG_USER", "{CLOUD_PG_USER}"),
                 "password": os.getenv("CLOUD_PG_PASSWORD", "{CLOUD_PG_PASSWORD}"),
+                # 任意: require / verify-full 等。未設定なら付与しない（ローカルProxy互換）
+                "sslmode": os.getenv("CLOUD_PG_SSLMODE"),
             }
         else:  # default local
             return {

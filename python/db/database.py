@@ -37,6 +37,11 @@ else:
         f"postgresql://{db_conf.get('user', 'user')}:{db_conf.get('password', 'password')}@"
         f"{db_conf.get('host', 'localhost')}:{db_conf.get('port', '5432')}/{db_conf.get('database', 'stock_db')}"
     )
+    # インターネット越し（Render → GCE等）で接続する場合のSSL指定。
+    # CLOUD_PG_SSLMODE=require/verify-full などを指定すると付与される。
+    sslmode = db_conf.get("sslmode")
+    if sslmode:
+        DATABASE_URL += f"?sslmode={sslmode}"
     engine = create_engine(DATABASE_URL, echo=False)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
