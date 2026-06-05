@@ -67,7 +67,7 @@ templates = Jinja2Templates(directory=str(templates_dir))
 
 @app.get("/")
 async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse(request, "index.html")
 
 
 # Run instruction: uvicorn python.web.app:app --reload
