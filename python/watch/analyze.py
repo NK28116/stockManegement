@@ -564,3 +564,7 @@ def main() -> None:
         time.sleep(1)
 
     logger.info("週足スイングトレード分析 完了")
+
+
+if __name__ == "__main__":
+    main()

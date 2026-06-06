@@ -18,8 +18,14 @@ source venv/bin/activate
 mkdir -p log
 LOG="$PROJECT_ROOT/log/cron_daily.log"
 
+BUCKET="${GCS_BUCKET_NAME:-stock-management-494305-prod}"
+
 {
     echo "==================== $(date '+%Y-%m-%d %H:%M:%S') cron_daily START ===================="
+
+    echo "[0/3] fetch portfolio CSV from GCS (analyze 用に現行ポートフォリオを取得)"
+    gcloud storage cp "gs://${BUCKET}/my_stock.csv" data/my_stock_local.csv \
+        || echo "WARN: could not fetch my_stock.csv from GCS"
 
     echo "[1/3] generate charts (1mo)"
     python -m python.visualization.generate_all_charts 1mo
@@ -28,7 +34,7 @@ LOG="$PROJECT_ROOT/log/cron_daily.log"
     python scripts/sync_data_to_gcs.py 1mo
 
     echo "[3/3] analyze signals"
-    python python/watch/analyze.py
+    python -m python.watch.analyze
 
     echo "==================== $(date '+%Y-%m-%d %H:%M:%S') cron_daily DONE ===================="
 } >> "$LOG" 2>&1
