@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -174,7 +175,15 @@ async def _run_market_update():
             )
 
         # --- Step 3: チャート画像の一括再生成 ---
-        if generate_all_charts is None:
+        # 案B: 重いチャート生成はGCE側のcronワーカーに集約する。
+        # Render等のWeb環境では DISABLE_CHART_GENERATION=1 を設定してスキップし、
+        # メモリ制約やGCS未連携による「ローカル生成→反映されない」問題を回避する。
+        if os.getenv("DISABLE_CHART_GENERATION", "").lower() in ("1", "true", "yes"):
+            logger.info(
+                "Step 3/3: DISABLE_CHART_GENERATION が設定されているためチャート生成をスキップ "
+                "(チャートはGCEワーカーの定期ジョブで生成・GCSへ反映されます)。"
+            )
+        elif generate_all_charts is None:
             logger.warning(
                 "Step 3/3: python.visualization.generate_all_charts is not available; "
                 "chart images will NOT be regenerated."
