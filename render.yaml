@@ -40,6 +40,10 @@ services:
       - key: CLOUD_PG_PASSWORD
         sync: false
 
+      # --- 案B: 重いチャート生成はGCEワーカーに集約。RenderのUIは生成しない ---
+      - key: DISABLE_CHART_GENERATION
+        value: "1"
+
       # --- GCP / GCS ---
       - key: GOOGLE_CLOUD_PROJECT
         value: stockmanagement-494305
