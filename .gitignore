@@ -10,7 +10,6 @@ __pycache__/
 *.pyc
 
 # Logs
-log/*
 *.log
 python/db/my_stock.db
 data/chartImg/*.png
