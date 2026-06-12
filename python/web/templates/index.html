@@ -1045,15 +1045,43 @@
                     if (value < 0) return 'text-red-600'
                     return 'text-gray-600'
                 },
+                // JSON API 共通ヘルパー。Render 無料枠のコールドスタート中は API パスでも
+                // HTML が返り、res.json() が Safari では「The string did not match the
+                // expected pattern」、Chrome では「Unexpected token '<'」で失敗する。
+                // そのためステータスと Content-Type を検証し、起動待ちと思われる応答はリトライする。
+                async fetchJson(url, options = {}, retries = 2) {
+                    let lastError
+                    for (let attempt = 0; attempt <= retries; attempt++) {
+                        if (attempt > 0) {
+                            await new Promise(resolve => setTimeout(resolve, 2000 * attempt))
+                        }
+                        let res
+                        try {
+                            res = await fetch(url, options)
+                        } catch (e) {
+                            lastError = e // ネットワークエラーもリトライ対象
+                            continue
+                        }
+                        if (!res.ok) {
+                            lastError = new Error(`HTTP error! status: ${res.status}`)
+                            if (res.status >= 500) continue
+                            throw lastError
+                        }
+                        const contentType = res.headers.get('content-type') || ''
+                        if (!contentType.includes('application/json')) {
+                            lastError = new Error('サーバーが起動中の可能性があります。しばらく待ってからページを再読み込みしてください。')
+                            continue
+                        }
+                        return await res.json()
+                    }
+                    throw lastError
+                },
                 async fetchCharts() {
                     this.loadingCharts = true
                     this.errorMessage = ''
 
                     try {
-                        const res = await fetch('/api/charts/list')
-                        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
-
-                        this.charts = await res.json()
+                        this.charts = await this.fetchJson('/api/charts/list')
 
                         const STATUS = {
                             HOLDING: '保有中',
@@ -1090,8 +1118,7 @@
                     this.loadingRules = true
                     try {
                         // Use the new /active endpoint
-                        const res = await fetch('/api/rules/active')
-                        const data = await res.json()
+                        const data = await this.fetchJson('/api/rules/active')
                         this.rules = JSON.parse(JSON.stringify(data))
                         if (!this.rules.change_reason) {
                             this.rules.change_reason = "Regular Update"
@@ -1106,9 +1133,7 @@
                 async fetchDefaultRules() {
                     // Settings タブの placeholder / 参考値として表示するためのデフォルト取引ルール
                     try {
-                        const res = await fetch('/api/rules/default')
-                        if (!res.ok) return
-                        const data = await res.json()
+                        const data = await this.fetchJson('/api/rules/default')
                         this.defaultRules = JSON.parse(JSON.stringify(data))
                     } catch (e) {
                         console.warn('Failed to load default rules:', e)
@@ -1137,9 +1162,7 @@
                     this.loadingHistory = true
                     try {
                         // 1. Fetch index.json (list of versions)
-                        const res = await fetch('/api/rules/history')
-                        if (!res.ok) throw new Error("Failed to fetch history list")
-                        const index = await res.json()
+                        const index = await this.fetchJson('/api/rules/history')
 
                         // Sort by version desc
                         index.sort((a, b) => b.version - a.version)
