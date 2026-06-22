@@ -75,6 +75,9 @@
 
         <!-- Dashboard Tab -->
         <div v-if="currentTab === 'dashboard'" class="bg-white p-6 rounded-lg shadow overflow-x-auto">
+            <div v-if="warmingUp" class="text-amber-700 p-4 bg-amber-50 rounded border border-amber-200 mb-2">
+                ⏳ サーバーを起動しています（無料プランのスリープ復帰中）。最大1分ほどお待ちください…
+            </div>
             <div v-if="loadingCharts" class="text-gray-500">Loading charts...</div>
             <div v-else-if="errorMessage" class="text-red-500 p-4 bg-red-50 rounded">{{ errorMessage }}</div>
             <div v-else-if="charts.length === 0" class="text-gray-500 italic">No charts found.</div>
@@ -916,6 +919,7 @@
                     message: '',
                     messageType: '',
                     errorMessage: '',
+                    warmingUp: false, // Render コールドスタート中の起動待ちフラグ
                     expandedCharts: {},
                     showDiffModal: false,
                     diffs: [],
@@ -1045,15 +1049,57 @@
                     if (value < 0) return 'text-red-600'
                     return 'text-gray-600'
                 },
+                // JSON API 共通ヘルパー。Render 無料枠のコールドスタート中は API パスでも
+                // HTML が返り、res.json() が Safari では「The string did not match the
+                // expected pattern」、Chrome では「Unexpected token '<'」で失敗する。
+                // そのためステータスと Content-Type を検証し、起動待ちと思われる応答はリトライする。
+                //
+                // Render 無料枠のスピンアップは 30〜60 秒かかるため、リトライ予算も
+                // それに合わせて広く取る (バックオフ合計で最大約 60 秒待つ)。待機中は
+                // warmingUp フラグを立て、UI に「起動中」バナーを表示する。
+                async fetchJson(url, options = {}, { retries = 8, maxDelay = 10000 } = {}) {
+                    let lastError
+                    for (let attempt = 0; attempt <= retries; attempt++) {
+                        if (attempt > 0) {
+                            // 2s, 4s, 8s, 10s, 10s ... と頭打ちさせる
+                            const delay = Math.min(2000 * Math.pow(2, attempt - 1), maxDelay)
+                            await new Promise(resolve => setTimeout(resolve, delay))
+                        }
+                        let res
+                        try {
+                            res = await fetch(url, options)
+                        } catch (e) {
+                            lastError = e // ネットワークエラーもリトライ対象 (起動直後は接続拒否されうる)
+                            this.warmingUp = true
+                            continue
+                        }
+                        if (!res.ok) {
+                            lastError = new Error(`HTTP error! status: ${res.status}`)
+                            // 5xx / 502 (Render の起動中ゲートウェイ) はリトライ、それ以外は即時失敗
+                            if (res.status >= 500) {
+                                this.warmingUp = true
+                                continue
+                            }
+                            throw lastError
+                        }
+                        const contentType = res.headers.get('content-type') || ''
+                        if (!contentType.includes('application/json')) {
+                            // API パスなのに HTML が返る = 起動中のプレースホルダ応答
+                            lastError = new Error('サーバーが起動中の可能性があります。しばらく待ってからページを再読み込みしてください。')
+                            this.warmingUp = true
+                            continue
+                        }
+                        this.warmingUp = false
+                        return await res.json()
+                    }
+                    throw lastError
+                },
                 async fetchCharts() {
                     this.loadingCharts = true
                     this.errorMessage = ''
 
                     try {
-                        const res = await fetch('/api/charts/list')
-                        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`)
-
-                        this.charts = await res.json()
+                        this.charts = await this.fetchJson('/api/charts/list')
 
                         const STATUS = {
                             HOLDING: '保有中',
@@ -1090,8 +1136,7 @@
                     this.loadingRules = true
                     try {
                         // Use the new /active endpoint
-                        const res = await fetch('/api/rules/active')
-                        const data = await res.json()
+                        const data = await this.fetchJson('/api/rules/active')
                         this.rules = JSON.parse(JSON.stringify(data))
                         if (!this.rules.change_reason) {
                             this.rules.change_reason = "Regular Update"
@@ -1106,9 +1151,7 @@
                 async fetchDefaultRules() {
                     // Settings タブの placeholder / 参考値として表示するためのデフォルト取引ルール
                     try {
-                        const res = await fetch('/api/rules/default')
-                        if (!res.ok) return
-                        const data = await res.json()
+                        const data = await this.fetchJson('/api/rules/default')
                         this.defaultRules = JSON.parse(JSON.stringify(data))
                     } catch (e) {
                         console.warn('Failed to load default rules:', e)
@@ -1137,9 +1180,7 @@
                     this.loadingHistory = true
                     try {
                         // 1. Fetch index.json (list of versions)
-                        const res = await fetch('/api/rules/history')
-                        if (!res.ok) throw new Error("Failed to fetch history list")
-                        const index = await res.json()
+                        const index = await this.fetchJson('/api/rules/history')
 
                         // Sort by version desc
                         index.sort((a, b) => b.version - a.version)
