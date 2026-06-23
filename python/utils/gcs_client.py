@@ -52,10 +52,10 @@ class GCSClient:
     def get_json(self, path: str) -> Optional[Dict[str, Any]]:
         """Download JSON from GCS or read from local."""
         if self.use_gcs:
-            blob = self.bucket.blob(path)
-            if not blob.exists():
-                return None
             try:
+                blob = self.bucket.blob(path)
+                if not blob.exists():
+                    return None
                 data_str = blob.download_as_text(encoding="utf-8")
                 return json.loads(data_str)
             except Exception as e:
@@ -102,17 +102,23 @@ class GCSClient:
             if prefix and not prefix.endswith("/"):
                 prefix += "/"
 
-            blobs = self.bucket.list_blobs(prefix=prefix)
-            for blob in blobs:
-                # blob.name is full path like "charts/indicators/foo.png"
-                # We want just "foo.png"
-                if blob.name == prefix:
-                    continue  # Skip the directory itself if listed
+            try:
+                blobs = self.bucket.list_blobs(prefix=prefix)
+                for blob in blobs:
+                    # blob.name is full path like "charts/indicators/foo.png"
+                    # We want just "foo.png"
+                    if blob.name == prefix:
+                        continue  # Skip the directory itself if listed
 
-                # Extract filename relative to prefix
-                rel_name = blob.name[len(prefix) :]
-                if rel_name:
-                    file_names.append(rel_name)
+                    # Extract filename relative to prefix
+                    rel_name = blob.name[len(prefix) :]
+                    if rel_name:
+                        file_names.append(rel_name)
+            except Exception as e:
+                # GCS の認証/権限/ネットワークエラーで API 全体が 500 にならないよう、
+                # 空リストにフォールバックする (呼び出し側は「データなし」として扱う)。
+                print(f"[ERROR] Failed to list files from GCS prefix '{prefix}': {e}")
+                return []
         else:
             local_dir = self._get_local_path(prefix)
             if local_dir.exists() and local_dir.is_dir():
@@ -125,10 +131,10 @@ class GCSClient:
     def get_file_content(self, path: str) -> Optional[bytes]:
         """Download binary content (e.g. image) from GCS or local."""
         if self.use_gcs:
-            blob = self.bucket.blob(path)
-            if not blob.exists():
-                return None
             try:
+                blob = self.bucket.blob(path)
+                if not blob.exists():
+                    return None
                 return blob.download_as_bytes()
             except Exception as e:
                 print(f"[ERROR] Failed to download file from GCS {path}: {e}")
