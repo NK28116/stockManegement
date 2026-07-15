@@ -26,6 +26,8 @@ venv/
 KEY.json
 render-sa-key.json
 *-sa-key.json
+*_key.json
+new_key.json
 *.pem
 
 # シークレットスキャンのレポート（検出結果自体が機密）
