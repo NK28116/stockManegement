@@ -2,8 +2,15 @@
 # Git履歴からの機密情報除去 (PRIDEV-307)
 #
 # 棚卸し (PRIDEV-304) で確定した除去対象:
-#   - render-sa-key.json                 : GCP SA鍵 (commit e7149e5)
-#   - python/__pycache__/                : Slack Webhook入り .pyc (commits 59f94d9, abfec03 ほか)
+#   [パス除去] 本来コミットされるべきでないファイル
+#     - render-sa-key.json   : GCP SA鍵
+#     - KEY.json             : GCP SA鍵 (旧)
+#     - .env                 : Slack bot token / webhook
+#     - python/__pycache__/  : Slack Webhook入り .pyc
+#   [文字列置換] 現存する正当なファイルの過去版に埋め込まれたシークレット
+#     - scripts/send_report.sh, .github/workflows/*, README.md, python/config.py
+#       に含まれる Slack webhook / GitHub PAT 等
+#       → gitleaks レポートから動的に抽出して ***REMOVED*** に置換
 #
 # 前提:
 #   - ミラーバックアップ取得済みであること (PRIDEV-306)
@@ -16,6 +23,8 @@ set -euo pipefail
 
 REPO_URL="git@github.com:NK28116/stockManegement.git"
 WORK_DIR="${1:-$HOME/Documents/PrivateDevelop/stockManegement-purged}"
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
 
 if [ -e "$WORK_DIR" ]; then
   echo "ERROR: $WORK_DIR は既に存在します。別のパスを指定してください。" >&2
@@ -23,25 +32,43 @@ if [ -e "$WORK_DIR" ]; then
 fi
 
 command -v git-filter-repo >/dev/null || { echo "ERROR: git-filter-repo が必要です (brew install git-filter-repo)" >&2; exit 1; }
+command -v gitleaks >/dev/null || { echo "ERROR: gitleaks が必要です (brew install gitleaks)" >&2; exit 1; }
 
 echo "==> 新規クローン: $WORK_DIR"
 git clone --mirror "$REPO_URL" "$WORK_DIR"
 cd "$WORK_DIR"
 
-echo "==> filter-repo 実行 (対象パスを全履歴から除去)"
+echo "==> 浄化前スキャン (置換対象シークレットの抽出)"
+gitleaks detect --source . --log-opts="--all" --no-banner \
+  --report-path "$TMP_DIR/before.json" || true
+
+python3 - "$TMP_DIR/before.json" "$TMP_DIR/replacements.txt" <<'EOF'
+import json, sys
+findings = json.load(open(sys.argv[1]))
+secrets = {f["Secret"] for f in findings if f.get("Secret")}
+with open(sys.argv[2], "w") as out:
+    for s in sorted(secrets):
+        # filter-repo の literal 置換 (デフォルト) を使用
+        out.write(f"{s}==>***REMOVED***\n")
+print(f"置換対象: {len(secrets)} 件のシークレット")
+EOF
+
+echo "==> filter-repo 実行 (パス除去 + シークレット文字列置換)"
 git filter-repo \
   --invert-paths \
   --path render-sa-key.json \
-  --path python/__pycache__/
+  --path KEY.json \
+  --path .env \
+  --path python/__pycache__/ \
+  --replace-text "$TMP_DIR/replacements.txt"
 
-echo "==> 除去結果の確認"
-for p in render-sa-key.json "python/__pycache__/config.cpython-313.pyc"; do
-  if git log --all --oneline -- "$p" | grep -q .; then
-    echo "NG: $p がまだ履歴に残っています" >&2
-    exit 1
-  fi
-  echo "OK: $p は履歴から除去されました"
-done
+echo "==> 浄化後の再スキャン (PRIDEV-309 の事前検証)"
+if gitleaks detect --source . --log-opts="--all" --no-banner; then
+  echo "OK: gitleaks 警告ゼロ"
+else
+  echo "NG: まだシークレットが残っています。レポートを確認してください。" >&2
+  exit 1
+fi
 
 echo ""
 echo "完了。push はまだ実行されていません。"
