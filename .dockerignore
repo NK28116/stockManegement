@@ -11,7 +11,10 @@ venv/
 
 # 認証情報（イメージに含めない）
 KEY.json
+render-sa-key.json
+*-sa-key.json
 *.json.key
+*.pem
 cloud-sql-proxy
 
 # ローカル作業物
