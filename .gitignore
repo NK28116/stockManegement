@@ -24,6 +24,15 @@ venv/
 
 # 秘密鍵/認証情報
 KEY.json
+render-sa-key.json
+*-sa-key.json
+*_key.json
+new_key.json
+*.pem
+
+# シークレットスキャンのレポート（検出結果自体が機密）
+gitleaks_report.json
+trufflehog_report.json
 
 # 設定ファイル (機密情報を含む場合)
 

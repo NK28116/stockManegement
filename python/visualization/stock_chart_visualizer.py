@@ -8,7 +8,6 @@ import io
 import json
 import logging
 import os
-import platform
 import sys
 import warnings
 from typing import Dict, List, Optional
@@ -23,7 +22,6 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.dates as mdates  # noqa: E402
-import matplotlib.font_manager as fm  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd
 import yfinance as yf
@@ -33,6 +31,7 @@ from python.config import config
 from python.trading.trading_rules import ImprovedTradingRules
 from python.utils.gcs_client import gcs
 from python.utils.indicators import calculate_rsi
+from python.visualization.font_setup import setup_japanese_font
 from python.visualization.plot_indicators import plot_macd_bollinger
 
 # from python.web.services.rule_store import get_rule_store # module missing error
@@ -46,25 +45,9 @@ warnings.filterwarnings("ignore")
 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(parent_dir)
 sys.path.append(os.path.join(parent_dir, "trading"))
-# Set font with fallbacks - suppress font warnings
-# Set font with fallbacks - suppress font warnings
 
-# Detect OS and set appropriate Japanese font
-system = platform.system()
-if system == "Darwin":  # macOS
-    # Prefer Hiragino Sans (modern macOS standard)
-    font_names = [f.name for f in fm.fontManager.ttflist]
-    if "Hiragino Sans" in font_names:
-        matplotlib.rcParams["font.family"] = "Hiragino Sans"
-    elif "Hiragino Kaku Gothic ProN" in font_names:
-        matplotlib.rcParams["font.family"] = "Hiragino Kaku Gothic ProN"
-    # Fallback to japanize_matplotlib or default if specific fonts not found
-elif system == "Windows":
-    # Windows defaults (often handled well by japanize_matplotlib, but explicit is safer)
-    matplotlib.rcParams["font.family"] = ["Meiryo", "Yu Gothic", "MS Gothic"]
-
-# マイナス記号の文字化け対策
-matplotlib.rcParams["axes.unicode_minus"] = False
+# 日本語フォント設定 (Linux コンテナ含む全 OS 対応)
+setup_japanese_font()
 
 # Suppress font warning messages
 matplotlib_logger = logging.getLogger("matplotlib.font_manager")
