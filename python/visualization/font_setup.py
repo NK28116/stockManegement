@@ -1,10 +1,12 @@
 """
 matplotlib 日本語フォント共通設定
 
-チャート生成モジュールは pyplot を import する前に setup_japanese_font() を
-呼び出すこと。本番コンテナ (python:3.12-slim) には OS レベルの日本語フォントが
-存在しないため、japanize_matplotlib が wheel に同梱する IPAexGothic を登録する
-ことで全環境での日本語描画を保証する。
+チャート生成モジュールは図を描画する前に setup_japanese_font() を呼び出すこと
+（フォント設定は描画時に参照されるため、pyplot import との順序は問わない）。
+本番コンテナ (python:3.12-slim) には OS レベルの日本語フォントが存在しないため、
+japanize_matplotlib が wheel に同梱する IPAexGothic を登録して日本語描画に対応
+する。japanize_matplotlib が未インストールの場合は警告を出して OS 標準フォント
+にフォールバックするベストエフォート動作となる。
 """
 
 import logging
