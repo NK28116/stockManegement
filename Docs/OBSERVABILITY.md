@@ -65,3 +65,43 @@ PYTHONPATH=. pytest tests/test_observability_adapters.py -v
 ```
 
 GCP API は呼ばず、注入したモッククライアントで検証する。
+
+## System Health 集約 (PRIDEV-491)
+
+`python/observability/health.py` の `SystemHealthService` が、Logging / Monitoring
+の結果を上位層向けの単一モデル `SystemHealth` へ集約する。
+
+```python
+from python.observability import SystemHealthService
+
+health = SystemHealthService().collect()
+health.to_dict()   # System Monitor API / 画面はこれだけを参照する
+```
+
+### 状態
+
+| status | 条件 |
+| --- | --- |
+| `ok` | エラー・警告なし |
+| `warning` | WARNING のログがある |
+| `error` | ERROR 以上のログがある |
+| `degraded` | Cloud Logging / Monitoring を取得できなかった |
+
+`collect()` は **例外を投げない**。Cloud API の失敗は `degraded_reasons` へ
+理由を積み、`status=degraded` として返す。
+
+### 秘匿処理
+
+`recent_errors` のメッセージとラベルは必ず `python/observability/masking.py` を
+通る。マスク対象は次のとおり。
+
+- URL のクエリ文字列 (丸ごと `***`)
+- `Authorization` / `Cookie` / `Set-Cookie` / `Proxy-Authorization` ヘッダ
+- キー名に `token` / `password` / `secret` / `api_key` / `credential` / `session` /
+  `signature` / `private_key` / `auth` を含む `key=value`・`key: value`・JSON
+
+判定は値の形ではなくキー名で行うため、未知の値でも取りこぼさない。
+
+```bash
+PYTHONPATH=. pytest tests/test_system_health.py -v
+```
