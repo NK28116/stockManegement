@@ -5,10 +5,11 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from python.utils.logger import get_logger
+from python.web import auth
 from python.web.api import rules, signals, simulate, watchlist
 from python.web.routes import actions, analytics, charts
 
@@ -39,6 +40,27 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Stock Management UI", lifespan=lifespan)
 
 
+@app.middleware("http")
+async def auth_guard_middleware(request: Request, call_next):
+    """保護対象パスへの未認証アクセスを遮断する (PRIDEV-481)。
+
+    保護対象は AUTH_PROTECTED_PATH_PREFIXES で外部化されている。
+    API は 401 JSON、画面はログインページへリダイレクトする。
+    """
+    settings = auth.get_auth_settings()
+    path = request.url.path
+    if (
+        settings.enabled
+        and auth.is_protected_path(path, settings)
+        and not auth.is_authenticated(request, settings)
+    ):
+        logger.info(f"未認証アクセスを遮断しました: {path}")
+        if path.startswith("/api/"):
+            return JSONResponse({"detail": "認証が必要です"}, status_code=401)
+        return RedirectResponse(f"{auth.LOGIN_PATH}?next={path}", status_code=303)
+    return await call_next(request)
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     error_details = exc.errors()
@@ -50,6 +72,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 # Mount API routes
+app.include_router(auth.router)
 app.include_router(rules.router)
 app.include_router(signals.router)
 app.include_router(charts.router)
