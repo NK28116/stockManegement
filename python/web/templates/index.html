@@ -9,6 +9,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Vue.js 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- 起動待ちUXの設定値 (PRIDEV-485)。サーバ側 python/web/startup.py を単一の正とする -->
+    <script>
+        window.__STARTUP_CONFIG__ = {{ startup_config | tojson }};
+    </script>
 </head>
 
 <body class="bg-gray-100 min-h-screen">
@@ -25,6 +29,30 @@
                     class="ml-2 opacity-70 hover:opacity-100 text-lg leading-none">✕</button>
             </div>
         </transition>
+
+        <!-- 起動待ち / timeout バナー (PRIDEV-485) -->
+        <div v-if="startupTimedOut"
+            class="mb-4 p-4 rounded border border-red-200 bg-red-50 text-red-700 flex flex-wrap items-center gap-3">
+            <span class="flex-1 min-w-0">
+                ⚠️ サーバーの応答が {{ Math.round(startupConfig.timeoutMs / 1000) }} 秒以内に得られませんでした。
+                <span class="text-sm text-red-500">(待機時間: {{ startupElapsedText }})</span>
+            </span>
+            <button @click="retryStartup" :disabled="loadingCharts"
+                class="px-4 py-2 rounded bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-50">
+                再試行
+            </button>
+        </div>
+        <div v-else-if="warmingUp"
+            class="mb-4 p-4 rounded border border-amber-200 bg-amber-50 text-amber-700 flex flex-wrap items-center gap-3">
+            <svg class="w-4 h-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+            <span class="flex-1 min-w-0">
+                ⏳ サーバーを起動しています（スリープからの復帰中）。
+                <span class="text-sm text-amber-600">(待機時間: {{ startupElapsedText }})</span>
+            </span>
+        </div>
 
         <!-- Header -->
         <header class="bg-white shadow rounded-lg p-6 mb-6 flex justify-between items-center">
@@ -75,9 +103,6 @@
 
         <!-- Dashboard Tab -->
         <div v-if="currentTab === 'dashboard'" class="bg-white p-6 rounded-lg shadow overflow-x-auto">
-            <div v-if="warmingUp" class="text-amber-700 p-4 bg-amber-50 rounded border border-amber-200 mb-2">
-                ⏳ サーバーを起動しています（無料プランのスリープ復帰中）。最大1分ほどお待ちください…
-            </div>
             <div v-if="loadingCharts" class="text-gray-500">Loading charts...</div>
             <div v-else-if="errorMessage" class="text-red-500 p-4 bg-red-50 rounded">{{ errorMessage }}</div>
             <div v-else-if="charts.length === 0" class="text-gray-500 italic">No charts found.</div>
@@ -919,7 +944,14 @@
                     message: '',
                     messageType: '',
                     errorMessage: '',
-                    warmingUp: false, // Render コールドスタート中の起動待ちフラグ
+                    // 起動待ち UX (PRIDEV-485)。しきい値はサーバ側 startup.py が単一の正。
+                    startupConfig: Object.assign(
+                        { targetMs: 10000, loadingDelayMs: 1000, timeoutMs: 30000 },
+                        window.__STARTUP_CONFIG__ || {}
+                    ),
+                    warmingUp: false, // コールドスタート中の起動待ちフラグ
+                    startupTimedOut: false, // timeout 超過。retry 導線を表示する
+                    startupWaitMs: 0, // 起動待ちの実測値 (前後比較用)
                     expandedCharts: {},
                     showDiffModal: false,
                     diffs: [],
@@ -975,6 +1007,9 @@
                 setInterval(this.fetchActionStatus, 30000) // Poll status every 30s
             },
             computed: {
+                startupElapsedText() {
+                    return `${(this.startupWaitMs / 1000).toFixed(1)}秒`
+                },
                 currentUnitStockPrice() {
                     if (!this.stock) return 0;
                     // Find the chart data for the currently entered stock code
@@ -1049,35 +1084,50 @@
                     if (value < 0) return 'text-red-600'
                     return 'text-gray-600'
                 },
-                // JSON API 共通ヘルパー。Render 無料枠のコールドスタート中は API パスでも
-                // HTML が返り、res.json() が Safari では「The string did not match the
-                // expected pattern」、Chrome では「Unexpected token '<'」で失敗する。
+                // 起動待ちを検知したときの共通処理 (PRIDEV-485)。
+                // loadingDelayMs を超えるまでは loading 表示を出さず、短い待ちでの
+                // ちらつきを防ぐ。timeoutMs を超えたら retry 導線へ切り替える。
+                noteStartupWait(startedAt) {
+                    this.startupWaitMs = Date.now() - startedAt
+                    if (this.startupWaitMs >= this.startupConfig.loadingDelayMs) {
+                        this.warmingUp = true
+                    }
+                    return this.startupWaitMs
+                },
+                // JSON API 共通ヘルパー。コールドスタート中は API パスでも HTML が返り、
+                // res.json() が Safari では「The string did not match the expected
+                // pattern」、Chrome では「Unexpected token '<'」で失敗する。
                 // そのためステータスと Content-Type を検証し、起動待ちと思われる応答はリトライする。
                 //
-                // Render 無料枠のスピンアップは 30〜60 秒かかるため、リトライ予算も
-                // それに合わせて広く取る (バックオフ合計で最大約 60 秒待つ)。待機中は
-                // warmingUp フラグを立て、UI に「起動中」バナーを表示する。
-                async fetchJson(url, options = {}, { retries = 8, maxDelay = 10000 } = {}) {
+                // リトライ予算は時間で管理する (startupConfig.timeoutMs)。回数ではなく
+                // 経過時間で打ち切ることで、ユーザーが指定した timeout をそのまま守れる。
+                async fetchJson(url, options = {}, { maxDelay = 10000, timeoutMs = null } = {}) {
+                    const budgetMs = timeoutMs === null ? this.startupConfig.timeoutMs : timeoutMs
+                    const startedAt = Date.now()
                     let lastError
-                    for (let attempt = 0; attempt <= retries; attempt++) {
+                    for (let attempt = 0; ; attempt++) {
                         if (attempt > 0) {
                             // 2s, 4s, 8s, 10s, 10s ... と頭打ちさせる
                             const delay = Math.min(2000 * Math.pow(2, attempt - 1), maxDelay)
-                            await new Promise(resolve => setTimeout(resolve, delay))
+                            const remaining = budgetMs - (Date.now() - startedAt)
+                            if (remaining <= 0) break
+                            await new Promise(resolve => setTimeout(resolve, Math.min(delay, remaining)))
                         }
                         let res
                         try {
                             res = await fetch(url, options)
                         } catch (e) {
                             lastError = e // ネットワークエラーもリトライ対象 (起動直後は接続拒否されうる)
-                            this.warmingUp = true
+                            this.noteStartupWait(startedAt)
+                            if (Date.now() - startedAt >= budgetMs) break
                             continue
                         }
                         if (!res.ok) {
                             lastError = new Error(`HTTP error! status: ${res.status}`)
-                            // 5xx / 502 (Render の起動中ゲートウェイ) はリトライ、それ以外は即時失敗
+                            // 5xx / 502 (起動中ゲートウェイ) はリトライ、それ以外は即時失敗
                             if (res.status >= 500) {
-                                this.warmingUp = true
+                                this.noteStartupWait(startedAt)
+                                if (Date.now() - startedAt >= budgetMs) break
                                 continue
                             }
                             throw lastError
@@ -1086,13 +1136,42 @@
                         if (!contentType.includes('application/json')) {
                             // API パスなのに HTML が返る = 起動中のプレースホルダ応答
                             lastError = new Error('サーバーが起動中の可能性があります。しばらく待ってからページを再読み込みしてください。')
-                            this.warmingUp = true
+                            this.noteStartupWait(startedAt)
+                            if (Date.now() - startedAt >= budgetMs) break
                             continue
                         }
-                        this.warmingUp = false
+                        this.recordStartupSuccess(startedAt)
                         return await res.json()
                     }
-                    throw lastError
+                    this.startupWaitMs = Date.now() - startedAt
+                    this.warmingUp = false
+                    this.startupTimedOut = true
+                    throw lastError || new Error('サーバーが応答しませんでした')
+                },
+                // 起動待ち時間を計測結果として残す (AC: 前後比較ができること)
+                recordStartupSuccess(startedAt) {
+                    const waitedMs = Date.now() - startedAt
+                    this.warmingUp = false
+                    this.startupTimedOut = false
+                    if (waitedMs > this.startupWaitMs) {
+                        this.startupWaitMs = waitedMs
+                    }
+                    if (waitedMs >= this.startupConfig.loadingDelayMs) {
+                        console.info(
+                            `[startup] 起動待ち ${waitedMs}ms (target=${this.startupConfig.targetMs}ms)`
+                        )
+                    }
+                },
+                // timeout 後の再試行導線
+                async retryStartup() {
+                    this.startupTimedOut = false
+                    this.startupWaitMs = 0
+                    this.errorMessage = ''
+                    await Promise.all([
+                        this.fetchCharts(),
+                        this.fetchActionStatus(),
+                        this.fetchSignals(),
+                    ])
                 },
                 async fetchCharts() {
                     this.loadingCharts = true
