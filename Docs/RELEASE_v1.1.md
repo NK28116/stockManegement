@@ -45,17 +45,27 @@ PRIDEV-482 / 484 / 485 / 486 / 487 (独立)
 
 DB は適用後に `make db-check` で整合を確認する。
 
-## ユーザー確認待ちの値
+## ユーザー確認済みの値
 
-以下は暫定値で実装済み。確定後は各設定値 1 箇所の変更で反映される。
+確認シート (2026-08-26 回答) の結果。No.1-3 / 7-17 は暫定値のまま確定、
+No.4-6 は仕様が確定・拡張された。
 
-| チケット | 項目 | 暫定値 | 設定先 |
+| チケット | 項目 | 確定値 | 設定先 |
 | --- | --- | --- | --- |
 | 481 | セッション有効期限 / 失敗許容回数 / ロック時間 | 12 時間 / 5 回 / 15 分 | `python/web/auth.py` |
+| 481 | 平文パスワードの管理 | KeePassXC のみ。`.env` はハッシュ、本番は Secret Manager | `Docs/AUTH_SETUP.md` |
 | 485 | 起動目標 / loading 表示遅延 / timeout | 10 秒 / 1 秒 / 30 秒 | `python/web/startup.py` |
-| 486 | プルダウンの選択肢 | **未変更** (差分を記録のみ) | `python/web/constants.py` |
+| 486 | 銘柄ステータス | 英字キー 8 種。売却予定と売却済みを分離 | `python/trading/stock_status.py` |
+| 486 | 保有目的 | `long` / `middle` / `present` / `swing` の 4 種 | `python/web/constants.py` |
 | 490 | 取得期間 / 件数 / 監視指標 | 24h / 7日 / 100件 / 500件 / 6指標 | `python/observability/settings.py` |
 | 493 | 初期表示 / 追加読み込み / 最大表示 | 20 件 / あり 20 件 / 100 件 | `python/web/routes/system_monitor.py` |
+
+### 未完了の運用作業
+
+| 作業 | 内容 |
+| --- | --- |
+| `APP_PASSWORD_HASH` の設定 | **未設定** (シート No.18)。未設定のままだと認証が無効のままデプロイされる |
+| `portfolio` テーブルの移行 | `python scripts/migrate_stock_status.py --apply --db` (CSV は適用済み) |
 
 ## 関連ドキュメント
 
