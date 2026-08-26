@@ -95,8 +95,8 @@ class AuthSettings:
     """認証まわりの外部化された設定値。
 
     session_max_age_seconds / max_login_attempts / lockout_seconds は
-    ユーザー確認待ちの暫定値 (Docs/AUTH_SETUP.md の確認事項 16, 17)。
-    確定後は環境変数、または本 dataclass の既定値 1 箇所の変更で反映できる。
+    ユーザー確認済みの確定値 (Docs/AUTH_SETUP.md 参照)。
+    変更する場合は環境変数、または本モジュールの既定値定数を変更する。
     """
 
     password_hash: str
@@ -113,10 +113,10 @@ class AuthSettings:
         return bool(self.password_hash)
 
 
-# TODO(PRIDEV-481): 以下 3 つはユーザー確認待ちの暫定値。確定後はここを変更する。
-DEFAULT_SESSION_MAX_AGE_SECONDS = 12 * 60 * 60  # 暫定 12 時間
-DEFAULT_MAX_LOGIN_ATTEMPTS = 5  # 暫定 5 回
-DEFAULT_LOCKOUT_SECONDS = 15 * 60  # 暫定 15 分
+# 以下 3 つはユーザー確認済みの確定値 (PRIDEV-481)
+DEFAULT_SESSION_MAX_AGE_SECONDS = 12 * 60 * 60  # 12 時間
+DEFAULT_MAX_LOGIN_ATTEMPTS = 5  # 5 回失敗で
+DEFAULT_LOCKOUT_SECONDS = 15 * 60  # 15 分ロック
 
 # 認証を必須とするパスの既定値。System Monitor (PRIDEV-492/493) を保護対象とする。
 DEFAULT_PROTECTED_PREFIXES = "/system-monitor,/api/system-monitor"
