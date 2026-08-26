@@ -16,17 +16,17 @@ System Monitor (PRIDEV-491〜493) が参照する読み取り専用アダプタ�
 | 環境変数 | 既定値 | 説明 |
 | --- | --- | --- |
 | `GCP_PROJECT_ID` | (なし) | 対象プロジェクト。`GOOGLE_CLOUD_PROJECT` / `PROJECT_ID` も参照される。未設定なら「取得不能」として扱われる |
-| `OBSERVABILITY_LOG_DEFAULT_LOOKBACK_HOURS` | `24` | ログのデフォルト取得期間 (**暫定値**) |
-| `OBSERVABILITY_LOG_MAX_LOOKBACK_DAYS` | `7` | ログの最大取得期間 (**暫定値**) |
-| `OBSERVABILITY_LOG_DEFAULT_LIMIT` | `100` | ログのデフォルト取得件数 (**暫定値**) |
-| `OBSERVABILITY_LOG_MAX_LIMIT` | `500` | ログの最大取得件数 (**暫定値**) |
-| `OBSERVABILITY_MONITORED_METRICS` | 候補すべて | 監視対象指標 (カンマ区切り)。候補外の指定は無視される (**暫定値**) |
+| `OBSERVABILITY_LOG_DEFAULT_LOOKBACK_HOURS` | `24` | ログのデフォルト取得期間 |
+| `OBSERVABILITY_LOG_MAX_LOOKBACK_DAYS` | `7` | ログの最大取得期間 |
+| `OBSERVABILITY_LOG_DEFAULT_LIMIT` | `100` | ログのデフォルト取得件数 |
+| `OBSERVABILITY_LOG_MAX_LIMIT` | `500` | ログの最大取得件数 |
+| `OBSERVABILITY_MONITORED_METRICS` | 候補すべて | 監視対象指標 (カンマ区切り)。候補外の指定は無視される |
 
-**暫定値**と書かれたものはユーザー確認待ち。確定後は
+既定値はユーザー確認済みの確定値。変更する場合は
 `python/observability/settings.py` の既定値定数、または上記環境変数の
 どちらか 1 箇所を変更すれば全体へ反映される。
 
-## 監視指標の候補
+## 監視指標 (ユーザー確認済み)
 
 | 指標名 | 内容 |
 | --- | --- |

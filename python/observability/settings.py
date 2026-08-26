@@ -24,15 +24,15 @@ __all__ = [
 ]
 
 
-# TODO(PRIDEV-490): 以下はユーザー確認待ちの暫定値。確定後はここを変更する。
-DEFAULT_LOG_LOOKBACK_HOURS = 24  # 暫定: 過去 24 時間
-MAX_LOG_LOOKBACK_DAYS = 7  # 暫定: 最大 7 日間
-DEFAULT_LOG_LIMIT = 100  # 暫定: 100 件
-MAX_LOG_LIMIT = 500  # 暫定: 500 件
+# 以下はユーザー確認済みの確定値 (PRIDEV-490)。変更する場合はここを変更する。
+DEFAULT_LOG_LOOKBACK_HOURS = 24  # 過去 24 時間
+MAX_LOG_LOOKBACK_DAYS = 7  # 最大 7 日間
+DEFAULT_LOG_LIMIT = 100  # 100 件
+MAX_LOG_LIMIT = 500  # 500 件
 
-# TODO(PRIDEV-490): 監視対象指標もユーザー確認待ちの暫定値。
+# 監視対象指標もユーザー確認済み (6 種)。
 # 「ユーザーが指定していない監視指標を仕様として追加しない」ため、
-# 確定するまでは本候補一覧のみを対象とする。
+# 本一覧の範囲外は環境変数で指定されても無視する。
 MONITORED_METRIC_CANDIDATES: Tuple[str, ...] = (
     "service_up",  # サービス/プロセスの稼働状態
     "cpu_utilization",  # CPU 使用率
@@ -87,7 +87,7 @@ def _env_int(name: str, default: int) -> int:
 
 @dataclass(frozen=True)
 class ObservabilitySettings:
-    """取得条件。すべて上限付きで、上位層からの指定は clamp される。"""
+    """取得条件 (ユーザー確認済み)。すべて上限付きで、上位層からの指定は clamp される。"""
 
     project_id: str
     default_lookback_hours: int

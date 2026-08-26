@@ -35,11 +35,11 @@ __all__ = [
 ]
 
 
-# TODO(PRIDEV-493): 以下 4 つはユーザー確認待ちの暫定値。確定後はここを変更する。
-DEFAULT_INITIAL_ERROR_COUNT = 20  # 暫定: 初期表示 20 件
-DEFAULT_ENABLE_LOAD_MORE = True  # 暫定: 「さらに読み込む」方式で追加読み込みあり
-DEFAULT_LOAD_MORE_COUNT = 20  # 暫定: 1 回あたり 20 件
-DEFAULT_MAX_ERROR_COUNT = 100  # 暫定: 画面で保持・表示する最大 100 件
+# 以下 4 つはユーザー確認済みの確定値 (PRIDEV-493)。変更する場合はここを変更する。
+DEFAULT_INITIAL_ERROR_COUNT = 20  # 初期表示 20 件
+DEFAULT_ENABLE_LOAD_MORE = True  # 「さらに読み込む」方式で追加読み込みあり
+DEFAULT_LOAD_MORE_COUNT = 20  # 1 回あたり 20 件
+DEFAULT_MAX_ERROR_COUNT = 100  # 画面で保持・表示する最大 100 件
 
 
 def _env_int(name: str, default: int) -> int:
@@ -63,7 +63,7 @@ def _env_bool(name: str, default: bool) -> bool:
 
 @dataclass(frozen=True)
 class SystemMonitorUISettings:
-    """画面の表示件数設定 (すべてユーザー確認待ちの暫定値)。"""
+    """画面の表示件数設定 (すべてユーザー確認済みの確定値)。"""
 
     initial_error_count: int
     enable_load_more: bool

@@ -18,9 +18,9 @@ python scripts/hash_password.py
 | `APP_PASSWORD_HASH` | ○ | (なし) | 手順 1 で生成したハッシュ。**未設定の場合、認証は無効になる** |
 | `APP_PASSWORD` | - | (なし) | 開発用の平文フォールバック。起動時にハッシュ化されるが本番では使わない |
 | `AUTH_SECRET_KEY` | ○ | 起動ごとのランダム値 | セッション Cookie の署名鍵。未設定だと再起動でログアウトされる |
-| `AUTH_SESSION_MAX_AGE_SECONDS` | - | `43200` (12 時間) | セッション有効期限。**ユーザー確認待ちの暫定値** |
-| `AUTH_MAX_LOGIN_ATTEMPTS` | - | `5` | ロックアウトまでの連続失敗回数。**ユーザー確認待ちの暫定値** |
-| `AUTH_LOCKOUT_SECONDS` | - | `900` (15 分) | ロックアウト時間。**ユーザー確認待ちの暫定値** |
+| `AUTH_SESSION_MAX_AGE_SECONDS` | - | `43200` (12 時間) | セッション有効期限 |
+| `AUTH_MAX_LOGIN_ATTEMPTS` | - | `5` | ロックアウトまでの連続失敗回数 |
+| `AUTH_LOCKOUT_SECONDS` | - | `900` (15 分) | ロックアウト時間 |
 | `AUTH_PROTECTED_PATH_PREFIXES` | - | `/system-monitor,/api/system-monitor` | 認証必須とするパスの前方一致リスト (カンマ区切り) |
 | `AUTH_COOKIE_SECURE` | - | `APP_ENV=local` 以外で `true` | Cookie の Secure 属性 |
 
@@ -32,6 +32,18 @@ python -c "import secrets; print(secrets.token_urlsafe(32))"
 
 本番 (GCP) では `APP_PASSWORD_HASH` と `AUTH_SECRET_KEY` を Secret Manager へ登録し、
 環境変数として注入すること。
+
+### 平文パスワードの取り扱い
+
+| 保管場所 | 保管するもの |
+| --- | --- |
+| KeePassXC | 平文パスワード (ここだけ) |
+| ローカル `.env` | `scripts/hash_password.py` で生成した `APP_PASSWORD_HASH` のみ |
+| 本番 (GCP) | Secret Manager 上の `APP_PASSWORD_HASH` |
+
+**平文パスワードを `.env` / リポジトリ / Issue / 各種フォームへ書かないこと。**
+`.env` は `.gitignore` 済みだが、そもそも平文を置かない運用とする。
+ハッシュから平文は復元できないため、`APP_PASSWORD_HASH` の共有は平文の共有にはあたらない。
 
 ## 3. 動作確認
 
