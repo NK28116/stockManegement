@@ -31,11 +31,11 @@ __all__ = [
 ]
 
 
-# TODO(PRIDEV-485): 以下 3 つはユーザー確認待ちの暫定値。
-# 確定後はここ (または同名の環境変数) の 1 箇所を変更すれば全体へ反映される。
-DEFAULT_TARGET_SECONDS = 10.0  # 暫定: 起動完了の目標 10 秒以内
-DEFAULT_LOADING_DELAY_SECONDS = 1.0  # 暫定: 1 秒を超えたら loading 表示を出す
-DEFAULT_TIMEOUT_SECONDS = 30.0  # 暫定: 30 秒で timeout とみなし retry 導線を出す
+# 以下 3 つはユーザー確認済みの確定値 (PRIDEV-485)。
+# 変更する場合はここ (または同名の環境変数) の 1 箇所で全体へ反映される。
+DEFAULT_TARGET_SECONDS = 10.0  # 起動完了の目標 10 秒以内
+DEFAULT_LOADING_DELAY_SECONDS = 1.0  # 1 秒を超えたら loading 表示を出す
+DEFAULT_TIMEOUT_SECONDS = 30.0  # 30 秒で timeout とみなし retry 導線を出す
 
 
 def _env_float(name: str, default: float) -> float:
@@ -55,7 +55,7 @@ def _env_float(name: str, default: float) -> float:
 
 @dataclass(frozen=True)
 class StartupSettings:
-    """起動待ち UX の外部化された設定値 (単位は秒)。"""
+    """起動待ち UX の外部化された設定値 (単位は秒、ユーザー確認済み)。"""
 
     target_seconds: float
     loading_delay_seconds: float
