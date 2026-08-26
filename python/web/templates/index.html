@@ -97,8 +97,8 @@
                 </label>
                 <label> 目的別
                     <select v-model="purpose" class="bg-blue-100 border-gray-300">
-                        <option v-for="choice in statusChoices" :key="choice.key" :value="choice.key">
-                            {{ choice.value }}
+                        <option v-for="choice in purposeChoices" :key="choice.key" :value="choice.key">
+                            {{ choice.label }}
                         </option>
                     </select>
                 </label>
@@ -126,18 +126,18 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    <tr v-for="item in charts" :key="item.code" :class="{'opacity-50': item.status !== '保有中'}">
+                    <tr v-for="item in charts" :key="item.code" :class="{'opacity-50': !isHeld(item.status)}">
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="flex items-center space-x-2 flex-wrap gap-y-1">
                                 <div class="text-sm font-bold text-gray-900">{{ item.name }}</div>
                                 <span v-if="item.status" :class="getStatusClass(item.status)"
                                     class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full whitespace-nowrap">
-                                    {{ item.status }}
+                                    {{ statusLabel(item.status) }}
                                 </span>
                                 <!-- item.purpose is also displayed as a badge, effectively showing another status-like attribute -->
                                 <span v-if="item.purpose" :class="getPurposeClass(item.purpose)"
                                     class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full whitespace-nowrap">
-                                    {{ item.purpose }}
+                                    {{ purposeLabel(item.purpose) }}
                                 </span>
                             </div>
                             <div class="text-sm text-gray-500">{{ item.code }}</div>
@@ -904,8 +904,10 @@
                     // 選択肢は /api/choices (python/web/constants.py) を単一の正とする。
                     // ここへ値をハードコードしないこと (PRIDEV-486)。
                     statusChoices: [],
+                    purposeChoices: [],
                     defaultStatusBadgeClass: 'bg-gray-100 text-gray-800',
-                    purpose: 'HOLDING', // statusChoices 取得後に先頭の key で上書きされる
+                    defaultPurposeBadgeClass: 'bg-gray-100 text-gray-800',
+                    purpose: '', // purposeChoices 取得後に先頭の key で初期化される
                     currentTab: 'dashboard',
                     charts: [],
                     rules: {}, // Nested structure
@@ -1037,17 +1039,32 @@
                 },
                 // 表示クラスも選択肢定義 (/api/choices) から引く。
                 // ここへ選択肢を列挙すると選択肢追加時に漏れるため増やさないこと。
+                findStatus(status) {
+                    return this.statusChoices.find(choice => choice.key === status) || null
+                },
+                statusLabel(status) {
+                    const matched = this.findStatus(status)
+                    return matched ? matched.label : (status || '-')
+                },
+                isHeld(status) {
+                    const matched = this.findStatus(status)
+                    return matched ? matched.held : false
+                },
                 getStatusClass(status) {
-                    const matched = this.statusChoices.find(choice => (status || '').includes(choice.value))
+                    const matched = this.findStatus(status)
                     return matched ? matched.badge_class : this.defaultStatusBadgeClass
                 },
+                findPurpose(purpose) {
+                    const key = (purpose || '').toLowerCase()
+                    return this.purposeChoices.find(choice => choice.key === key) || null
+                },
+                purposeLabel(purpose) {
+                    const matched = this.findPurpose(purpose)
+                    return matched ? matched.label : (purpose || '-')
+                },
                 getPurposeClass(purpose) {
-                    const p = purpose.toLowerCase()
-                    if (p === 'present') return 'bg-pink-100 text-pink-800'
-                    if (p === 'swing') return 'bg-orange-100 text-orange-800'
-                    if (p === 'middle') return 'bg-blue-50 text-blue-600 border border-blue-200'
-                    if (p === 'long') return 'bg-green-100 text-green-800'
-                    return 'bg-gray-100 text-gray-500'
+                    const matched = this.findPurpose(purpose)
+                    return matched ? matched.badge_class : this.defaultPurposeBadgeClass
                 },
                 getProfitClass(value) {
                     if (value > 0) return 'text-green-600'
@@ -1104,10 +1121,13 @@
                     try {
                         const data = await this.fetchJson('/api/choices')
                         this.statusChoices = data.status || []
+                        this.purposeChoices = data.purpose || []
                         this.defaultStatusBadgeClass =
                             data.default_status_badge_class || this.defaultStatusBadgeClass
-                        if (this.statusChoices.length && !this.statusChoices.some(c => c.key === this.purpose)) {
-                            this.purpose = this.statusChoices[0].key
+                        this.defaultPurposeBadgeClass =
+                            data.default_purpose_badge_class || this.defaultPurposeBadgeClass
+                        if (this.purposeChoices.length && !this.purposeChoices.some(c => c.key === this.purpose)) {
+                            this.purpose = this.purposeChoices[0].key
                         }
                     } catch (e) {
                         console.error('Failed to load choices:', e)

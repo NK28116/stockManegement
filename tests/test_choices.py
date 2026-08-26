@@ -1,11 +1,8 @@
 """プルダウン選択肢の回帰テスト (PRIDEV-486)
 
 選択肢の欠落を検知することが目的。UI へのハードコードを禁止し、
-バックエンドの constants を単一の正として固定する。
-
-選択肢の**実値**の確定はユーザー判断のため本テストでは変更せず、
-調査で判明した実データとの差分が PENDING_CHOICE_DECISIONS へ
-正しく記録されていることを検証する。
+ステータスは `python/trading/stock_status.py`、目的は
+`python/web/constants.py` を単一の正として固定する。
 """
 
 import csv
@@ -19,10 +16,19 @@ from fastapi.testclient import TestClient
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from python.trading import stock_status  # noqa: E402
 from python.web import constants  # noqa: E402
 
 TEMPLATE_PATH = ROOT / "python" / "web" / "templates" / "index.html"
 CSV_PATHS = (ROOT / "data" / "my_stock.csv", ROOT / "data" / "my_stock_local.csv")
+
+# ユーザー確認済みの purpose (シート No.4 の回答)
+CONFIRMED_PURPOSES = {
+    "long": "長期（バリュー投資）",
+    "middle": "中期",
+    "present": "優待目的",
+    "swing": "スイングトレード",
+}
 
 
 @pytest.fixture(scope="module")
@@ -39,7 +45,6 @@ def template() -> str:
 
 
 def _persisted_values(column: str):
-    """永続データ (CSV) に実在する値を集める。"""
     values = set()
     for path in CSV_PATHS:
         if not path.exists():
@@ -52,43 +57,65 @@ def _persisted_values(column: str):
     return values
 
 
-# --- 単一の正であること -------------------------------------------------------
-def test_choices_api_returns_all_status_choices(client):
+# --- API が単一の正を配信していること -----------------------------------------
+def test_status_choices_come_from_the_single_source(client):
     payload = client.get("/api/choices").json()
 
-    assert [choice["value"] for choice in payload["status"]] == [
-        choice["value"] for choice in constants.STATUS_CHOICES
+    assert [choice["key"] for choice in payload["status"]] == stock_status.status_keys()
+    assert [choice["label"] for choice in payload["status"]] == [
+        choice.label for choice in stock_status.STATUS_CHOICES
     ]
 
 
-def test_no_duplicate_choices():
-    values = [choice["value"] for choice in constants.STATUS_CHOICES]
-    keys = [choice["key"] for choice in constants.STATUS_CHOICES]
+def test_purpose_choices_match_the_confirmed_specification(client):
+    payload = client.get("/api/choices").json()
 
-    assert len(values) == len(set(values)), "選択肢の値が重複している"
-    assert len(keys) == len(set(keys)), "選択肢のキーが重複している"
+    assert {choice["key"]: choice["label"] for choice in payload["purpose"]} == CONFIRMED_PURPOSES
 
 
-def test_no_empty_choices():
-    for choice in constants.STATUS_CHOICES:
-        assert choice["key"].strip(), "空のキーがある"
-        assert choice["value"].strip(), "空の表示値がある"
+def test_status_payload_carries_the_held_flag(client):
+    payload = client.get("/api/choices").json()
+
+    held = {choice["key"] for choice in payload["status"] if choice["held"]}
+    assert held == set(stock_status.held_status_values())
 
 
-def test_display_order_follows_definition_order():
-    assert constants.status_display_order() == {
-        choice["value"]: index for index, choice in enumerate(constants.STATUS_CHOICES)
-    }
+def test_no_duplicate_or_empty_choices():
+    for choices in (constants.PURPOSE_CHOICES,):
+        keys = [choice["key"] for choice in choices]
+        assert len(keys) == len(set(keys)), "選択肢のキーが重複している"
+        for choice in choices:
+            assert choice["key"].strip() and choice["label"].strip()
 
 
-# --- 欠落の検知 ---------------------------------------------------------------
+# --- 永続データを網羅していること ---------------------------------------------
+def test_every_persisted_status_is_selectable():
+    """永続データに存在する status がすべて選択肢に含まれること (欠落の検知)。"""
+    selectable = set(stock_status.status_keys())
+
+    missing = {
+        value for value in _persisted_values("status") if stock_status.normalize(value) is None
+    } | (_persisted_values("status") - selectable - {"売却（利益確定）", "売却（損切り）"})
+
+    assert missing == set(), f"UI から選べない status が永続データに存在する: {sorted(missing)}"
+
+
+def test_every_persisted_purpose_is_selectable():
+    missing = _persisted_values("purpose") - set(constants.purpose_keys())
+
+    assert missing == set(), f"UI から選べない purpose が永続データに存在する: {sorted(missing)}"
+
+
+def test_excluded_status_is_now_selectable():
+    """調査で判明していた「除外」が選択肢へ入っていること。"""
+    assert stock_status.StockStatus.EXCLUDED in stock_status.status_keys()
+    assert stock_status.status_label(stock_status.StockStatus.EXCLUDED) == "除外"
+
+
+# --- UI がハードコードしていないこと ------------------------------------------
 def test_template_does_not_enumerate_choices(template):
-    """UI が選択肢一覧を持たないこと (2 箇所のハードコードが欠落の原因だった)。
-
-    個々の値が文言として出てくること自体は許容し、
-    「選択肢の列挙」(狭い範囲に 3 つ以上まとまって現れる) だけを禁止する。
-    """
-    values = [choice["value"] for choice in constants.STATUS_CHOICES]
+    """選択肢の列挙 (狭い範囲に 3 つ以上) がテンプレートへ残っていないこと。"""
+    values = [choice.label for choice in stock_status.STATUS_CHOICES]
     positions = sorted(
         (match.start(), value)
         for value in values
@@ -99,79 +126,59 @@ def test_template_does_not_enumerate_choices(template):
     for index, (start, _) in enumerate(positions):
         nearby = {value for position, value in positions[index:] if position - start < window}
         assert len(nearby) < 3, (
-            f"選択肢が {template[start:start + window][:120]!r} 付近へ列挙されている。"
+            f"選択肢が {template[start:start + 120]!r} 付近へ列挙されている。"
             "選択肢は /api/choices から取得すること"
         )
 
-    assert "SOLD_PROFIT" not in template, "選択肢キーがテンプレートへハードコードされている"
-    assert "/api/choices" in template, "UI がバックエンドの選択肢を取得していない"
+    for key in stock_status.status_keys():
+        assert key not in template, f"選択肢キー {key} がテンプレートへハードコードされている"
+    assert "/api/choices" in template
 
 
-def test_status_badge_class_is_data_driven(template):
-    """表示クラスの分岐が選択肢の二重管理になっていないこと。"""
-    body = re.search(r"getStatusClass\(status\) \{(.*?)\n                \},", template, re.DOTALL)
-    assert body, "getStatusClass が見つからない"
-    source = body.group(1)
+def test_purpose_dropdown_uses_purpose_choices(template):
+    """「目的別」select が status ではなく purpose の選択肢を使っていること。"""
+    option = re.search(r'<option v-for="choice in purposeChoices"[^>]*>', template)
 
-    assert "matched.badge_class" in source, "表示クラスを選択肢定義から引いていない"
-    for choice in constants.STATUS_CHOICES:
-        assert choice["value"] not in source, f"{choice['value']} が分岐へ直書きされている"
-        assert choice["badge_class"] not in source, (
-            f"{choice['value']} の表示クラスが分岐へ直書きされている"
-        )
-
-
-def test_template_renders_every_choice_from_the_api(template):
-    """v-for が API の配列全体を描画していること (件数の取りこぼしが起きない)。"""
-    option = re.search(r'<option v-for="choice in statusChoices"[^>]*>', template)
-
-    assert option, "選択肢の描画が API 由来になっていない"
+    assert option, "purpose の選択肢が API 由来になっていない"
     assert ':value="choice.key"' in option.group(0)
-    assert "slice(" not in option.group(0), "選択肢を途中で切り詰めないこと"
+    assert 'v-model="purpose"' in template
+
+
+def test_labels_and_badges_are_data_driven(template):
+    """表示名・表示クラスの分岐が選択肢の二重管理になっていないこと。"""
+    for function in ("getStatusClass(status)", "getPurposeClass(purpose)"):
+        body = re.search(
+            re.escape(function) + r" \{(.*?)\n                \},", template, re.DOTALL
+        )
+        assert body, f"{function} が見つからない"
+        assert "matched" in body.group(1)
+        for choice in stock_status.STATUS_CHOICES:
+            assert choice.label not in body.group(1)
+            assert choice.badge_class not in body.group(1)
+
+
+def test_held_judgement_is_not_reimplemented_in_the_template(template):
+    """保有判定がテンプレート側で作り直されていないこと。"""
+    assert "isHeld(item.status)" in template
+    assert "item.status !== '保有中'" not in template
 
 
 def test_sort_order_is_derived_from_choices(template):
-    """並び順の定義が選択肢と二重管理になっていないこと。"""
     assert "const statusOrder = this.statusOrder" in template
     assert template.count("statusOrder[a.status]") == 1
 
 
-def test_selected_value_is_the_persisted_key_format(client):
-    """選択後に送信される値が期待する形式であること。"""
-    payload = client.get("/api/choices").json()
+# --- バックエンドが単一の正を使っていること -----------------------------------
+def test_signals_query_uses_the_single_source():
+    source = (ROOT / "python" / "web" / "api" / "signals.py").read_text(encoding="utf-8")
 
-    for choice in payload["status"]:
-        assert re.fullmatch(r"[A-Z_]+", choice["key"]), f"想定外のキー形式: {choice['key']}"
-
-
-# --- ユーザー確認待ちの差分が正しく記録されていること --------------------------
-def test_pending_status_gap_matches_actual_data():
-    """永続データにあって UI に無い status が、記録どおりであること。"""
-    ui_values = {choice["value"] for choice in constants.STATUS_CHOICES}
-    recorded = set(constants.PENDING_CHOICE_DECISIONS["status_missing_from_ui"]["values"])
-
-    actual_gap = _persisted_values("status") - ui_values
-
-    assert actual_gap == recorded, (
-        "実データと UI の差分が記録と一致しない。"
-        f"実際={sorted(actual_gap)} 記録={sorted(recorded)}。"
-        "PENDING_CHOICE_DECISIONS を更新するか、選択肢の確定内容を反映すること"
-    )
+    assert "stock_status.held_status_values()" in source
+    assert "'SOLD_PROFIT', 'SOLD_LOSS'" not in source, "保有判定が SQL へ直書きされている"
 
 
-def test_pending_purpose_values_match_actual_data():
-    """purpose 列の実値が記録どおりであること。"""
-    recorded = set(constants.PENDING_CHOICE_DECISIONS["purpose_dropdown_shows_status"]["values"])
+def test_trading_module_writes_canonical_values():
+    source = (ROOT / "python" / "trading" / "buy_and_sell_stock.py").read_text(encoding="utf-8")
 
-    assert _persisted_values("purpose") == recorded
-
-
-def test_purpose_dropdown_still_bound_to_status_choices(template):
-    """purpose select の選択肢仕様はユーザー確認待ちのため、現状を維持していること。
-
-    確定後にこのテストが落ちることで、仕様変更が意図的であることを明示する。
-    """
-    assert 'v-model="purpose"' in template
-    assert 'v-for="choice in statusChoices"' in template, (
-        "purpose 用の選択肢へ切り替えるのはユーザー確認後 (PRIDEV-486)"
-    )
+    assert 'df.at[i, "status"] = "保有中"' not in source
+    assert '"売却（利益確定）"' not in source.split("valid_statuses")[0]
+    assert "StockStatus.HOLDING" in source

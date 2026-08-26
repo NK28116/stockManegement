@@ -9,6 +9,7 @@ from psycopg2 import Error as PgError
 
 from python.config import config
 from python.db.database import get_db_connection
+from python.trading.stock_status import LEGACY_STATUS_LABELS, StockStatus, normalize, status_keys
 from python.utils.gcs_client import gcs
 
 try:
@@ -130,7 +131,7 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
             "purpose": "",  # sectorをpurposeに置き換え
         }
         if "status" in df.columns:
-            df.loc[len(df) - 1, "status"] = "保有中"
+            df.loc[len(df) - 1, "status"] = StockStatus.HOLDING
     else:
         i = idx[0]
         old_q = int(df.at[i, "quantity"])
@@ -139,8 +140,6 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
         if new_q <= 0:
             # 全部売却の形になった場合は0で保持
             df.at[i, "quantity"] = 0
-            if "status" in df.columns:
-                df.at[i, "status"] = "売却"
             df = df.drop(idx).reset_index(drop=True)  # 保有数が0になったら行を削除
         else:
             # 加重平均は購入時（qty > 0）のみ計算
@@ -153,7 +152,7 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
             df.at[i, "quantity"] = new_q
             df.at[i, "purchase_price"] = round(new_p, 2)
             if "status" in df.columns:
-                df.at[i, "status"] = "保有中"
+                df.at[i, "status"] = StockStatus.HOLDING
         # 購入日は初回のまま残す（必要なら更新: df.at[i,"purchase_date"]=today）
     action = "買い" if qty > 0 else "売り"
     sign = "+" if qty > 0 else ""
@@ -220,9 +219,9 @@ def sell_stock(code: str, sell_type: str) -> dict:
 
     # Set status based on sell_type
     if sell_type == "profit":
-        status = "売却（利益確定）"
+        status = StockStatus.SOLD_PROFIT
     elif sell_type == "loss":
-        status = "売却（損切り）"
+        status = StockStatus.SOLD_LOSS
     else:
         return {"error": "Invalid sell_type specified. Must be 'profit' or 'loss'."}
 
@@ -279,16 +278,12 @@ def sell(df: pd.DataFrame, code: str, qty: int, profit_loss_status: str | None =
     new_q = cur_q - qty
     df.at[i, "quantity"] = new_q
     if new_q == 0:
-        if "status" in df.columns:
-            if profit_loss_status in ["売却（利益確定）", "売却（損切り）"]:
-                df.at[i, "status"] = profit_loss_status
-            else:
-                df.at[i, "status"] = "売却"
+        # 直後に行を落とすため status の書き込みは保持しない
         # 平均取得単価はそのまま保持（必要なら0にする: df.at[i,"purchase_price"]=0.0）
         df = df.drop(idx).reset_index(drop=True)  # 保有数が0になったら行を削除
     else:
         if "status" in df.columns:
-            df.at[i, "status"] = "保有中"
+            df.at[i, "status"] = StockStatus.HOLDING
     message = f"売り: {code} -{qty}株（残 {new_q}株）"
     print(message)
     from python.utils.alert import send_alert
@@ -306,15 +301,9 @@ def refresh_prices(df: pd.DataFrame, target_code: str | None = None) -> pd.DataF
     updated = df.copy()
     now_str = datetime.now().strftime("%Y-%m-%d")
 
-    # 有効なステータスリスト
-    valid_statuses = [
-        "監視中",
-        "保有中",
-        "次回のスイングで購入",
-        "売却（利益確定）",
-        "売却（損切り）",
-        "除外",
-    ]
+    # 有効なステータス。python/trading/stock_status.py を単一の正とし、
+    # 移行前の旧ラベルも許容する (許容しないと未移行データの行が削除される)
+    valid_statuses = status_keys() + list(LEGACY_STATUS_LABELS) + ["売却（利益確定）", "売却（損切り）"]
 
     rows_to_keep = []
     for i, row in updated.iterrows():
@@ -328,13 +317,13 @@ def refresh_prices(df: pd.DataFrame, target_code: str | None = None) -> pd.DataF
         qty = int(row.get("quantity", 0) or 0)
         status = str(row.get("status", "")).strip()
 
-        # quantityが0で、かつ有効な売却みステータスではない場合は削除対象
-        # ただし、'除外'ステータスはquantityが0でなくても残す可能性があるため、別途考慮
-        if qty == 0 and status not in [
-            "売却（利益確定）",
-            "売却（損切り）",
-            "除外",
-        ]:
+        # quantityが0で、かつ売却済み / 除外ではない場合は削除対象
+        normalized_status = normalize(status, qty)
+        if qty == 0 and normalized_status not in (
+            StockStatus.SOLD_PROFIT,
+            StockStatus.SOLD_LOSS,
+            StockStatus.EXCLUDED,
+        ):
             print(f"銘柄 {code} は保有数が0で、かつ有効な売却みステータスではないため削除します。")
             continue  # この行はrows_to_keepに追加しない
 
