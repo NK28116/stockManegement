@@ -19,7 +19,7 @@ services:
     dockerfilePath: ./Dockerfile
     region: ohio          # GCE(us-central1)に近い米国東部
     plan: free
-    healthCheckPath: /
+    healthCheckPath: /health
     autoDeploy: true
     envVars:
       # --- DB（GCE上のPostgresへインターネット越し接続）---
@@ -61,3 +61,19 @@ services:
         sync: false
       - key: SLACK_CHANNEL
         sync: false
+
+      # --- 管理画面パスワード認証 (PRIDEV-481 / Docs/AUTH_SETUP.md) ---
+      # APP_ENV が local/development/dev/test/ci 以外なら本番扱い。
+      # APP_PASSWORD_HASH / AUTH_SECRET_KEY が無いと起動に失敗する（フェイルクローズ）。
+      - key: APP_ENV
+        value: production
+      - key: APP_PASSWORD_HASH
+        sync: false
+      - key: AUTH_SECRET_KEY
+        sync: false
+      # Render はリバースプロキシ 1 段構成。X-Forwarded-For の右から 1 番目を採用する。
+      - key: AUTH_TRUSTED_PROXY_COUNT
+        value: "1"
+      # ログイン試行制限がプロセス内保持のため単一ワーカー運用を強制する。
+      - key: WEB_CONCURRENCY
+        value: "1"

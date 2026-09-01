@@ -89,6 +89,16 @@ jobs:
           image: "gcr.io/${{ secrets.GCP_PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}"
           env_vars: |
             GCS_BUCKET_NAME=stock-management-494305-prod
+            APP_ENV=production
+            AUTH_TRUSTED_PROXY_COUNT=1
+            WEB_CONCURRENCY=1
+          # 管理画面パスワード認証 (PRIDEV-481 / Docs/AUTH_SETUP.md)。
+          # 事前に Secret Manager へ APP_PASSWORD_HASH / AUTH_SECRET_KEY を登録しておくこと。
+          # 未登録のままだとアプリは起動しない (フェイルクローズ / PRIDEV-521)。
+          secrets: |
+            APP_PASSWORD_HASH=APP_PASSWORD_HASH:latest
+            AUTH_SECRET_KEY=AUTH_SECRET_KEY:latest
+          # Cloud Run 自体は未認証で公開し、アプリ側のパスワード認証で保護する。
           flags: "--allow-unauthenticated"
 
       - name: "Show output"
