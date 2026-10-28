@@ -15,7 +15,7 @@
 
 | 種類 | 例 | 置き場所 |
 | --- | --- | --- |
-| 認証情報 | `.env`、サービスアカウント鍵 (`*.json`)、API トークン、Webhook URL | ローカルの `.env` / 本番は Secret Manager や PaaS の環境変数 |
+| 認証情報 | `.env`、サービスアカウント鍵 (`*.json`)、API トークン、Webhook URL | Bitwarden に保存し `make env` で `.env` を生成 ([手順](Docs/SECRETS_BITWARDEN.md)) / 本番は Secret Manager や PaaS の環境変数 |
 | パスワード | 平文のパスワード | パスワードマネージャーのみ。アプリには `APP_PASSWORD_HASH` (ハッシュ) だけを渡す |
 | 個人の取引データ | 実際の保有銘柄・数量・取得単価を含む CSV、DB ダンプ | ローカルまたは非公開の GCS バケット |
 | インフラの識別子 | 外部 IP、本番 URL、プロジェクト番号 | 環境変数。文書では `<GCP_PROJECT_ID>` のようなプレースホルダーを使う |

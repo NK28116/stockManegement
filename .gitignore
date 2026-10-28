@@ -19,8 +19,10 @@ data/report/*
 cloud-sql-proxy
 venv/
 
-# 環境変数ファイル
+# 環境変数ファイル (make env の作業ファイル・退避ファイルも含む)
 .env
+.env.tmp
+.env.bak
 
 # 秘密鍵/認証情報
 KEY.json

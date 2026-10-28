@@ -30,6 +30,7 @@ help:
 	@echo "  install         Install all dependencies"
 	@echo "  test            Run tests"
 	@echo "  assets          Rebuild static CSS/JS under python/web/static (needs Node.js)"
+	@echo "  env             Generate .env from Bitwarden via chezmoi (see Docs/SECRETS_BITWARDEN.md)"
 	@echo "  lint            Run code linter"
 	@echo "  format          Format code using black and isort"
 	@echo "  clean           Clean up temporary files"
@@ -103,6 +104,16 @@ test:
 .PHONY: assets
 assets:
 	@cd frontend && npm ci && npm run build
+
+# Bitwarden の項目から .env を生成する (chezmoi と Bitwarden CLI が必要 / Docs/SECRETS_BITWARDEN.md)。
+# 既存の .env は .env.bak に退避する。失敗したときは既存の .env を変更しない。
+.PHONY: env
+env:
+	@command -v chezmoi >/dev/null || { echo "chezmoi が見つかりません (brew install chezmoi)"; exit 1; }
+	@command -v bw >/dev/null || { echo "Bitwarden CLI (bw) が見つかりません (brew install bitwarden-cli)"; exit 1; }
+	@umask 077; chezmoi execute-template < .env.chezmoi.tmpl > .env.tmp || { rm -f .env.tmp; echo ".env の生成に失敗しました"; exit 1; }
+	@if [ -f .env ]; then cp .env .env.bak && chmod 600 .env.bak; fi
+	@mv .env.tmp .env && chmod 600 .env && echo ".env を生成しました (前の内容は .env.bak)"
 
 # DB スキーマと Alembic 履歴の整合を確認する (読み取り専用 / PRIDEV-487)
 .PHONY: db-check

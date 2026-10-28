@@ -12,6 +12,7 @@
 | 文書 | 内容 |
 | --- | --- |
 | [AUTH_SETUP.md](AUTH_SETUP.md) | パスワード認証の設定 |
+| [SECRETS_BITWARDEN.md](SECRETS_BITWARDEN.md) | 秘密情報を Bitwarden で管理し、`make env` で `.env` を生成する |
 | [CHART_FONT_SETUP.md](CHART_FONT_SETUP.md) | チャートの日本語フォント |
 | [STOCK_STATUS.md](STOCK_STATUS.md) | 銘柄ステータスの定義とデータ移行 |
 | [DB_MIGRATION.md](DB_MIGRATION.md) | DB マイグレーションの運用 |
