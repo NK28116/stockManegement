@@ -97,6 +97,18 @@ test:
 	@echo "Running tests..."
 	@PYTHONPATH=. pytest tests/
 
+# DB スキーマと Alembic 履歴の整合を確認する (読み取り専用 / PRIDEV-487)
+.PHONY: db-check
+db-check:
+	@echo "Checking DB schema consistency..."
+	@PYTHONPATH=. python -m python.db.schema_check
+
+# マイグレーションを最新まで適用する
+.PHONY: db-upgrade
+db-upgrade:
+	@echo "Applying migrations..."
+	@PYTHONPATH=. python -m alembic upgrade head
+
 .PHONY: lint
 lint:
 	@echo "Running linter..."

@@ -11,8 +11,12 @@ from alembic import context
 # このファイル(env.py)を格納する `alembic` ディレクトリの親、つまりプロジェクトルートをパスに追加します
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from python.db.database import DATABASE_URL  # noqa: E402
+# python.db.database は import 時に SQLite のテーブル自動作成を行うため、
+# ここでは副作用のない url モジュールだけを参照する (PRIDEV-487)
 from python.db.models import Base  # noqa: E402
+from python.db.url import build_database_url  # noqa: E402
+
+DATABASE_URL = build_database_url()
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

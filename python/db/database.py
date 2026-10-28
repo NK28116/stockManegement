@@ -1,5 +1,4 @@
 import logging
-import os
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -8,6 +7,7 @@ from sqlalchemy import create_engine, delete, update
 from sqlalchemy.orm import sessionmaker
 
 from python.config import config
+from python.db.url import build_database_url, is_sqlite, sqlite_path
 
 # 全モデルをインポートして Base.metadata に登録する（create_all に必要）
 from python.db.models import (
@@ -25,32 +25,19 @@ logger = logging.getLogger(__name__)
 
 # SQLAlchemy Engine 作成
 # DB_TYPE=sqlite の場合はローカル SQLite を使用し、それ以外は PostgreSQL を使用する
-_db_type = os.getenv("DB_TYPE", "postgresql").lower()
+# URL の組み立ては副作用のない python/db/url.py へ集約している (PRIDEV-487)
+DATABASE_URL = build_database_url()
 
-if _db_type == "sqlite":
-    _sqlite_path = os.getenv(
-        "SQLITE_PATH",
-        str(Path(__file__).resolve().parent.parent.parent / "test_stock.db"),
-    )
-    DATABASE_URL = f"sqlite:///{_sqlite_path}"
+if is_sqlite():
     engine = create_engine(DATABASE_URL, echo=False, connect_args={"check_same_thread": False})
-    logger.info(f"SQLite モードで起動: {_sqlite_path}")
-    # SQLite 環境では Alembic マイグレーションを使わないため、
-    # エンジン生成直後に全テーブルを自動作成する
+    logger.info(f"SQLite モードで起動: {sqlite_path()}")
+    # SQLite 環境では Alembic マイグレーションを使わない運用も想定されるため、
+    # エンジン生成直後に全テーブルを自動作成する。
+    # 注意: この自動作成は alembic_version を書かないため、Alembic 管理下へ
+    # 置く場合は作成後に `alembic stamp head` が必要 (Docs/DB_MIGRATION.md)。
     Base.metadata.create_all(bind=engine)
     logger.info("SQLite: テーブル自動作成完了 (create_all)")
 else:
-    # config.get_db_config() のキーは 'database' (dbname ではない)
-    db_conf = config.get_db_config()
-    DATABASE_URL = (
-        f"postgresql://{db_conf.get('user', 'user')}:{db_conf.get('password', 'password')}@"
-        f"{db_conf.get('host', 'localhost')}:{db_conf.get('port', '5432')}/{db_conf.get('database', 'stock_db')}"
-    )
-    # インターネット越し（Render → GCE等）で接続する場合のSSL指定。
-    # CLOUD_PG_SSLMODE=require/verify-full などを指定すると付与される。
-    sslmode = db_conf.get("sslmode")
-    if sslmode:
-        DATABASE_URL += f"?sslmode={sslmode}"
     engine = create_engine(DATABASE_URL, echo=False)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -102,7 +89,7 @@ def upsert_portfolio_data(data: list[dict]):
     """
     with get_db_session() as session:
         for row in data:
-            if _db_type == "sqlite":
+            if is_sqlite():
                 # SQLite: INSERT OR REPLACE を利用
                 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
