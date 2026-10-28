@@ -1,0 +1,35 @@
+{# ログイン画面 (PRIDEV-481 / PRIDEV-519)
+
+   Jinja2 の自動エスケープを前提とする。動的値 (next_path / error) を
+   文字列連結や str.format で埋め込まないこと (反射型 XSS になる)。
+#}
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ログイン | Stock Management</title>
+  <style>
+    body { font-family: system-ui, sans-serif; display: flex; align-items: center;
+           justify-content: center; min-height: 100vh; margin: 0; background: #f3f4f6; }
+    form { background: #fff; padding: 2rem; border-radius: 8px; min-width: 18rem;
+           box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+    h1 { font-size: 1.1rem; margin: 0 0 1rem; }
+    input { width: 100%; box-sizing: border-box; padding: .5rem; margin-bottom: 1rem;
+            border: 1px solid #d1d5db; border-radius: 4px; }
+    button { width: 100%; padding: .5rem; border: 0; border-radius: 4px;
+             background: #2563eb; color: #fff; cursor: pointer; }
+    .error { color: #b91c1c; font-size: .85rem; margin-bottom: .75rem; }
+  </style>
+</head>
+<body>
+  <form method="post" action="{{ login_path }}">
+    <h1>Stock Management</h1>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    <input type="hidden" name="next" value="{{ next_path }}">
+    <label for="password">パスワード</label>
+    <input id="password" name="password" type="password" autocomplete="current-password" required>
+    <button type="submit">ログイン</button>
+  </form>
+</body>
+</html>
