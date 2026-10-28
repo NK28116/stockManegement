@@ -18,8 +18,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      # 1 つのバージョンが落ちても、他のバージョンの結果を最後まで出す
+      fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        # 固定した依存 (numpy 2.3 など) は Python 3.11 以上が必要。本番の Docker イメージは 3.12
+        python-version: ["3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v4
