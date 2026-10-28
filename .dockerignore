@@ -31,3 +31,5 @@ tests/
 
 # Environment variables (should be set in Cloud Run)
 .env
+# フロントエンドのビルド環境 (成果物は python/web/static/ に含まれる)
+frontend/

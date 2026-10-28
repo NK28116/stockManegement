@@ -56,3 +56,6 @@ python/watch/dailyAggregator.py
 
 # Antigravity CLI（ローカルツール作業領域）
 .antigravitycli/
+
+# フロントエンドアセットのビルド用依存 (成果物は python/web/static/ にコミット)
+frontend/node_modules/

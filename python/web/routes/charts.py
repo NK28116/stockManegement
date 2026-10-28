@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, HTTPException, Response
 
 from python.config import config
+from python.trading.stock_status import normalize as normalize_status
 from python.utils.gcs_client import gcs
 
 router = APIRouter(prefix="/api/charts", tags=["charts"])
@@ -207,8 +208,13 @@ async def list_charts() -> List[Dict[str, Any]]:
                             except ValueError:
                                 pl_val = 0.0
 
+                        # 移行途中で旧日本語ステータスが残っていても、画面へは
+                        # 英字キーで返す。解決できない値はそのまま返し、未保有扱いになる
+                        # (誤って保有表示しない / PRIDEV-524)。
+                        raw_status = row.get("status", "")
                         stock_data[code_key] = {
-                            "status": row.get("status", ""),
+                            "status": normalize_status(raw_status, row.get("quantity"))
+                            or raw_status,
                             "current_price": current_price,
                             "purchase_price": purchase_price,
                             "profit_loss": pl_val,
