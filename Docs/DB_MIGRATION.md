@@ -33,11 +33,13 @@ PYTHONPATH=. python -m python.db.schema_check --json   # 機械可読
 | `DB が未初期化です` | 空の DB | `alembic upgrade head` |
 | `既存 DB が Alembic の管理下にありません` | `create_all` で作られた DB。テーブルはあるが履歴が無い | スキーマが最新なら **`alembic stamp head`**、古いなら `alembic upgrade head` |
 | `DB のリビジョンが head と一致しません` | 未適用のマイグレーションがある | `alembic upgrade head` |
+| `DB のリビジョン [...] は alembic/versions に存在しません` | サーバー上で直接 `revision --autogenerate` した等、このリポジトリに無い履歴が記録されている。通常の `upgrade` / `stamp` は「リビジョンが見つからない」で失敗する | テーブルが揃っていれば **`alembic stamp --purge head`** (履歴だけを付け替える。`alembic_version` 以外は変更しない) |
 | `必要テーブルが存在しません` | テーブル欠落 | `alembic upgrade head` |
 
 ```bash
 PYTHONPATH=. python -m alembic upgrade head   # マイグレーション適用
 PYTHONPATH=. python -m alembic stamp head     # 履歴だけ現在地へ合わせる (DDL なし)
+PYTHONPATH=. python -m alembic stamp --purge head  # 未知のリビジョンが記録されている場合 (DDL なし)
 ```
 
 `stamp` は DDL を実行しないため、**既存データを再作成・削除しない**。

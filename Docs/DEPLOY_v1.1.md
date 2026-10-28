@@ -123,6 +123,14 @@ bash scripts/cron_daily.sh && tail -n 30 log/cron_daily.log
 ./venv/bin/python -m alembic upgrade head   # 未適用のマイグレーションがある場合
 ```
 
+> **本番 GCE の状態 (2026-10-28 確認)**: `alembic_version` に、このリポジトリに無いリビジョン `3c1e05e2ae65`
+> が記録されている。必要テーブルはすべて存在するため、デプロイ後に次の 1 回だけ実行する
+> (`alembic_version` の中身を入れ替えるだけで、テーブルとデータは変更しない)。
+>
+> ```bash
+> ./venv/bin/python -m alembic stamp --purge head
+> ```
+
 ## 4. 銘柄ステータスの移行
 
 古い日本語ステータスを英字キーへ置き換えます。チャート一覧 API は、移行前でも旧値を英字キーに直して返します。そのため、この手順はデプロイ後に落ち着いて実施して構いません。詳細は `Docs/STOCK_STATUS.md` を参照してください。

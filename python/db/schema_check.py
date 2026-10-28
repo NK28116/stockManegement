@@ -41,8 +41,7 @@ def expected_tables() -> List[str]:
     return sorted(Base.metadata.tables.keys())
 
 
-def script_head_revisions() -> List[str]:
-    """alembic/versions が示す head リビジョン。"""
+def _script_directory():
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
@@ -50,7 +49,17 @@ def script_head_revisions() -> List[str]:
 
     alembic_cfg = Config(str(app_config.root_dir / "alembic.ini"))
     alembic_cfg.set_main_option("script_location", str(app_config.root_dir / "alembic"))
-    return sorted(ScriptDirectory.from_config(alembic_cfg).get_heads())
+    return ScriptDirectory.from_config(alembic_cfg)
+
+
+def script_head_revisions() -> List[str]:
+    """alembic/versions が示す head リビジョン。"""
+    return sorted(_script_directory().get_heads())
+
+
+def script_known_revisions() -> List[str]:
+    """alembic/versions に存在する全リビジョン。"""
+    return sorted(script.revision for script in _script_directory().walk_revisions())
 
 
 def db_revisions(engine: Engine) -> List[str]:
@@ -147,6 +156,22 @@ def check_schema(engine: Optional[Engine] = None, required: Optional[Sequence[st
         else:
             report.problems.append("DB が未初期化です")
             report.hints.append("alembic upgrade head を実行してください")
+    elif set(report.db_revisions) - set(script_known_revisions()):
+        # 別の場所 (サーバー上で直接 autogenerate した等) で作られた履歴。
+        # この状態では upgrade も通常の stamp も「リビジョンが見つからない」で失敗する。
+        unknown = sorted(set(report.db_revisions) - set(script_known_revisions()))
+        report.problems.append(
+            f"DB のリビジョン {unknown} は alembic/versions に存在しません (このリポジトリ以外で作られた履歴)"
+        )
+        if report.missing_tables:
+            report.hints.append(
+                "テーブルが欠けているため、内容を確認してから alembic stamp --purge 0002 → alembic upgrade head"
+            )
+        else:
+            report.hints.append(
+                "必要テーブルは揃っています。alembic stamp --purge head で履歴だけを付け替えてください"
+                " (alembic_version 以外は変更しない)"
+            )
     elif not report.revisions_match:
         report.problems.append(
             f"DB のリビジョン {report.db_revisions} が head {report.head_revisions} と一致しません"

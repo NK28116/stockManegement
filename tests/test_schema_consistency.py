@@ -105,6 +105,55 @@ def test_stamping_makes_existing_database_consistent(sqlite_env):
     assert schema_check.check_schema(engine).ok
 
 
+# --- このリポジトリ以外で作られた履歴 (本番 GCE で確認された状態) -------------
+FOREIGN_REVISION = "3c1e05e2ae65"
+
+
+def _database_with_foreign_revision(db_path: Path):
+    """テーブルは揃っているが、alembic_version に未知のリビジョンが入った DB。"""
+    engine = create_engine(f"sqlite:///{db_path}")
+    Base.metadata.create_all(bind=engine)
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"))
+        connection.execute(text(f"INSERT INTO alembic_version VALUES ('{FOREIGN_REVISION}')"))
+        connection.execute(
+            text(
+                "INSERT INTO portfolio (code, name, quantity, purchase_date, status) "
+                "VALUES ('9434.T', 'SOFTBANK', 5, '2025-09-03', 'HOLDING')"
+            )
+        )
+    return engine
+
+
+def test_foreign_revision_is_detected_with_purge_hint(sqlite_env):
+    engine = _database_with_foreign_revision(sqlite_env)
+
+    report = schema_check.check_schema(engine)
+
+    assert report.ok is False
+    assert any("存在しません" in problem and FOREIGN_REVISION in problem for problem in report.problems)
+    assert any("stamp --purge head" in hint for hint in report.hints)
+
+
+def test_plain_stamp_fails_but_purge_stamp_fixes_foreign_revision(sqlite_env):
+    """通常の stamp は未知のリビジョンで失敗し、--purge なら履歴だけを付け替えられること。"""
+    from alembic import command
+    from alembic.util import CommandError
+
+    engine = _database_with_foreign_revision(sqlite_env)
+
+    with pytest.raises(CommandError):
+        command.stamp(_alembic_config(sqlite_env), "head")
+
+    command.stamp(_alembic_config(sqlite_env), "head", purge=True)
+
+    report = schema_check.check_schema(engine)
+    assert report.ok, report.problems
+    with engine.connect() as connection:
+        rows = connection.execute(text("SELECT code, quantity FROM portfolio")).fetchall()
+    assert rows == [("9434.T", 5)], "履歴の付け替えでデータが失われていないこと"
+
+
 def test_existing_data_is_not_recreated_or_lost(sqlite_env):
     """既存 DB に対して破壊的な再作成を行わないこと。"""
     engine = create_engine(f"sqlite:///{sqlite_env}")
