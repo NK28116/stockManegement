@@ -1,0 +1,80 @@
+# Render.com デプロイ定義（Web UI）
+# 使い方:
+#   1. このファイルをコミットして GitHub に push
+#   2. Render ダッシュボード > New > Blueprint で本リポジトリを選択
+#   3. sync:false の値（DB認証情報・Slack等）をダッシュボードで入力
+#   4. GCP SA キーを Secret File として登録（後述）
+#
+# 機密値の扱い:
+#   - value を書いた変数はリポジトリにコミットされます（非機密のみ。公開リポジトリのため
+#     IP アドレス・プロジェクト ID・バケット名などインフラの識別子も書かない）
+#   - sync: false の変数は Render ダッシュボードで個別入力（機密値はこちら）
+#   - GCS/Secret Manager 用の SA キーは Secret File として
+#     /etc/secrets/gcp-sa-key.json にマウントし、
+#     GOOGLE_APPLICATION_CREDENTIALS でそのパスを指定します。
+
+services:
+  - type: web
+    name: stock-web-ui
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: ohio          # GCE(us-central1)に近い米国東部
+    plan: free
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      # --- DB（GCE上のPostgresへインターネット越し接続）---
+      - key: DB_ENV
+        value: cloud
+      - key: DB_TYPE
+        value: postgresql
+      - key: CLOUD_PG_HOST        # DB サーバーのホスト (ダッシュボードで入力)
+        sync: false
+      - key: CLOUD_PG_PORT
+        value: "5432"
+      - key: CLOUD_PG_SSLMODE
+        value: require
+      - key: CLOUD_PG_DATABASE
+        sync: false
+      - key: CLOUD_PG_USER
+        sync: false
+      - key: CLOUD_PG_PASSWORD
+        sync: false
+
+      # --- 案B: 重いチャート生成はGCEワーカーに集約。RenderのUIは生成しない ---
+      - key: DISABLE_CHART_GENERATION
+        value: "1"
+
+      # --- GCP / GCS ---
+      - key: GOOGLE_CLOUD_PROJECT
+        sync: false
+      - key: GCS_BUCKET_NAME
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: /etc/secrets/gcp-sa-key.json
+
+      # --- Slack 通知 ---
+      - key: SLACK_WEBHOOK
+        sync: false
+      - key: SLACK_WEBHOOK_URL
+        sync: false
+      - key: SLACK_BOT_TOKEN
+        sync: false
+      - key: SLACK_CHANNEL
+        sync: false
+
+      # --- 管理画面パスワード認証 (PRIDEV-481 / Docs/AUTH_SETUP.md) ---
+      # APP_ENV が local/development/dev/test/ci 以外なら本番扱い。
+      # APP_PASSWORD_HASH / AUTH_SECRET_KEY が無いと起動に失敗する（フェイルクローズ）。
+      - key: APP_ENV
+        value: production
+      - key: APP_PASSWORD_HASH
+        sync: false
+      - key: AUTH_SECRET_KEY
+        sync: false
+      # Render はリバースプロキシ 1 段構成。X-Forwarded-For の右から 1 番目を採用する。
+      - key: AUTH_TRUSTED_PROXY_COUNT
+        value: "1"
+      # ログイン試行制限がプロセス内保持のため単一ワーカー運用を強制する。
+      - key: WEB_CONCURRENCY
+        value: "1"

@@ -17,6 +17,7 @@ from python.analysis.formula_for_analyzer import (  # noqa: E402
 from python.db.database import get_db_connection  # noqa: E402
 from python.db.database import get_db_session as get_db  # noqa: E402
 from python.db.models import DailyPrice, Stock  # noqa: E402
+from python.utils.bucket import get_bucket_name  # noqa: E402
 from python.utils.logger import get_logger  # noqa: E402
 
 logger = get_logger("dailyAggregator", category="watch")
@@ -24,7 +25,9 @@ logger = get_logger("dailyAggregator", category="watch")
 __all__ = ["aggregate_intraday_to_daily", "run_daily_monitor"]
 
 
-def load_rules_from_gcs(bucket_name="stock-management-prod"):
+def load_rules_from_gcs(bucket_name=None):
+    if bucket_name is None:
+        bucket_name = get_bucket_name()
     """GCSから最新の取引ルールを読み込む"""
     try:
         client = storage.Client()
@@ -39,8 +42,10 @@ def load_rules_from_gcs(bucket_name="stock-management-prod"):
     return {}
 
 
-def generate_and_upload_chart(stock_code, df, bucket_name="stock-management-prod"):
+def generate_and_upload_chart(stock_code, df, bucket_name=None):
     """チャートを生成してGCSにアップロード"""
+    if bucket_name is None:
+        bucket_name = get_bucket_name()
     try:
         plt.figure(figsize=(10, 6))
 

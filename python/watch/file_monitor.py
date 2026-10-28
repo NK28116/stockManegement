@@ -7,6 +7,7 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 from python.config import config
+from python.utils.bucket import get_bucket_name
 
 logger = logging.getLogger(__name__)
 
@@ -34,7 +35,7 @@ class MyStockCSVHandler(FileSystemEventHandler):
         """
         変更されたファイルをGCSにアップロードする (GCE -> Cloud Run同期用)
         """
-        bucket_name = "stock-management-prod"
+        bucket_name = get_bucket_name()
         blob_name = "my_stock.csv"
         try:
             from google.cloud import storage

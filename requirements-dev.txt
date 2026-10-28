@@ -2,3 +2,4 @@ pytest
 flake8
 black
 isort
+playwright==1.64.1

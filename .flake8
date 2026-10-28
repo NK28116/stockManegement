@@ -2,3 +2,9 @@
 max-line-length = 120
 extend-ignore = E203
 exclude = venv,.git,__pycache__,*.egg-info
+per-file-ignores =
+    # Base.metadata への登録のためだけに全モデルを import している (create_all に必要)
+    python/db/database.py: F401
+    # matplotlib.use("Agg") を pyplot 等の import より前に呼ぶ必要がある
+    python/visualization/plot_indicators.py: E402
+    python/visualization/stock_chart_visualizer.py: E402

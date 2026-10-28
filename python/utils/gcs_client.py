@@ -6,10 +6,17 @@ from typing import Any, Dict, List, Optional
 # Try importing GCS client, but don't fail if not present (for local dev without requirements yet)
 try:
     from google.cloud import storage
+    from google.api_core.exceptions import NotFound
 
     GCS_AVAILABLE = True
 except ImportError:
     GCS_AVAILABLE = False
+
+    # ローカル開発時 (google-cloud 未インストール) のフォールバック。
+    # use_gcs は GCS_AVAILABLE が False のとき必ず False になるため、
+    # この別名が GCS 分岐で実際に使われることはない。
+    class NotFound(Exception):
+        pass
 
 
 class GCSClient:
@@ -52,12 +59,13 @@ class GCSClient:
     def get_json(self, path: str) -> Optional[Dict[str, Any]]:
         """Download JSON from GCS or read from local."""
         if self.use_gcs:
-            blob = self.bucket.blob(path)
-            if not blob.exists():
-                return None
+            # 単一 RPC で取得し、未存在は NotFound 例外で判定する
+            # (事前の exists() 呼び出しは RPC を二重化するため行わない)。
             try:
-                data_str = blob.download_as_text(encoding="utf-8")
+                data_str = self.bucket.blob(path).download_as_text(encoding="utf-8")
                 return json.loads(data_str)
+            except NotFound:
+                return None
             except Exception as e:
                 print(f"[ERROR] Failed to download JSON from GCS {path}: {e}")
                 return None
@@ -102,17 +110,23 @@ class GCSClient:
             if prefix and not prefix.endswith("/"):
                 prefix += "/"
 
-            blobs = self.bucket.list_blobs(prefix=prefix)
-            for blob in blobs:
-                # blob.name is full path like "charts/indicators/foo.png"
-                # We want just "foo.png"
-                if blob.name == prefix:
-                    continue  # Skip the directory itself if listed
+            try:
+                blobs = self.bucket.list_blobs(prefix=prefix)
+                for blob in blobs:
+                    # blob.name is full path like "charts/indicators/foo.png"
+                    # We want just "foo.png"
+                    if blob.name == prefix:
+                        continue  # Skip the directory itself if listed
 
-                # Extract filename relative to prefix
-                rel_name = blob.name[len(prefix) :]
-                if rel_name:
-                    file_names.append(rel_name)
+                    # Extract filename relative to prefix
+                    rel_name = blob.name[len(prefix) :]
+                    if rel_name:
+                        file_names.append(rel_name)
+            except Exception as e:
+                # GCS の認証/権限/ネットワークエラーで API 全体が 500 にならないよう、
+                # 空リストにフォールバックする (呼び出し側は「データなし」として扱う)。
+                print(f"[ERROR] Failed to list files from GCS prefix '{prefix}': {e}")
+                return []
         else:
             local_dir = self._get_local_path(prefix)
             if local_dir.exists() and local_dir.is_dir():
@@ -125,11 +139,12 @@ class GCSClient:
     def get_file_content(self, path: str) -> Optional[bytes]:
         """Download binary content (e.g. image) from GCS or local."""
         if self.use_gcs:
-            blob = self.bucket.blob(path)
-            if not blob.exists():
-                return None
+            # 単一 RPC で取得し、未存在は NotFound 例外で判定する
+            # (画像配信など hot path で exists() による RPC 二重化を避ける)。
             try:
-                return blob.download_as_bytes()
+                return self.bucket.blob(path).download_as_bytes()
+            except NotFound:
+                return None
             except Exception as e:
                 print(f"[ERROR] Failed to download file from GCS {path}: {e}")
                 return None

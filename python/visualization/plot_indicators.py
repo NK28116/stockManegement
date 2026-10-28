@@ -21,6 +21,8 @@ import matplotlib.pyplot as plt  # noqa: E402
 import pandas as pd
 from dotenv import load_dotenv
 
+from python.visualization.font_setup import setup_japanese_font
+
 load_dotenv()
 # プロジェクトルートを sys.path に追加
 # ログ設定
@@ -28,11 +30,8 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s"
 )
 
-# Matplotlib フォント設定
-matplotlib.rcParams["font.family"] = (
-    "Source Han Code JP"  # 日本語対応（configから取得）
-)
-matplotlib.rcParams["axes.unicode_minus"] = False  # マイナス記号の文字化け対策
+# 日本語フォント設定 (Linux コンテナ含む全 OS 対応)
+setup_japanese_font()
 
 __all__ = ["plot_macd_bollinger"]
 

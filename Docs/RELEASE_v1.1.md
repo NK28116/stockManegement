@@ -1,0 +1,104 @@
+# v1.1 — 運用・UX安定化
+
+> 本番に出す手順は [DEPLOY_v1.1.md](DEPLOY_v1.1.md) を参照。
+
+統合ブランチ: `integration/v1.1-ops-ux-stabilization` (base: `develop`)
+
+## スコープ
+
+| チケット | 内容 | ブランチ |
+| --- | --- | --- |
+| PRIDEV-481 | 単一パスワード認証の実装 | `feature/add-password-auth-PRIDEV-481` |
+| PRIDEV-482 | matplotlib 日本語表示の修正と回帰テスト | `fix/matplotlib-japanese-font-PRIDEV-482` |
+| PRIDEV-484 | ドロップダウン配置と小画面 overflow の修正 | `fix/dropdown-layout-overflow-PRIDEV-484` |
+| PRIDEV-485 | 初回起動待ち時間の短縮と失敗時 UX 改善 | `fix/startup-wait-ux-PRIDEV-485` |
+| PRIDEV-486 | プルダウン選択肢の補完と UI 回帰テスト | `fix/dropdown-options-PRIDEV-486` |
+| PRIDEV-487 | Alembic 整合・検証コマンド・回帰テスト | `fix/alembic-schema-consistency-PRIDEV-487` |
+| PRIDEV-490 | Cloud Logging / Monitoring 読み取りアダプタ | `feature/add-cloud-observability-adapter-PRIDEV-490` |
+| PRIDEV-491 | 異常検知・System Health 集約サービス | `feature/add-system-health-service-PRIDEV-491` |
+| PRIDEV-492 | 管理者専用 System Monitor API | `feature/add-system-monitor-api-PRIDEV-492` |
+| PRIDEV-493 | System Monitor 画面 | `feature/add-system-monitor-ui-PRIDEV-493` |
+| PRIDEV-494 | System Monitor 認証・異常系 E2E テスト | `feature/add-system-monitor-e2e-PRIDEV-494` |
+
+エピック PRIDEV-483 / 488 / 489 は上記子チケットの束ねであり、単独の実装はない。
+
+## マージ順序
+
+依存関係があるため、次の順にマージする。
+
+```
+PRIDEV-481 ─┐
+PRIDEV-490 ─┴→ PRIDEV-491 → PRIDEV-492 → PRIDEV-493 → PRIDEV-494
+PRIDEV-482 / 484 / 485 / 486 / 487 (独立)
+```
+
+`PRIDEV-485` と `PRIDEV-481` はどちらも `python/web/app.py` を変更するため、
+後からマージする側で軽微な競合解消が必要になる。
+
+## デプロイ前に必要な設定
+
+| 環境変数 | チケット | 必須 | 備考 |
+| --- | --- | --- | --- |
+| `APP_PASSWORD_HASH` | 481 | ○ | 本番 (`APP_ENV` が開発値以外) で未設定・不正なら**起動しない**。生成は `python scripts/hash_password.py` |
+| `AUTH_SECRET_KEY` | 481 | ○ | 本番で未設定・32 文字未満なら**起動しない** |
+| `AUTH_TRUSTED_PROXY_COUNT` | 481 | △ | Render / Cloud Run 配下では `1`。ログイン試行制限のクライアント識別に使う |
+| `GCP_PROJECT_ID` | 490 | ○ | 未設定だと System Monitor は degraded 表示になる |
+
+GCS のバケット名・DB のホスト・GCP プロジェクト ID はリポジトリに書かず、各環境で設定する
+(公開リポジトリのため)。
+
+| 環境 | 設定場所 |
+| --- | --- |
+| Render | ダッシュボードの環境変数 `GCS_BUCKET_NAME` / `CLOUD_PG_HOST` / `GOOGLE_CLOUD_PROJECT` |
+| GCE (cron) | プロジェクト直下の `.env` に `GCS_BUCKET_NAME` (未設定なら `cron_daily.sh` はエラーで止まる) |
+| Cloud Run (GitHub Actions) | リポジトリの Actions variables に `GCS_BUCKET_NAME` |
+
+必要な IAM ロール: `roles/logging.viewer` / `roles/monitoring.viewer` (書き込み権限は不要)。
+
+DB は適用後に `make db-check` で整合を確認する。
+
+## ユーザー確認済みの値
+
+確認シート (2026-08-26 回答) の結果。No.1-3 / 7-17 は暫定値のまま確定、
+No.4-6 は仕様が確定・拡張された。
+
+| チケット | 項目 | 確定値 | 設定先 |
+| --- | --- | --- | --- |
+| 481 | セッション有効期限 / 失敗許容回数 / ロック時間 | 12 時間 / 5 回 / 15 分 | `python/web/auth.py` |
+| 481 | 平文パスワードの管理 | KeePassXC のみ。`.env` はハッシュ、本番は Secret Manager | `Docs/AUTH_SETUP.md` |
+| 485 | 起動目標 / loading 表示遅延 / timeout | 10 秒 / 1 秒 / 30 秒 | `python/web/startup.py` |
+| 486 | 銘柄ステータス | 英字キー 8 種。売却予定と売却済みを分離 | `python/trading/stock_status.py` |
+| 486 | 保有目的 | `long` / `middle` / `present` / `swing` の 4 種 | `python/web/constants.py` |
+| 490 | 取得期間 / 件数 / 監視指標 | 24h / 7日 / 100件 / 500件 / 6指標 | `python/observability/settings.py` |
+| 493 | 初期表示 / 追加読み込み / 最大表示 | 20 件 / あり 20 件 / 100 件 | `python/web/routes/system_monitor.py` |
+
+### 未完了の運用作業
+
+| 作業 | 内容 |
+| --- | --- |
+| `APP_PASSWORD_HASH` / `AUTH_SECRET_KEY` の設定 | **未設定** (シート No.18)。本番では未設定だと起動に失敗する (フェイルクローズ / PRIDEV-521) |
+| ステータス移行 (GCS / DB) | `python scripts/migrate_stock_status.py --gcs --db` で確認後 `--apply --gcs --db`。手順は `Docs/STOCK_STATUS.md` |
+
+## レビュー指摘の反映
+
+| チケット | 内容 |
+| --- | --- |
+| PRIDEV-518〜523 | 認証: 全ルート既定保護 / next の XSS 対策 / クエリ復元 / 本番フェイルクローズ / 試行制限 / 平文フォールバック削除 |
+| PRIDEV-524 | 本番 GCS の `my_stock.csv` を移行対象に追加 (`--gcs`)。API 側でも旧値を正規化 |
+| PRIDEV-525 | `portfolio` を主キー単位で更新。数量不明は推測しない。未解決があれば全対象を書き換えない |
+| PRIDEV-526 | 並び順を `choice.key` から生成し、応答順の競合でも崩れないようにした |
+| PRIDEV-527 | 孤立した `v-else` を解消。実ブラウザ (Playwright) で代表幅のレイアウトを検証 |
+
+## 画面の静的アセット
+
+Tailwind CSS / Vue は CDN ではなく `python/web/static/` から配信する (オフライン描画・
+起動時の外部取得待ち削減・実ブラウザテストのため)。テンプレートで新しい Tailwind クラスを
+使ったら `make assets` (Node.js が必要) で再生成し、成果物をコミットする。
+
+## 関連ドキュメント
+
+- `Docs/AUTH_SETUP.md` — パスワード認証の設定
+- `Docs/CHART_FONT_SETUP.md` — チャートの日本語フォント
+- `Docs/DB_MIGRATION.md` — DB マイグレーション運用
+- `Docs/OBSERVABILITY.md` — Cloud Logging / Monitoring と System Health
+- `Docs/SYSTEM_MONITOR_E2E.md` — System Monitor の E2E テスト

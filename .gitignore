@@ -10,7 +10,6 @@ __pycache__/
 *.pyc
 
 # Logs
-log/*
 *.log
 python/db/my_stock.db
 data/chartImg/*.png
@@ -20,11 +19,22 @@ data/report/*
 cloud-sql-proxy
 venv/
 
-# 環境変数ファイル
+# 環境変数ファイル (make env の作業ファイル・退避ファイルも含む)
 .env
+.env.tmp
+.env.bak
 
 # 秘密鍵/認証情報
 KEY.json
+render-sa-key.json
+*-sa-key.json
+*_key.json
+new_key.json
+*.pem
+
+# シークレットスキャンのレポート（検出結果自体が機密）
+gitleaks_report.json
+trufflehog_report.json
 
 # 設定ファイル (機密情報を含む場合)
 
@@ -34,9 +44,17 @@ mcp/
 # API設定ファイル
 data/API/kabu_STATION_API.yaml
 
-# 個人情報/取引履歴/ポートフォリオデータ
+# 個人情報/取引履歴/ポートフォリオデータ (公開リポジトリには含めない。形式は data/my_stock.sample.csv を参照)
+data/my_stock*.csv
+!data/my_stock.sample.csv
+data/latest_indicators.json
 data/quarterly_analysis.csv
 data/practice/*.csv
+*.dump
+
+# 生成物 (保有銘柄が分かるチャート画像・サマリー)
+data/chartImg/
+data/plots/
 
 # macOSメタデータファイル
 .DS_Store
@@ -48,3 +66,6 @@ python/watch/dailyAggregator.py
 
 # Antigravity CLI（ローカルツール作業領域）
 .antigravitycli/
+
+# フロントエンドアセットのビルド用依存 (成果物は python/web/static/ にコミット)
+frontend/node_modules/

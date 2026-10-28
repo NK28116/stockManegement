@@ -18,7 +18,40 @@ jobs:
                   key: ${{ secrets.GCE_SSH_KEY }}
                   port: 22
                   script: |
+                        set -eu
                         cd /home/${{ secrets.GCE_USERNAME }}/stockManegement
+
+                        # v1.1 以降、バケット名はリポジトリに書かず .env から読む。
+                        # 未設定のまま更新すると日次バッチが止まるため、ここで中止する (旧コードのまま動き続ける)。
+                        if ! grep -qE '^GCS_BUCKET_NAME=.+' .env 2>/dev/null; then
+                            echo "ERROR: .env に GCS_BUCKET_NAME がありません。設定してから再実行してください。"
+                            exit 1
+                        fi
+
+                        # 個人データ (保有株 CSV など) は v1.1 で Git の管理対象から外した。
+                        # pull でサーバー上のファイルが消えたり、変更があると pull が止まったりしないよう、
+                        # 退避 → 管理下の版へ戻す → pull → 退避した版を書き戻す、の順で更新する。
+                        PRIVATE_FILES="data/my_stock.csv data/my_stock_local.csv data/latest_indicators.json stock_db.dump cloud-sql-proxy"
+                        BACKUP_DIR="$HOME/stock-private-backup/$(date +%Y%m%d%H%M%S)"
+                        # まだ Git の管理下にある (= 今回の pull で消える) ファイルだけを対象にする。
+                        # 一度 v1.1 を取り込めば対象は無くなり、以降のデプロイでは何もしない。
+                        for f in $PRIVATE_FILES; do
+                            if [ -e "$f" ] && git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+                                mkdir -p "$BACKUP_DIR/$(dirname "$f")"
+                                cp -p "$f" "$BACKUP_DIR/$f"
+                                git checkout -- "$f"
+                                echo "退避しました: $f -> $BACKUP_DIR/$f"
+                            fi
+                        done
+
                         GIT_SSH_COMMAND="ssh -i /home/${{ secrets.GCE_USERNAME }}/.ssh/id_ed25519" git pull origin main
-                        # Optional: Update dependencies if requirements.txt changed
-                        # pip install -r requirements.txt
+
+                        for f in $PRIVATE_FILES; do
+                            if [ -e "$BACKUP_DIR/$f" ] && [ ! -e "$f" ]; then
+                                mkdir -p "$(dirname "$f")"
+                                cp -p "$BACKUP_DIR/$f" "$f"
+                            fi
+                        done
+
+                        # 依存パッケージを requirements.txt (バージョン固定) に合わせる
+                        ./venv/bin/pip install --quiet -r requirements.txt

@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "version": 1,
+    "description": "Swing trade rules - MA / RSI / MACD based",
+    "updated_at": "2025-12-14T13:30:00Z",
+    "updated_by": "web_ui",
+    "active": true
+  },
+  "risk_management": {
+    "stop_loss_percent": 0.05,
+    "take_profit_percent": 0.1,
+    "trailing_stop_percent": 0.03,
+    "risk_per_trade": 0.01,
+    "max_daily_loss_percent": 0.03
+  },
+  "entry_rules": {
+    "price_momentum": {
+      "enabled": true,
+      "pattern": "++"
+    },
+    "rsi_filter": {
+      "enabled": true,
+      "oversold": 30
+    },
+    "macd_filter": {
+      "enabled": true,
+      "require_cross": true
+    }
+  },
+  "exit_rules": {
+    "stop_loss": {
+      "enabled": true
+    },
+    "take_profit": {
+      "enabled": true
+    },
+    "dead_cross_exit": {
+      "enabled": true,
+      "pattern": "--"
+    }
+  },
+  "indicators": {
+    "rsi": {
+      "period": 14,
+      "overbought": 70,
+      "oversold": 30
+    },
+    "macd": {
+      "fast_period": 12,
+      "slow_period": 26,
+      "signal_period": 9
+    },
+    "bollinger": {
+      "period": 20,
+      "std": 2
+    }
+  },
+  "filters": {
+    "crash_threshold_percent": -3.0,
+    "volatility_threshold": 3.0,
+    "volume_spike_threshold": 2.0
+  }
+}
