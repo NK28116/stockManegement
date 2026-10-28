@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from python.db.database import get_db_session, engine
 from python.db.models import Signal, SignalHistory
+from python.trading import stock_status
 from python.trading.trading_rules import ImprovedTradingRules
 from python.utils.logger import get_logger
 from python.utils.rules_loader import get_active_rules
@@ -98,7 +99,7 @@ async def get_latest_signals():
     portfolio テーブルと結合して保有中かどうか (is_held) を付与する。
     """
     try:
-        from sqlalchemy import text
+        from sqlalchemy import bindparam, text
 
         # GROUP BY + MAX(created_at) で銘柄ごとの最新レコードを取得し、
         # portfolio テーブルと LEFT JOIN して保有フラグを付与する
@@ -118,14 +119,19 @@ async def get_latest_signals():
             LEFT JOIN (
                 SELECT DISTINCT code
                 FROM portfolio
-                WHERE status NOT IN ('SOLD_PROFIT', 'SOLD_LOSS', '売却（利益確定）', '売却（損切り）')
+                WHERE status IN :held_statuses
             ) p ON t1.symbol = p.code
             ORDER BY t1.signal_type DESC, t1.score DESC
             """
         )
 
+        # 保有とみなす保存値は python/trading/stock_status.py が単一の正 (PRIDEV-486)
+        held_statuses = tuple(stock_status.held_status_values())
         with engine.connect() as conn:
-            rows = conn.execute(query).fetchall()
+            rows = conn.execute(
+                query.bindparams(bindparam("held_statuses", expanding=True)),
+                {"held_statuses": list(held_statuses)},
+            ).fetchall()
 
         results = []
         for row in rows:
