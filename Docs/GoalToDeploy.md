@@ -145,7 +145,7 @@ gs://stock-management-prod/
 * [x] `gcloud builds submit --tag gcr.io/<GCP_PROJECT_ID>/stock-web-ui`
 * [x] `gcloud run deploy stock-web-ui --image gcr.io/<GCP_PROJECT_ID>/stock-web-ui --allow-unauthenticated`
   * Region: `us-east1` (Always Free)
-  * URL: `https://stock-web-ui-664052483309.us-east1.run.app`
+  * URL: `https://<SERVICE>-<PROJECT_NUMBER>.<REGION>.run.app`
 * [x] 環境変数設定:
   * [x] `GCS_BUCKET_NAME=stock-management-prod`
   * [x] `GOOGLE_CLOUD_PROJECT=<GCP_PROJECT_ID>`
@@ -241,7 +241,7 @@ gs://stock-management-prod/
     * 使用するcsvは`data/my_stock_local.csv`
       * 作成した時とメソッドとか変更しているから過不足の可能性
   * Cloud Run
-    * `https://stock-web-ui-664052483309.us-east1.run.app`
+    * `https://<SERVICE>-<PROJECT_NUMBER>.<REGION>.run.app`
     * 使用するcsvはGCE上の`data/my_stock.csv`
     * GCSバケット: `stock-management-prod`
       * 同上

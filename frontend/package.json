@@ -4,7 +4,7 @@
   "description": "画面の静的アセット (Tailwind CSS / Vue) をビルドする。成果物は python/web/static/ へコミットする",
   "scripts": {
     "build": "npm run build:css && npm run build:vendor",
-    "build:css": "tailwindcss -c tailwind.config.js -i tailwind.input.css -o ../python/web/static/css/tailwind.css --minify",
+    "build:css": "tailwindcss -c tailwind.config.js -i tailwind.input.css -o ../python/web/static/css/tailwind.css --minify && node -e \"const f='../python/web/static/css/tailwind.css',fs=require('fs');fs.writeFileSync(f,'/*! tailwindcss v'+require('tailwindcss/package.json').version+' | MIT License | https://tailwindcss.com */\\n'+fs.readFileSync(f,'utf8'))\"",
     "build:vendor": "node -e \"require('fs').copyFileSync(require.resolve('vue/dist/vue.global.prod.js'), '../python/web/static/vendor/vue.global.prod.js')\""
   },
   "devDependencies": {

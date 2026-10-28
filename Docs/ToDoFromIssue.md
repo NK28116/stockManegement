@@ -2,7 +2,7 @@
 
 > Linear プロジェクト **stockManagement**（team: PrivateDev / PRIDEV）の課題から生成。
 > 並び: ワークフロー状態 → マイルストーン → 優先度（🔴Urgent / 🟠High / 🟡Medium / ⚪Low / ・なし）。
-> 生成日: 2026-06-10 ／ [Linear プロジェクト](https://linear.app/niwa-private-dev/project/stockmanagement-0302b2aea712/overview)
+> 生成日: 2026-06-10 ／ Linear プロジェクト (非公開)
 >
 > 使い方: まず下の「インデックス」で全体像を把握し、着手する issue を選んだら「要件詳細」の節に末尾テンプレートを使って記入していく。
 
