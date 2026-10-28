@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>stockManagement のしくみ</title>
+<style>
+/* レイアウト: 読み物 1 カラム (約 70 字) + 図とデモだけ幅を広げる。
+   章立ては「何をするアプリか → データの流れ → 数学 → Web の技術 → 安全のしくみ」。 */
+:root {
+  --bg: #fbfaf7;
+  --surface: #ffffff;
+  --ink: #1e2328;
+  --muted: #5b6570;
+  --line: #e2e0d8;
+  --accent: #2a5db0;        /* 方眼ノートの青 */
+  --accent-soft: #e8eefa;
+  --up: #1e8449;            /* 値上がり */
+  --down: #c0392b;          /* 値下がり */
+  --band: rgba(42, 93, 176, 0.12);
+  --hl: #fff3c4;            /* マーカー */
+  --code-bg: #f1efe8;
+  --font-body: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+  --font-head: "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15181c; --surface: #1c2025; --ink: #e6e8eb; --muted: #9aa4ae; --line: #30363d;
+    --accent: #7fa8ee; --accent-soft: #1f2b40; --up: #58c785; --down: #ff7b6b;
+    --band: rgba(127, 168, 238, 0.16); --hl: #4a3f12; --code-bg: #232830;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.85;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 960px; margin: 0 auto; padding-block: 48px 96px; }
+.col { max-width: 70ch; }
+h1, h2, h3 { font-family: var(--font-head); line-height: 1.4; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(28px, 5vw, 40px); }
+h2 { font-size: clamp(22px, 3.4vw, 28px); }
+h3 { font-size: 18px; }
+p { margin: 0; }
+a { color: var(--accent); }
+mark { background: var(--hl); color: inherit; padding: 0 2px; }
+code { font-family: var(--font-mono); font-size: 0.88em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+
+header.top { display: grid; gap: 16px; padding-bottom: 32px; border-bottom: 2px solid var(--ink); }
+.kicker { font-size: 13px; letter-spacing: 0.14em; color: var(--muted); font-weight: 600; }
+.lead { font-size: 17px; }
+
+nav.toc { display: flex; flex-wrap: wrap; gap: 6px 10px; padding-block: 20px; border-bottom: 1px solid var(--line); font-size: 14px; }
+nav.toc a { text-decoration: none; padding: 2px 10px; border-radius: 999px; background: var(--accent-soft); }
+
+section { display: grid; gap: 20px; padding-block: 56px 8px; }
+.chapter { font-family: var(--font-mono); font-size: 13px; color: var(--accent); font-weight: 600; }
+.head { display: grid; gap: 4px; }
+
+/* データの流れ */
+.flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; counter-reset: step; }
+.flow div { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: grid; gap: 4px; position: relative; counter-increment: step; }
+.flow div::before { content: counter(step); font-family: var(--font-mono); font-size: 12px; color: var(--accent); font-weight: 700; }
+.flow b { font-size: 15px; }
+.flow span { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+/* 数式 */
+.formula { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 0 8px 8px 0; padding: 14px 18px; font-family: var(--font-head); font-size: 17px; line-height: 2; overflow-x: auto; }
+.formula .note { display: block; font-family: var(--font-body); font-size: 13px; color: var(--muted); line-height: 1.7; }
+.frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; margin: 0 3px; line-height: 1.3; }
+.frac > span:first-child { border-bottom: 1px solid currentColor; padding: 0 4px; }
+.frac > span:last-child { padding: 0 4px; }
+.math-grid { display: grid; gap: 28px; }
+.math-item { display: grid; gap: 12px; }
+.where { font-size: 14px; color: var(--muted); }
+
+/* デモ */
+.demo { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 14px; }
+.controls { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: center; font-size: 14px; }
+.controls label { display: flex; align-items: center; gap: 8px; }
+.controls input[type=range] { width: 140px; }
+.controls output { font-family: var(--font-mono); min-width: 2.5em; }
+.controls button { font: inherit; font-size: 14px; padding: 4px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--accent-soft); color: var(--ink); cursor: pointer; }
+.controls button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.chart { width: 100%; height: auto; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+.readout { font-family: var(--font-mono); font-size: 13px; color: var(--muted); }
+
+/* スコア計算 */
+.score { display: grid; gap: 8px; }
+.score label { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; font-size: 15px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.score .pt { font-family: var(--font-mono); color: var(--muted); }
+.meter { height: 12px; background: var(--line); border-radius: 999px; overflow: hidden; }
+.meter > div { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+.verdict { font-weight: 700; }
+
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 12px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: 0.04em; }
+.scroll { overflow-x: auto; }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.aside { background: var(--accent-soft); border-radius: 8px; padding: 14px 18px; font-size: 15px; }
+.warn { border-left: 4px solid var(--down); background: var(--surface); padding: 14px 18px; border-radius: 0 8px 8px 0; font-size: 15px; }
+footer { margin-top: 64px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+@media (prefers-reduced-motion: reduce) { .meter > div { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <div class="kicker">STOCKMANAGEMENT · しくみの解説</div>
+  <h1>株の「健康診断」アプリのしくみ</h1>
+  <p class="lead col">このアプリは、自分が持っている株や気になる株を記録しておくと、毎日の値動きから「買いどき・売りどきの候補」を計算して画面に並べてくれる道具です。このページでは、その中で使っている<mark>数学</mark>と<mark>プログラムの技術</mark>を、高校の数学Ⅰ・Bの知識で読めるように説明します。</p>
+</header>
+
+<nav class="toc" aria-label="目次">
+  <a href="#what">1. 何をするアプリ？</a>
+  <a href="#flow">2. データの流れ</a>
+  <a href="#average">3. 平均とばらつき</a>
+  <a href="#ema">4. 新しい値を重く見る平均</a>
+  <a href="#rsi">5. 勢いを測る RSI</a>
+  <a href="#shape">6. 形を見つける</a>
+  <a href="#score">7. 7 点満点の採点</a>
+  <a href="#risk">8. 損切りと利確の決め方</a>
+  <a href="#web">9. Web アプリの技術</a>
+  <a href="#security">10. 安全のしくみ</a>
+</nav>
+
+<!-- 1 -->
+<section id="what">
+  <div class="head"><span class="chapter">CHAPTER 1</span><h2>何をするアプリ？</h2></div>
+  <p class="col">株の値段は毎日上がったり下がったりします。人間がすべての銘柄のグラフを毎日見比べるのは大変なので、このアプリは次の 3 つを自動でやってくれます。</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>やること</th><th>画面のどこで見える？</th></tr></thead>
+      <tbody>
+        <tr><td><b>記録する</b> — 持っている株の数・買った値段・目的（長期、優待目的など）を保存する</td><td>Dashboard タブの一覧と購入フォーム</td></tr>
+        <tr><td><b>グラフにする</b> — 値動きと、後で説明する指標（移動平均や MACD）を画像にする</td><td>一覧の Plots / ChartImg の列</td></tr>
+        <tr><td><b>採点する</b> — 「今は買いの形になっているか」を 7 点満点で点数化し、損切り・利確の目安の値段を計算する</td><td>Signals タブ</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="warn col">ここで計算される数字は「過去の値動きから見るとこういう形をしている」という目安です。未来の値段を当てるものではありません。最終的に売り買いを決めるのは人間です。</p>
+</section>
+
+<!-- 2 -->
+<section id="flow">
+  <div class="head"><span class="chapter">CHAPTER 2</span><h2>データの流れ</h2></div>
+  <p class="col">毎日決まった時間に、クラウド上のサーバーが自動でプログラムを動かします（<code>scripts/cron_daily.sh</code>）。流れは次の順番です。</p>
+  <div class="flow">
+    <div><b>株価を取ってくる</b><span>Yahoo! Finance から始値・高値・安値・終値・出来高をもらう（yfinance）</span></div>
+    <div><b>計算する</b><span>Python の表計算ライブラリ pandas で平均や RSI を計算</span></div>
+    <div><b>グラフを描く</b><span>matplotlib で画像を作る。日本語が文字化けしないフォント設定つき</span></div>
+    <div><b>保存する</b><span>画像と保有株の表を Google Cloud Storage へ。採点結果はデータベースへ</span></div>
+    <div><b>見せる</b><span>Web アプリ（FastAPI）が読み出し、ブラウザ（Vue）が画面に並べる</span></div>
+  </div>
+  <p class="col">株価のデータは 1 日 1 本の「日足」と、1 週間 1 本の「週足」の 2 種類を使います。日足は 1 本につき 4 つの値段（始値・高値・安値・終値）を持っているので、「ろうそく足」という形で描くことができます。採点（7 章）は週足で行います。数日〜2 週間で売り買いする「スイングトレード」という作戦を想定しているからです。</p>
+</section>
+
+<!-- 3 -->
+<section id="average">
+  <div class="head"><span class="chapter">CHAPTER 3 · 数学Ⅰ「データの分析」</span><h2>平均とばらつき — 移動平均とボリンジャーバンド</h2></div>
+  <div class="math-grid">
+    <div class="math-item">
+      <h3>移動平均（いどうへいきん）</h3>
+      <p class="col">毎日の終値はギザギザしていて、流れが見えにくいです。そこで「直近 <i>N</i> 日の平均」を毎日計算し直して線でつなぎます。これを<b>移動平均</b>といいます。計算する範囲が 1 日ずつ横に「移動」していくので、この名前がついています。</p>
+      <div class="formula">
+        MA<sub>t</sub> = <span class="frac"><span>1</span><span><i>N</i></span></span>( <i>P</i><sub>t</sub> + <i>P</i><sub>t−1</sub> + … + <i>P</i><sub>t−N+1</sub> )
+        <span class="note"><i>P</i><sub>t</sub> は t 日目の終値。アプリでは N = 20 を使います（<code>BOLLINGER_PERIOD = 20</code>）。</span>
+      </div>
+    </div>
+    <div class="math-item">
+      <h3>標準偏差とボリンジャーバンド</h3>
+      <p class="col">平均だけでは「どのくらい暴れているか」が分かりません。そこで数学Ⅰで習う<b>標準偏差</b> σ（シグマ）を、同じ直近 N 日について計算します。</p>
+      <div class="formula">
+        σ<sub>t</sub> = √( <span class="frac"><span>1</span><span><i>N</i> − 1</span></span> Σ ( <i>P</i><sub>i</sub> − MA<sub>t</sub> )<sup>2</sup> )
+        <span class="note">pandas の標準では N ではなく N − 1 で割ります（標本標準偏差）。教科書の N で割る式とほとんど同じ値になります。</span>
+      </div>
+      <div class="formula">
+        上のバンド = MA<sub>t</sub> + 2σ<sub>t</sub>　　下のバンド = MA<sub>t</sub> − 2σ<sub>t</sub>
+        <span class="note">データが正規分布（つりがね型）に近ければ、約 95% の値がこの帯の中に収まります。帯の外に飛び出したら「いつもより大きく動いた」という合図です。</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="demo" aria-label="移動平均とボリンジャーバンドの体験">
+    <h3>さわってみよう</h3>
+    <div class="controls">
+      <label for="n">期間 N <input id="n" type="range" min="5" max="40" value="20"><output id="nOut">20</output></label>
+      <label for="k">帯の幅 k <input id="k" type="range" min="1" max="3" step="0.5" value="2"><output id="kOut">2.0</output></label>
+      <button id="reseed" type="button">別の値動きを作る</button>
+    </div>
+    <svg id="bbChart" class="chart" viewBox="0 0 900 300" role="img" aria-label="架空の株価と移動平均とボリンジャーバンド"></svg>
+    <div class="legend">
+      <span><i style="background:var(--ink)"></i>終値（架空のデータ）</span>
+      <span><i style="background:var(--accent)"></i>移動平均 MA</span>
+      <span><i style="background:var(--band);height:10px"></i>MA ± kσ の帯</span>
+      <span><i style="background:var(--down)"></i>帯の外に出た日</span>
+    </div>
+    <p class="readout" id="bbReadout"></p>
+    <p class="where">N を大きくすると線がなめらかになり、そのぶん動きへの反応が遅くなります。k を大きくすると帯が広がり、帯の外に出る日が減ります。k = 2 でも帯の外に出る日が 5% より多くなることがありますが、これは値動きに「流れ」があって、つりがね型の分布どおりにはならないためです。本物の株価でも同じことが起きます。</p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section id="ema">
+  <div class="head"><span class="chapter">CHAPTER 4 · 数学B「数列」</span><h2>新しい値を重く見る平均 — EMA と MACD</h2></div>
+  <p class="col">ふつうの移動平均は、20 日前の値も昨日の値も同じ重さで扱います。でも、相場では「最近の動き」の方が大事なことが多いです。そこで、新しい値ほど重みを大きくする<b>指数移動平均（EMA）</b>を使います。</p>
+  <div class="formula">
+    EMA<sub>t</sub> = α · <i>P</i><sub>t</sub> + (1 − α) · EMA<sub>t−1</sub>　　α = <span class="frac"><span>2</span><span><i>N</i> + 1</span></span>
+    <span class="note">今日の値に α、昨日までの EMA に 1 − α をかけて足します。N = 12 なら α ≈ 0.154 です。</span>
+  </div>
+  <p class="col">この式を何回もくり返し代入すると、k 日前の値にかかる重みは α(1 − α)<sup>k</sup> になります。これは公比 1 − α の<b>等比数列</b>です。古い値ほど重みが一定の割合で小さくなっていき、重みをすべて足すと等比数列の和の公式から 1 に近づきます。「指数」移動平均という名前はここから来ています。</p>
+  <div class="formula">
+    MACD = EMA<sub>12</sub> − EMA<sub>26</sub>　　シグナル = MACD の EMA<sub>9</sub>
+    <span class="note">短い EMA（12）が長い EMA（26）より上にあれば、最近の値段が強いということです。MACD がシグナル線を下から上に追い越すことを「ゴールデンクロス」と呼び、上昇の始まりの目安にします（<code>python/utils/indicators.py</code>）。</span>
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="rsi">
+  <div class="head"><span class="chapter">CHAPTER 5 · 比と割合</span><h2>勢いを測る RSI</h2></div>
+  <p class="col">RSI（相対力指数）は、「最近の値動きのうち、上がった分がどのくらいの割合か」を 0〜100 の数で表したものです。直近 14 日について、前の日より上がった日の上がり幅の平均と、下がった日の下がり幅の平均を求めます。</p>
+  <div class="formula">
+    RS = <span class="frac"><span>上がり幅の平均</span><span>下がり幅の平均</span></span>　　RSI = 100 − <span class="frac"><span>100</span><span>1 + RS</span></span> = 100 × <span class="frac"><span>上がり幅の平均</span><span>上がり幅の平均 + 下がり幅の平均</span></span>
+    <span class="note">2 つ目の形に変形すると、「全体の動きのうち上がった分の割合 × 100」だと分かります。ずっと上がり続ければ 100、ずっと下がり続ければ 0 に近づきます。</span>
+  </div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>RSI の値</th><th>読み方</th><th>アプリでの使い方</th></tr></thead>
+      <tbody>
+        <tr><td class="num">70 以上</td><td>買われすぎ（上がりすぎ）</td><td>持っている株の「弱り始め」の目安</td></tr>
+        <tr><td class="num">40〜65</td><td>ほどよく上向き</td><td>買いの採点で +1 点（<code>RSI_LONG_RANGE</code>）</td></tr>
+        <tr><td class="num">30 以下</td><td>売られすぎ（下がりすぎ）</td><td>参考値</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="shape">
+  <div class="head"><span class="chapter">CHAPTER 6 · 関数とグラフ</span><h2>チャートの「形」を見つける</h2></div>
+  <p class="col">ベテランの投資家は、グラフの形（チャートパターン）を見て判断します。アプリはその見方を、数学の言葉に置き換えて判定しています（<code>python/watch/analyze.py</code>）。</p>
+  <div class="math-grid">
+    <div class="math-item">
+      <h3>大きな流れ（トレンド）— 40 週移動平均とその傾き</h3>
+      <p class="col">約 10 か月分にあたる 40 週の移動平均を作り、次の 2 つの条件を両方満たせば「上昇トレンド（LONG）」と判定します。下降トレンド（SHORT）はその逆です。</p>
+      <div class="formula">
+        終値 &gt; MA40　かつ　MA40<sub>今週</sub> − MA40<sub>先週</sub> &gt; 0
+        <span class="note">2 つ目は、関数の増減を調べるときの「変化量が正なら増加」と同じ考え方です。</span>
+      </div>
+    </div>
+    <div class="math-item">
+      <h3>谷を見つける — 極小値と W 底</h3>
+      <p class="col">安値の列 <i>L</i><sub>1</sub>, <i>L</i><sub>2</sub>, … の中で、両隣より小さい点を「谷（極小値）」とします。最近の谷 2 つの高さの差が 5% 未満なら、W の字に見える<b>ダブルボトム</b>（2 回底を打って上がる形）とします。谷が 3 つあって真ん中が一番深く、両端が同じくらいの高さなら<b>逆三尊</b>です。</p>
+      <div class="formula">
+        <i>L</i><sub>i−1</sub> &gt; <i>L</i><sub>i</sub> &lt; <i>L</i><sub>i+1</sub> なら谷　　<span class="frac"><span>| <i>p</i><sub>1</sub> − <i>p</i><sub>2</sub> |</span><span><i>p</i><sub>1</sub></span></span> &lt; 0.05 なら W 底
+      </div>
+    </div>
+    <div class="math-item">
+      <h3>傾きを測る — 最小二乗法</h3>
+      <p class="col">直近 15 週の高値と安値に、それぞれ一番よく当てはまる直線を引きます。高値の線が下向きで、安値の線が上向きなら、値動きが三角形にすぼまっていく<b>トライアングル</b>の形です。「一番よく当てはまる直線」の傾き <i>a</i> は、数学Ⅰの相関で習う式と同じもので求めます。</p>
+      <div class="formula">
+        <i>a</i> = <span class="frac"><span>Σ ( <i>x</i><sub>i</sub> − <i>x̄</i> )( <i>y</i><sub>i</sub> − <i>ȳ</i> )</span><span>Σ ( <i>x</i><sub>i</sub> − <i>x̄</i> )<sup>2</sup></span></span>
+        <span class="note">分子は共分散の形、分母は分散の形です。<i>x</i> は週の番号（0, 1, 2, …）、<i>y</i> はその週の高値または安値です。</span>
+      </div>
+    </div>
+    <div class="math-item">
+      <h3>出来高（売買された株の数）</h3>
+      <p class="col">今週の出来高が、直近 20 週の出来高の平均より多ければ「注目が集まっている」とみなします。形がそろっても、売り買いする人が少なければ信用しにくいからです。</p>
+    </div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section id="score">
+  <div class="head"><span class="chapter">CHAPTER 7</span><h2>7 点満点の採点</h2></div>
+  <p class="col">ここまでの判定を組み合わせて点数をつけます。1 つの指標だけで決めると外れやすいので、複数の条件が同時にそろったときだけ「エントリー候補」にする作戦です（<code>python/trading/rules/risk_management.py</code>）。下のチェックを付けたり外したりして試してみてください。</p>
+  <div class="demo">
+    <div class="score" id="scoreForm">
+      <label for="s-trend"><input type="checkbox" id="s-trend" data-pt="2" checked><span>トレンドがそろっている（40 週平均より上で、平均も上向き）</span><span class="pt">+2</span></label>
+      <label for="s-pattern"><input type="checkbox" id="s-pattern" data-pt="2" checked><span>チャートパターンがある（W 底・逆三尊・フラッグ・トライアングル）</span><span class="pt">+2</span></label>
+      <label for="s-volume"><input type="checkbox" id="s-volume" data-pt="1"><span>出来高が 20 週平均より多い</span><span class="pt">+1</span></label>
+      <label for="s-rsi"><input type="checkbox" id="s-rsi" data-pt="1" checked><span>RSI が 40〜65 の範囲</span><span class="pt">+1</span></label>
+      <label for="s-macd"><input type="checkbox" id="s-macd" data-pt="1"><span>MACD がシグナル線より上</span><span class="pt">+1</span></label>
+    </div>
+    <div class="meter" aria-hidden="true"><div id="scoreBar"></div></div>
+    <p><span class="num" id="scoreNum">5</span> / 7 点 — <span class="verdict" id="scoreVerdict"></span></p>
+  </div>
+  <p class="col where">5 点以上でエントリー候補、4 点で様子見（監視）です。この基準の数字は設定ファイルにまとめてあり、Settings タブから変更案を作って、Simulation タブで過去のデータに当てはめて試せます（バックテスト）。</p>
+</section>
+
+<!-- 8 -->
+<section id="risk">
+  <div class="head"><span class="chapter">CHAPTER 8 · 確率と期待値</span><h2>損切りと利確の決め方 — ATR と期待値</h2></div>
+  <p class="col">買う前に「いくらまで下がったらあきらめるか（損切り）」と「いくらまで上がったら売るか（利確）」を決めておくのが、このアプリの考え方です。その幅は、その株がふだんどのくらい動くかに合わせて決めます。ふだんの動きの大きさを表すのが <b>ATR</b>（平均的な値幅）です。</p>
+  <div class="formula">
+    真の値幅 TR = max{ 高値 − 安値, | 高値 − 前の終値 |, | 安値 − 前の終値 | }　　ATR = TR の 14 期間の平均
+    <span class="note">前の日から窓をあけて（すき間をあけて）動いた分も含めるため、3 つのうち最大のものをとります。</span>
+  </div>
+  <div class="formula">
+    損切り = 買値 − 1.2 × ATR　　利確 = 買値 + 1.8 × ATR
+    <span class="note">失うかもしれない幅 1.2 ATR に対して、得られるかもしれない幅は 1.8 ATR です。比は 1.8 ÷ 1.2 = 1.5 になり、これを「リスクリワード比 1.5」と呼びます。</span>
+  </div>
+  <p class="col">ここで<b>期待値</b>を考えます。勝つ（利確に届く）確率を <i>p</i>、負ける（損切りに届く）確率を 1 − <i>p</i> とすると、1 回あたりの平均の損益は次のようになります。</p>
+  <div class="formula">
+    E = 1.8<i>p</i> − 1.2(1 − <i>p</i>) = 3.0<i>p</i> − 1.2　（単位は ATR）
+    <span class="note">E &gt; 0 になるのは <i>p</i> &gt; 0.4 のとき。つまり<b>勝率が 40% を超えれば、負けの方が多くても平均ではプラス</b>になる設計です。</span>
+  </div>
+
+  <div class="demo" aria-label="損切りと利確の計算">
+    <h3>計算してみよう</h3>
+    <div class="controls">
+      <label for="entry">買値 <input id="entry" type="range" min="500" max="5000" step="50" value="2000"><output id="entryOut">2000</output>円</label>
+      <label for="atr">ATR <input id="atr" type="range" min="10" max="300" step="5" value="80"><output id="atrOut">80</output>円</label>
+      <label for="winp">勝率 <i>p</i> <input id="winp" type="range" min="10" max="90" step="5" value="45"><output id="winpOut">45</output>%</label>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>項目</th><th>計算</th><th>値</th></tr></thead>
+        <tbody>
+          <tr><td>損切り</td><td>買値 − 1.2 × ATR</td><td class="num" id="slOut"></td></tr>
+          <tr><td>利確</td><td>買値 + 1.8 × ATR</td><td class="num" id="tpOut"></td></tr>
+          <tr><td>1 株あたりの期待値</td><td>1.8 × ATR × <i>p</i> − 1.2 × ATR × (1 − <i>p</i>)</td><td class="num" id="evOut"></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <p class="col where">もう一つ、時間のルールもあります。5 日たっても動かなければ見直し、10 日横ばいが続いたら撤退を考え、14 日を超えて持ち続けるなら手じまいを検討します（<code>TIME_STOP</code>）。予想どおりに動かない株にお金を置いたままにしないためです。</p>
+</section>
+
+<!-- 9 -->
+<section id="web">
+  <div class="head"><span class="chapter">CHAPTER 9</span><h2>Web アプリの技術</h2></div>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>役割</th><th>使っている技術</th><th>たとえると</th></tr></thead>
+      <tbody>
+        <tr><td>サーバー（裏方）</td><td>Python + FastAPI</td><td>注文を受けて料理を出す厨房。<code>/api/charts/list</code> のような住所（URL）ごとに担当の関数がある</td></tr>
+        <tr><td>画面（表側）</td><td>Vue.js + Tailwind CSS</td><td>お店のホール。サーバーから受け取ったデータ（JSON）を表やボタンに組み立てる</td></tr>
+        <tr><td>データベース</td><td>PostgreSQL（本番）/ SQLite（手元の開発用）</td><td>台帳。保有株、採点結果、ウォッチリストを表の形で保存する</td></tr>
+        <tr><td>ファイル置き場</td><td>Google Cloud Storage</td><td>倉庫。グラフ画像と保有株の CSV を置く</td></tr>
+        <tr><td>サーバーを動かす場所</td><td>Google Cloud（Cloud Run / GCE）、Docker</td><td>貸し店舗。使った分だけ料金がかかり、しばらく使わないと眠る</td></tr>
+        <tr><td>見守り</td><td>Cloud Logging / Monitoring と System Monitor 画面</td><td>防犯カメラと日報。エラーや CPU の使い方をまとめて表示する</td></tr>
+        <tr><td>AI との連携</td><td>MCP サーバー</td><td>AI アシスタントがウォッチリストやメモを読み書きするための窓口</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="col">サーバーがしばらく使われないと眠る仕組みなので、最初に開いたときは起きるまで少し待ちます。そのため、起動の準備（データベースの準備など）は画面の表示と同時に裏で進め、待っている間は「起動中」と表示するようにしています。30 秒たっても応答がなければ「再試行」ボタンを出します。</p>
+  <p class="col">ブラウザが 1 つの画面を表示するまでの流れは「HTML をもらう → CSS と JavaScript をもらう → JavaScript が API にデータを頼む → 届いたら表を作る」の順です。画面の一覧の並び順（保有中 → 次回購入 → 売却予定 → 監視中 → 除外）も、サーバーが持っている定義をもとに JavaScript が並べ替えています。</p>
+</section>
+
+<!-- 10 -->
+<section id="security">
+  <div class="head"><span class="chapter">CHAPTER 10 · 関数と整数</span><h2>安全のしくみ — パスワードは保存しない</h2></div>
+  <p class="col">このアプリは管理者だけが使うので、パスワードでログインします。ただし、<b>パスワードそのものはどこにも保存しません</b>。代わりに保存するのは、パスワードを「ハッシュ関数」に通した結果です。</p>
+  <div class="formula">
+    保存する値 = <i>H</i>( パスワード, ソルト ) を 390,000 回くり返したもの
+    <span class="note"><i>H</i> は SHA-256 というハッシュ関数です（PBKDF2 という方式）。入力が 1 文字違うだけで出力がまったく別物になり、出力から入力を逆算することは事実上できません。ソルトはランダムな文字列で、同じパスワードでも保存する値が変わるようにするためのものです。</span>
+  </div>
+  <p class="col">ログインのときは、入力されたパスワードを同じように計算し、保存してある値と一致するかを比べます。39 万回もくり返すのは、わざと計算を重くするためです。正しい人が 1 回試すだけなら一瞬ですが、パスワードを総当たりで当てようとする攻撃者には、何億回もの重い計算を強いることになります。</p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>しくみ</th><th>何を防ぐか</th></tr></thead>
+      <tbody>
+        <tr><td>ログイン状態を、署名つきの Cookie（HMAC）で覚える。有効期限は 12 時間</td><td>Cookie の中身を書き換えてなりすますこと。秘密の鍵がないと正しい署名が作れない</td></tr>
+        <tr><td>5 回まちがえたら 15 分ロック</td><td>パスワードの総当たり</td></tr>
+        <tr><td>公開してよい道（ログイン画面など 5 つ）以外は、すべてログイン必須</td><td>新しい画面を追加したときに、保護をかけ忘れること</td></tr>
+        <tr><td>画面に出すログの <code>token=…</code> や <code>password=…</code> を <code>***</code> に置き換える</td><td>System Monitor の画面から秘密の値が漏れること</td></tr>
+        <tr><td>本番でパスワードの設定がなければ、アプリが起動しない</td><td>設定し忘れたまま、誰でも入れる状態で公開されること</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="aside col">「失敗したら安全な側に倒れる」設計を<b>フェイルクローズ</b>といいます。たとえば鍵が壊れたら、ドアが開きっぱなしになるのではなく、閉まったままになるようにしておく考え方です。</p>
+</section>
+
+<footer>
+  <span>このページは <code>Docs/HOW_IT_WORKS.html</code> です。ブラウザで直接開けば読めます。インターネット接続は不要です。</span>
+  <span>数値は 2026 年 10 月時点の設定ファイル（<code>python/trading/rules/</code>、<code>python/web/auth.py</code>）に合わせています。設定を変えた場合は、このページの数値も見直してください。</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // --- 架空の値動き (乱数の種を固定したランダムウォーク) ---------------------
+  function makeRandom(seed) {
+    let s = seed >>> 0;
+    return function () {
+      s = (s * 1664525 + 1013904223) >>> 0;
+      return s / 4294967296;
+    };
+  }
+  function makePrices(seed, days) {
+    const rand = makeRandom(seed);
+    const prices = [];
+    let p = 2000, drift = 0;
+    for (let i = 0; i < days; i++) {
+      if (i % 30 === 0) drift = (rand() - 0.45) * 8;   // ときどき流れが変わる
+      const shock = (rand() + rand() + rand() - 1.5) * 28; // 正規分布に近い揺れ
+      p = Math.max(200, p + drift + shock);
+      prices.push(p);
+    }
+    return prices;
+  }
+
+  // --- 計算 (アプリの python/utils/indicators.py と同じ考え方) ---------------
+  function movingStats(values, n) {
+    return values.map(function (_, i) {
+      if (i < n - 1) return null;
+      const win = values.slice(i - n + 1, i + 1);
+      const mean = win.reduce(function (a, b) { return a + b; }, 0) / n;
+      const variance = win.reduce(function (a, b) { return a + (b - mean) * (b - mean); }, 0) / (n - 1);
+      return { mean: mean, sd: Math.sqrt(variance) };
+    });
+  }
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const chart = document.getElementById("bbChart");
+  const nInput = document.getElementById("n");
+  const kInput = document.getElementById("k");
+  const readout = document.getElementById("bbReadout");
+  let seed = 7;
+  let prices = makePrices(seed, 160);
+
+  function el(name, attrs) {
+    const node = document.createElementNS(svgNS, name);
+    Object.keys(attrs).forEach(function (key) { node.setAttribute(key, attrs[key]); });
+    return node;
+  }
+
+  function drawBands() {
+    const n = Number(nInput.value);
+    const k = Number(kInput.value);
+    document.getElementById("nOut").textContent = n;
+    document.getElementById("kOut").textContent = k.toFixed(1);
+
+    const stats = movingStats(prices, n);
+    const W = 900, H = 300, padL = 52, padR = 12, padT = 12, padB = 26;
+    const lows = prices.slice(), highs = prices.slice();
+    stats.forEach(function (st) {
+      if (st) { lows.push(st.mean - k * st.sd); highs.push(st.mean + k * st.sd); }
+    });
+    const min = Math.min.apply(null, lows), max = Math.max.apply(null, highs);
+    const x = function (i) { return padL + (i / (prices.length - 1)) * (W - padL - padR); };
+    const y = function (v) { return padT + (1 - (v - min) / (max - min)) * (H - padT - padB); };
+
+    while (chart.firstChild) chart.removeChild(chart.firstChild);
+
+    // 目盛り
+    const ticks = 4;
+    for (let t = 0; t <= ticks; t++) {
+      const v = min + (max - min) * (t / ticks);
+      chart.appendChild(el("line", { x1: padL, x2: W - padR, y1: y(v), y2: y(v), stroke: "var(--line)", "stroke-width": 1 }));
+      const label = el("text", { x: padL - 8, y: y(v) + 4, "text-anchor": "end", "font-size": 11, fill: "var(--muted)" });
+      label.textContent = Math.round(v).toLocaleString("ja-JP");
+      chart.appendChild(label);
+    }
+    const dayLabel = el("text", { x: W - padR, y: H - 6, "text-anchor": "end", "font-size": 11, fill: "var(--muted)" });
+    dayLabel.textContent = prices.length + " 日分 →";
+    chart.appendChild(dayLabel);
+
+    // 帯
+    let upper = "", lower = "", mid = "";
+    stats.forEach(function (st, i) {
+      if (!st) return;
+      const cmd = upper ? "L" : "M";
+      upper += cmd + x(i).toFixed(1) + " " + y(st.mean + k * st.sd).toFixed(1) + " ";
+      mid += (mid ? "L" : "M") + x(i).toFixed(1) + " " + y(st.mean).toFixed(1) + " ";
+    });
+    for (let i = stats.length - 1; i >= 0; i--) {
+      const st = stats[i];
+      if (st) lower += "L" + x(i).toFixed(1) + " " + y(st.mean - k * st.sd).toFixed(1) + " ";
+    }
+    chart.appendChild(el("path", { d: upper + lower + "Z", fill: "var(--band)", stroke: "none" }));
+    chart.appendChild(el("path", { d: mid, fill: "none", stroke: "var(--accent)", "stroke-width": 2 }));
+
+    // 終値
+    let line = "";
+    prices.forEach(function (p, i) { line += (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p).toFixed(1) + " "; });
+    chart.appendChild(el("path", { d: line, fill: "none", stroke: "var(--ink)", "stroke-width": 1.4 }));
+
+    // 帯の外に出た日
+    let outside = 0, counted = 0;
+    stats.forEach(function (st, i) {
+      if (!st) return;
+      counted++;
+      const p = prices[i];
+      if (p > st.mean + k * st.sd || p < st.mean - k * st.sd) {
+        outside++;
+        chart.appendChild(el("circle", { cx: x(i), cy: y(p), r: 3.5, fill: "var(--down)" }));
+      }
+    });
+    const pct = counted ? (outside / counted) * 100 : 0;
+    readout.textContent = "帯の外に出た日: " + outside + " / " + counted + " 日（" + pct.toFixed(1) + "%）";
+  }
+
+  nInput.addEventListener("input", drawBands);
+  kInput.addEventListener("input", drawBands);
+  document.getElementById("reseed").addEventListener("click", function () {
+    seed += 13;
+    prices = makePrices(seed, 160);
+    drawBands();
+  });
+  drawBands();
+
+  // --- 7 点満点の採点 (SCORE_THRESHOLD_ENTRY = 5, SCORE_THRESHOLD_WATCH = 4) ---
+  const boxes = Array.prototype.slice.call(document.querySelectorAll("#scoreForm input"));
+  function updateScore() {
+    const score = boxes.reduce(function (sum, box) { return sum + (box.checked ? Number(box.dataset.pt) : 0); }, 0);
+    document.getElementById("scoreNum").textContent = score;
+    document.getElementById("scoreBar").style.width = (score / 7) * 100 + "%";
+    const verdict = document.getElementById("scoreVerdict");
+    if (score >= 5) { verdict.textContent = "エントリー候補"; verdict.style.color = "var(--up)"; }
+    else if (score >= 4) { verdict.textContent = "様子見（監視）"; verdict.style.color = "var(--accent)"; }
+    else { verdict.textContent = "見送り"; verdict.style.color = "var(--muted)"; }
+  }
+  boxes.forEach(function (box) { box.addEventListener("change", updateScore); });
+  updateScore();
+
+  // --- 損切り・利確・期待値 (ATR_STOP_MULTIPLIER = 1.2, ATR_TP_MULTIPLIER = 1.8) ---
+  const yen = function (v) { return Math.round(v).toLocaleString("ja-JP") + " 円"; };
+  function updateRisk() {
+    const entry = Number(document.getElementById("entry").value);
+    const atr = Number(document.getElementById("atr").value);
+    const p = Number(document.getElementById("winp").value) / 100;
+    document.getElementById("entryOut").textContent = entry;
+    document.getElementById("atrOut").textContent = atr;
+    document.getElementById("winpOut").textContent = Math.round(p * 100);
+    document.getElementById("slOut").textContent = yen(entry - 1.2 * atr);
+    document.getElementById("tpOut").textContent = yen(entry + 1.8 * atr);
+    const ev = 1.8 * atr * p - 1.2 * atr * (1 - p);
+    const evCell = document.getElementById("evOut");
+    evCell.textContent = (ev >= 0 ? "+" : "−") + yen(Math.abs(ev));
+    evCell.style.color = ev >= 0 ? "var(--up)" : "var(--down)";
+  }
+  ["entry", "atr", "winp"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", updateRisk);
+  });
+  updateRisk();
+})();
+</script>
+</body>
+</html>
