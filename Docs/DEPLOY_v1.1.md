@@ -7,7 +7,7 @@
 | 部分 | 動いている場所 | `main` へ push したときに起きること |
 | --- | --- | --- |
 | Web UI | Render | Render のダッシュボードで追跡ブランチが `main` なら自動デプロイ (`render.yaml` の `autoDeploy: true`) |
-| 日次バッチ・DB | GCE | `.github/workflows/deploy-gce.yml` が SSH で `git pull` → `pip install` |
+| 日次バッチ・DB | GCE | `.github/workflows/deploy-gce.yml` が IAP 経由の SSH で `git pull` → `pip install` (設定: `Docs/DEPLOY_GCE.md`) |
 | (旧) Cloud Run | Cloud Run | `.github/workflows/google-cloudrun-docker.yml` がテスト → デプロイ。lint の既存エラーと既知の失敗テスト (PRIDEV-479) でテストが落ちるため、デプロイ段階までは進まない |
 
 ## 今回のデプロイで気をつけること
@@ -62,7 +62,8 @@ mkdir -p ~/stock-private-backup/manual && cp -p data/my_stock*.csv ~/stock-priva
 psql -h localhost -U <DBユーザー> -d <DB名> -c "select version_num from alembic_version;" -c "\dt"
 ```
 
-- [ ] リポジトリの持ち主 (cron と自動デプロイを動かすユーザー) と、GitHub の Secrets `GCE_USERNAME` が一致していることを確認する。
+- [ ] リポジトリの持ち主 (cron と自動デプロイを動かすユーザー) と、GitHub の Secrets `GCE_USERNAME` が一致していることを確認する
+      (自動デプロイの設定は `Docs/DEPLOY_GCE.md`)。
       別のユーザーで SSH した場合は、`sudo -u <持ち主>` を付けて実行する
 
 ### GCS

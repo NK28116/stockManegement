@@ -20,6 +20,7 @@
 | [SYSTEM_MONITOR_E2E.md](SYSTEM_MONITOR_E2E.md) | System Monitor の E2E テスト |
 | [RELEASE_v1.1.md](RELEASE_v1.1.md) | v1.1 のリリースノートとデプロイ前の作業 |
 | [DEPLOY_v1.1.md](DEPLOY_v1.1.md) | v1.1 を本番に出す手順 (チェックリスト・切り戻し) |
+| [DEPLOY_GCE.md](DEPLOY_GCE.md) | GCE への自動デプロイ (Workload Identity + IAP) のしくみと初回設定 |
 | [GCP_Migration_Guide.md](GCP_Migration_Guide.md) / [HowTopostgreSQLByORM.md](HowTopostgreSQLByORM.md) | GCP 移行と PostgreSQL 操作の手順 |
 
 セキュリティ上の注意は [`../SECURITY.md`](../SECURITY.md)、第三者ライセンスは [`../THIRD_PARTY_NOTICES.md`](../THIRD_PARTY_NOTICES.md) を参照してください。
