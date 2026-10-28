@@ -130,5 +130,14 @@ def test_normalize_returns_none_for_unknown_values():
     assert stock_status.normalize(None) is None
 
 
-def test_normalize_tolerates_broken_quantity():
-    assert stock_status.normalize("売却（利益確定）", "not-a-number") == StockStatus.SOLD_PROFIT
+@pytest.mark.parametrize("quantity", [None, "", "  ", "not-a-number", float("nan")])
+def test_legacy_sell_label_with_unknown_quantity_is_unresolved(quantity):
+    """数量が欠損・非数値なら売却済みと推測せず、手動確認へ回す (PRIDEV-525)。"""
+    assert stock_status.normalize("売却（利益確定）", quantity) is None
+    assert stock_status.normalize("売却（損切り）", quantity) is None
+    assert stock_status.is_held("売却（利益確定）", quantity) is False
+
+
+def test_legacy_sell_label_accepts_numeric_strings():
+    assert stock_status.normalize("売却（利益確定）", "0") == StockStatus.SOLD_PROFIT
+    assert stock_status.normalize("売却（損切り）", " 2 ") == StockStatus.SELL_PLANNED_LOSS

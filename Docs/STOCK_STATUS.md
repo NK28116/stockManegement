@@ -52,17 +52,40 @@ UI は `GET /api/choices` からこの定義を取得する。**テンプレー�
 ## データ移行手順
 
 旧データは `status` へ日本語の表示文字列を保存していた。英字キーへ移行する。
+移行対象は 3 か所ある。
+
+| 対象 | 誰が読むか | オプション |
+| --- | --- | --- |
+| `data/my_stock.csv` / `data/my_stock_local.csv` | ローカル開発・バッチ | (既定) |
+| GCS `gs://$GCS_BUCKET_NAME/my_stock.csv` | **本番のチャート一覧** | `--gcs` |
+| `portfolio` テーブル | シグナル API ほか | `--db` |
+
+### 実行順 (本番)
 
 ```bash
+# 0. 新しいアプリをデプロイする
+#    チャート一覧 API は旧ラベルを英字キーへ正規化して返すため、
+#    移行前でも誤った保有表示にはならない (解決できない値は未保有扱い)。
+
 # 1. 差分を確認する (既定は dry-run。何も書き換えない)
-PYTHONPATH=. python scripts/migrate_stock_status.py
+PYTHONPATH=. python scripts/migrate_stock_status.py --gcs --db
 
-# 2. CSV を移行する (.bak-YYYYmmddHHMMSS を自動作成)
-PYTHONPATH=. python scripts/migrate_stock_status.py --apply
+# 2. 終了コード 0 (解決できない値なし) を確認してから適用する
+PYTHONPATH=. python scripts/migrate_stock_status.py --apply --gcs --db
 
-# 3. portfolio テーブルも移行する
-PYTHONPATH=. python scripts/migrate_stock_status.py --apply --db
+# 3. 再度 dry-run し「変更 0 件」になったことを確認する
+PYTHONPATH=. python scripts/migrate_stock_status.py --gcs --db
 ```
+
+- GCS は `GCS_BUCKET_NAME` (または `--gcs-bucket`) のバケットを対象にする。
+  実行者には対象バケットへの読み書き権限が必要
+- 適用前のファイルは CSV なら `<名前>.bak-YYYYmmddHHMMSS`、GCS なら
+  `backups/my_stock.csv.bak-YYYYmmddHHMMSS` に保存される。復元は
+  `gsutil cp gs://<bucket>/backups/my_stock.csv.bak-<日時> gs://<bucket>/my_stock.csv`
+- GCS は読み込んだ時点の generation を条件に上書きする。移行中に他から更新されて
+  いれば上書きせずに失敗するので、再度 dry-run からやり直す
+- `portfolio` は主キー `id` 単位で 1 行ずつ、1 トランザクションで更新する。
+  同じ `code` の行が複数あっても互いに上書きしない
 
 ### 「売却（…）」の解決ルール
 
@@ -74,14 +97,18 @@ PYTHONPATH=. python scripts/migrate_stock_status.py --apply --db
 | 売却（利益確定） | 0 | `SOLD_PROFIT` |
 | 売却（損切り） | > 0 | `SELL_PLANNED_LOSS` |
 | 売却（損切り） | 0 | `SOLD_LOSS` |
+| 売却（…） | 欠損・非数値 | **解決できない値** (推測しない) |
 
-解決できない値 (例: 利確/損切りの区別が無い「売却」) は**書き換えず**に報告し、
-終了コード 1 を返す。手動で確認してから再実行すること。
+解決できない値 (例: 数量が空の売却ラベル、利確/損切りの区別が無い「売却」) は報告し、
+終了コード 1 を返す。**1 件でもあれば `--apply` でもどの対象も書き換えない**
+(CSV / GCS / DB の一部だけが移行された状態を作らない)。手動で修正してから再実行すること。
 
 移行は冪等で、`UPDATE` のみを行う (テーブルの再作成・行削除はしない)。
 
 ### 移行前後の互換性
 
-`stock_status.normalize()` が旧ラベルを解釈するため、未移行のデータが混ざっていても
-画面・保有判定は動作する。`refresh_prices()` の有効ステータス判定も旧ラベルを
-許容しているため、移行前に実行しても行が削除されることはない。
+- チャート一覧 API (`/api/charts/list`) は旧ラベルを英字キーへ正規化して返す。
+  解決できない値は元の文字列のまま返し、画面では未保有扱いになる
+- `stock_status.normalize()` / `is_held()` も旧ラベルを解釈する
+- `refresh_prices()` の有効ステータス判定は旧ラベルを許容しているため、
+  移行前に実行しても行が削除されることはない

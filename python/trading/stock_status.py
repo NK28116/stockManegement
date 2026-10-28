@@ -128,6 +128,7 @@ def normalize(status: Optional[str], quantity: Optional[float] = None) -> Option
         status: 英字キー、または旧データの日本語ラベル。
         quantity: 旧ラベル「売却（…）」の解決に使う保有数量。
             数量が残っていれば売却予定、0 以下なら売却済みとみなす。
+            欠損・非数値の場合は売却済みと推測せず None を返す (PRIDEV-525)。
     """
     if status is None:
         return None
@@ -140,9 +141,22 @@ def normalize(status: Optional[str], quantity: Optional[float] = None) -> Option
         return LEGACY_STATUS_LABELS[raw]
     if raw in _LEGACY_SELL_LABELS:
         planned, sold = _LEGACY_SELL_LABELS[raw]
-        try:
-            remaining = float(quantity) if quantity is not None else 0.0
-        except (TypeError, ValueError):
-            remaining = 0.0
+        remaining = _parse_quantity(quantity)
+        if remaining is None:
+            # 数量が分からなければ売却予定か売却済みかを確定できない
+            return None
         return planned if remaining > 0 else sold
     return None
+
+
+def _parse_quantity(quantity: object) -> Optional[float]:
+    """保有数量を数値へ変換する。欠損・非数値なら None。"""
+    if quantity is None:
+        return None
+    try:
+        value = float(str(quantity).strip())
+    except (TypeError, ValueError):
+        return None
+    if value != value:  # NaN (pandas の欠損値)
+        return None
+    return value

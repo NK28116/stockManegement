@@ -37,8 +37,9 @@ PRIDEV-482 / 484 / 485 / 486 / 487 (独立)
 
 | 環境変数 | チケット | 必須 | 備考 |
 | --- | --- | --- | --- |
-| `APP_PASSWORD_HASH` | 481 | ○ | 未設定だと**認証が無効になる**。生成は `python scripts/hash_password.py` |
-| `AUTH_SECRET_KEY` | 481 | ○ | 未設定だと再起動でログアウトされる |
+| `APP_PASSWORD_HASH` | 481 | ○ | 本番 (`APP_ENV` が開発値以外) で未設定・不正なら**起動しない**。生成は `python scripts/hash_password.py` |
+| `AUTH_SECRET_KEY` | 481 | ○ | 本番で未設定・32 文字未満なら**起動しない** |
+| `AUTH_TRUSTED_PROXY_COUNT` | 481 | △ | Render / Cloud Run 配下では `1`。ログイン試行制限のクライアント識別に使う |
 | `GCP_PROJECT_ID` | 490 | ○ | 未設定だと System Monitor は degraded 表示になる |
 
 必要な IAM ロール: `roles/logging.viewer` / `roles/monitoring.viewer` (書き込み権限は不要)。
@@ -64,8 +65,24 @@ No.4-6 は仕様が確定・拡張された。
 
 | 作業 | 内容 |
 | --- | --- |
-| `APP_PASSWORD_HASH` の設定 | **未設定** (シート No.18)。未設定のままだと認証が無効のままデプロイされる |
-| `portfolio` テーブルの移行 | `python scripts/migrate_stock_status.py --apply --db` (CSV は適用済み) |
+| `APP_PASSWORD_HASH` / `AUTH_SECRET_KEY` の設定 | **未設定** (シート No.18)。本番では未設定だと起動に失敗する (フェイルクローズ / PRIDEV-521) |
+| ステータス移行 (GCS / DB) | `python scripts/migrate_stock_status.py --gcs --db` で確認後 `--apply --gcs --db`。手順は `Docs/STOCK_STATUS.md` |
+
+## レビュー指摘の反映
+
+| チケット | 内容 |
+| --- | --- |
+| PRIDEV-518〜523 | 認証: 全ルート既定保護 / next の XSS 対策 / クエリ復元 / 本番フェイルクローズ / 試行制限 / 平文フォールバック削除 |
+| PRIDEV-524 | 本番 GCS の `my_stock.csv` を移行対象に追加 (`--gcs`)。API 側でも旧値を正規化 |
+| PRIDEV-525 | `portfolio` を主キー単位で更新。数量不明は推測しない。未解決があれば全対象を書き換えない |
+| PRIDEV-526 | 並び順を `choice.key` から生成し、応答順の競合でも崩れないようにした |
+| PRIDEV-527 | 孤立した `v-else` を解消。実ブラウザ (Playwright) で代表幅のレイアウトを検証 |
+
+## 画面の静的アセット
+
+Tailwind CSS / Vue は CDN ではなく `python/web/static/` から配信する (オフライン描画・
+起動時の外部取得待ち削減・実ブラウザテストのため)。テンプレートで新しい Tailwind クラスを
+使ったら `make assets` (Node.js が必要) で再生成し、成果物をコミットする。
 
 ## 関連ドキュメント
 
