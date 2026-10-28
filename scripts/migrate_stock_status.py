@@ -29,7 +29,6 @@ from __future__ import annotations
 import argparse
 import csv
 import io
-import os
 import shutil
 import sys
 from dataclasses import dataclass, field
@@ -276,10 +275,15 @@ def run_migration(sources: Sequence[object], report: MigrationReport, apply: boo
 def _gcs_bucket(bucket_name: Optional[str]):
     from google.cloud import storage
 
-    name = bucket_name or os.getenv("GCS_BUCKET_NAME")
-    if not name:
-        raise SystemExit("--gcs には GCS_BUCKET_NAME または --gcs-bucket の指定が必要です")
-    return storage.Client().bucket(name)
+    from python.utils.bucket import get_bucket_name
+
+    if not bucket_name:
+        try:
+            # 環境変数に無ければ .env の GCS_BUCKET_NAME を使う (日次バッチと同じ取得方法)
+            bucket_name = get_bucket_name()
+        except RuntimeError:
+            raise SystemExit("--gcs には GCS_BUCKET_NAME (環境変数または .env) か --gcs-bucket の指定が必要です")
+    return storage.Client().bucket(bucket_name)
 
 
 def main(argv: Optional[Sequence[str]] = None, *, gcs_bucket=None, db_engine=None) -> int:
@@ -290,7 +294,7 @@ def main(argv: Optional[Sequence[str]] = None, *, gcs_bucket=None, db_engine=Non
     parser.add_argument(
         "--gcs", action="store_true", help="本番画面が参照する GCS 上の CSV も移行する"
     )
-    parser.add_argument("--gcs-bucket", help="対象バケット (既定: 環境変数 GCS_BUCKET_NAME)")
+    parser.add_argument("--gcs-bucket", help="対象バケット (既定: 環境変数または .env の GCS_BUCKET_NAME)")
     parser.add_argument(
         "--gcs-object", default=DEFAULT_GCS_OBJECT, help=f"対象オブジェクト (既定: {DEFAULT_GCS_OBJECT})"
     )
