@@ -310,3 +310,21 @@ def test_order_is_correct_when_charts_respond_before_choices(browser, base_url):
         assert rows[-1] == CHARTS[-1]["code"]
     finally:
         context.close()
+
+
+# --- ダッシュボード ⇔ System Monitor の導線 -----------------------------------
+@pytest.mark.parametrize("width", [375, 1440])
+def test_dashboard_and_system_monitor_link_to_each_other(browser, base_url, width):
+    context, page, _ = _open_dashboard(browser, base_url, width)
+    try:
+        assert page.get_by_role("button", name="ログアウト").is_visible()
+
+        page.click("a[data-nav=system-monitor]")
+        page.wait_for_url(f"{base_url}/system-monitor")
+        assert page.get_by_role("heading", name="System Monitor").is_visible()
+
+        page.click("a[data-nav=dashboard]")
+        page.wait_for_url(f"{base_url}/")
+        page.wait_for_selector(".table-scroll table tbody tr", timeout=10000)
+    finally:
+        context.close()

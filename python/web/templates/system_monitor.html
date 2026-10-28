@@ -35,6 +35,8 @@
                 <p class="text-sm text-gray-500">最終更新: {{ checkedAtText }}</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
+                <a href="/" data-nav="dashboard"
+                    class="px-4 py-2 rounded bg-gray-200 text-gray-700 text-sm hover:bg-gray-300">← Dashboard</a>
                 <button @click="reload" :disabled="loading"
                     class="px-4 py-2 rounded bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-50">
                     {{ loading ? '取得中...' : '再取得' }}
