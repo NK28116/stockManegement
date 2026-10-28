@@ -42,6 +42,15 @@ PRIDEV-482 / 484 / 485 / 486 / 487 (独立)
 | `AUTH_TRUSTED_PROXY_COUNT` | 481 | △ | Render / Cloud Run 配下では `1`。ログイン試行制限のクライアント識別に使う |
 | `GCP_PROJECT_ID` | 490 | ○ | 未設定だと System Monitor は degraded 表示になる |
 
+GCS のバケット名・DB のホスト・GCP プロジェクト ID はリポジトリに書かず、各環境で設定する
+(公開リポジトリのため)。
+
+| 環境 | 設定場所 |
+| --- | --- |
+| Render | ダッシュボードの環境変数 `GCS_BUCKET_NAME` / `CLOUD_PG_HOST` / `GOOGLE_CLOUD_PROJECT` |
+| GCE (cron) | プロジェクト直下の `.env` に `GCS_BUCKET_NAME` (未設定なら `cron_daily.sh` はエラーで止まる) |
+| Cloud Run (GitHub Actions) | リポジトリの Actions variables に `GCS_BUCKET_NAME` |
+
 必要な IAM ロール: `roles/logging.viewer` / `roles/monitoring.viewer` (書き込み権限は不要)。
 
 DB は適用後に `make db-check` で整合を確認する。

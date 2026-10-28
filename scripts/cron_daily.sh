@@ -9,7 +9,7 @@
 # ===================================================================
 set -uo pipefail
 
-PROJECT_ROOT="/home/niwa_kazuhiro/stockManegement"
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_ROOT" || exit 1
 
 # shellcheck disable=SC1091
@@ -18,7 +18,12 @@ source venv/bin/activate
 mkdir -p log
 LOG="$PROJECT_ROOT/log/cron_daily.log"
 
-BUCKET="${GCS_BUCKET_NAME:-stock-management-494305-prod}"
+# バケット名はリポジトリに書かず、環境変数または .env の GCS_BUCKET_NAME で指定する
+BUCKET="${GCS_BUCKET_NAME:-$(grep -E '^GCS_BUCKET_NAME=' .env 2>/dev/null | tail -n 1 | cut -d= -f2- | sed 's/[[:space:]]#.*$//' | tr -d "\"' ")}"
+if [ -z "$BUCKET" ]; then
+    echo "$(date '+%Y-%m-%d %H:%M:%S') ERROR: GCS_BUCKET_NAME が未設定です (.env に設定してください)" >> "$LOG"
+    exit 1
+fi
 
 {
     echo "==================== $(date '+%Y-%m-%d %H:%M:%S') cron_daily START ===================="

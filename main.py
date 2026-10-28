@@ -108,9 +108,10 @@ def run_daily_task(is_test_mode: bool = False):
         logger.info("全銘柄チャート一括生成が実行されました。")
 
         # 4. レポートファイルをCloud Storageにアップロード
-        # バケット名はscripts/send_report.shから取得
-        # バケット名は環境変数から取得（デフォルトは本番用）
-        GCS_BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "stock-management-494305-prod")
+        # バケット名は環境変数 (または .env) の GCS_BUCKET_NAME から取得する
+        from python.utils.bucket import get_bucket_name
+
+        GCS_BUCKET_NAME = get_bucket_name()
 
         # サマリーレポートのアップロード
         summary_report_dir = config.root_dir / "data" / "report" / "daily" / "summary"

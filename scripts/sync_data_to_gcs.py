@@ -3,6 +3,11 @@ import sys
 import glob
 import subprocess
 
+# `python scripts/sync_data_to_gcs.py` で直接実行してもパッケージを読めるようにする
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from python.utils.bucket import get_bucket_name  # noqa: E402
+
 
 def run_command(cmd):
     """Executes a shell command."""
@@ -29,7 +34,7 @@ def sync_to_gcs(period: str = "1mo"):
     生成物は period サブディレクトリ配下に出るため、glob も period を含める。
     同期前に GCS 側の古いチャートをクリアし、現ポートフォリオ分のみ残す。
     """
-    bucket_name = os.getenv("GCS_BUCKET_NAME", "stock-management-494305-prod")
+    bucket_name = get_bucket_name()
     print(f"Starting sync to GCS bucket: {bucket_name} (period={period})")
 
     # 古いチャートを一掃してから現行分をアップロード

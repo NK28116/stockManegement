@@ -6,7 +6,8 @@
 #   4. GCP SA キーを Secret File として登録（後述）
 #
 # 機密値の扱い:
-#   - value を書いた変数はリポジトリにコミットされます（非機密のみ）
+#   - value を書いた変数はリポジトリにコミットされます（非機密のみ。公開リポジトリのため
+#     IP アドレス・プロジェクト ID・バケット名などインフラの識別子も書かない）
 #   - sync: false の変数は Render ダッシュボードで個別入力（機密値はこちら）
 #   - GCS/Secret Manager 用の SA キーは Secret File として
 #     /etc/secrets/gcp-sa-key.json にマウントし、
@@ -27,8 +28,8 @@ services:
         value: cloud
       - key: DB_TYPE
         value: postgresql
-      - key: CLOUD_PG_HOST
-        value: "34.68.179.219"     # GCE stock-manage-support の外部IP
+      - key: CLOUD_PG_HOST        # DB サーバーのホスト (ダッシュボードで入力)
+        sync: false
       - key: CLOUD_PG_PORT
         value: "5432"
       - key: CLOUD_PG_SSLMODE
@@ -46,9 +47,9 @@ services:
 
       # --- GCP / GCS ---
       - key: GOOGLE_CLOUD_PROJECT
-        value: stockmanagement-494305
+        sync: false
       - key: GCS_BUCKET_NAME
-        value: stock-management-494305-prod
+        sync: false
       - key: GOOGLE_APPLICATION_CREDENTIALS
         value: /etc/secrets/gcp-sa-key.json
 

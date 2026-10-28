@@ -42,9 +42,17 @@ mcp/
 # API設定ファイル
 data/API/kabu_STATION_API.yaml
 
-# 個人情報/取引履歴/ポートフォリオデータ
+# 個人情報/取引履歴/ポートフォリオデータ (公開リポジトリには含めない。形式は data/my_stock.sample.csv を参照)
+data/my_stock*.csv
+!data/my_stock.sample.csv
+data/latest_indicators.json
 data/quarterly_analysis.csv
 data/practice/*.csv
+*.dump
+
+# 生成物 (保有銘柄が分かるチャート画像・サマリー)
+data/chartImg/
+data/plots/
 
 # macOSメタデータファイル
 .DS_Store

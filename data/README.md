@@ -4,6 +4,11 @@
 
 ## ファイル一覧/サブディレクトリ
 
+- `my_stock.sample.csv`:
+  ポートフォリオ CSV の形式を示す架空のサンプルです。ローカルでは `my_stock_local.csv` にコピーして使います。
+  実際の保有データ (`my_stock*.csv`)、生成したチャート画像 (`chartImg/`, `plots/`)、
+  `latest_indicators.json` は個人の取引内容が分かるため、リポジトリに含めません (`.gitignore` 対象)。
+
 - `quarterly_analysis.csv`:
   四半期ごとの分析結果を保存するCSVファイルです。
 

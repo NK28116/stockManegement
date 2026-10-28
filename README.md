@@ -193,7 +193,15 @@ graph TD
     docker-compose up -d db
     ```
 
-4. Web UIの起動
+4. ポートフォリオ CSV の用意
+
+    実際の保有データはリポジトリに含めていません。形式はサンプルを参考にしてください。
+
+    ```bash
+    cp data/my_stock.sample.csv data/my_stock_local.csv
+    ```
+
+5. Web UIの起動
 
     ```bash
     uvicorn python.web.app:app --reload --port 8888

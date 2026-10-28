@@ -16,8 +16,8 @@
 
 set -euo pipefail
 
-PROJECT_ID="${PROJECT_ID:?PROJECT_ID is required (e.g. export PROJECT_ID=stockmanagement-494305)}"
-BUCKET_NAME="${BUCKET_NAME:?BUCKET_NAME is required (e.g. export BUCKET_NAME=stock-management-494305-prod)}"
+PROJECT_ID="${PROJECT_ID:?PROJECT_ID is required (e.g. export PROJECT_ID=my-project-id)}"
+BUCKET_NAME="${BUCKET_NAME:?BUCKET_NAME is required (e.g. export BUCKET_NAME=my-bucket-name)}"
 WEB_SA_NAME="${SERVICE_ACCOUNT_NAME:-render-web-ui}"
 
 WEB_SA="${WEB_SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"

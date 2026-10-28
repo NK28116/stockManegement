@@ -20,7 +20,11 @@ from python.trading import stock_status  # noqa: E402
 from python.web import constants  # noqa: E402
 
 TEMPLATE_PATH = ROOT / "python" / "web" / "templates" / "index.html"
-CSV_PATHS = (ROOT / "data" / "my_stock.csv", ROOT / "data" / "my_stock_local.csv")
+CSV_PATHS = (
+    ROOT / "data" / "my_stock.sample.csv",
+    ROOT / "data" / "my_stock.csv",
+    ROOT / "data" / "my_stock_local.csv",
+)
 
 # ユーザー確認済みの purpose (シート No.4 の回答)
 CONFIRMED_PURPOSES = {
