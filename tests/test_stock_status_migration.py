@@ -349,3 +349,22 @@ def test_gcs_concurrent_update_is_not_overwritten(tmp_path, gcs_bucket):
     with pytest.raises(RuntimeError):
         source.write(rows, rows)
     assert gcs_bucket.objects["my_stock.csv"][0] == b"code,status\n"
+
+
+def test_gcs_bucket_name_falls_back_to_env(monkeypatch):
+    """--gcs-bucket が無ければ GCS_BUCKET_NAME (環境変数 / .env) を使う。"""
+    from google.cloud import storage
+
+    opened = []
+
+    class _Client:
+        def bucket(self, name):
+            opened.append(name)
+            return name
+
+    monkeypatch.setattr(storage, "Client", _Client)
+    monkeypatch.setenv("GCS_BUCKET_NAME", "bucket-from-env")
+
+    assert migrate_stock_status._gcs_bucket(None) == "bucket-from-env"
+    assert migrate_stock_status._gcs_bucket("explicit-bucket") == "explicit-bucket"
+    assert opened == ["bucket-from-env", "explicit-bucket"]

@@ -26,6 +26,25 @@ def clear_gcs_prefix(bucket_name: str, prefix: str):
     run_command(["gcloud", "storage", "rm", uri])
 
 
+def build_sync_list(period: str):
+    """GCE で生成したものだけを (ローカルのパス, GCS のパス) の組で返す。
+
+    保有株 CSV (my_stock.csv) は含めない。GCS 上の my_stock.csv が正本で、
+    Web 画面の売買はそちらへ書き込まれる。ここで GCE 上の古い CSV を送ると、
+    毎朝の同期で画面の変更やステータス移行が巻き戻ってしまう。
+    """
+    files_to_sync = [("data/latest_indicators.json", "latest_indicators.json")]
+
+    # Plots (indicators) -> charts/indicators/
+    for p in sorted(glob.glob(f"data/plots/{period}/*.png")):
+        files_to_sync.append((p, f"charts/indicators/{os.path.basename(p)}"))
+
+    # ChartImg (signals) -> charts/signals/
+    for p in sorted(glob.glob(f"data/chartImg/{period}/*.png")):
+        files_to_sync.append((p, f"charts/signals/{os.path.basename(p)}"))
+    return files_to_sync
+
+
 def sync_to_gcs(period: str = "1mo"):
     """
     ローカルで生成したチャートを、UIが参照するGCSパスへ同期する。
@@ -41,19 +60,7 @@ def sync_to_gcs(period: str = "1mo"):
     clear_gcs_prefix(bucket_name, "charts/signals/")
     clear_gcs_prefix(bucket_name, "charts/indicators/")
 
-    # Mappings: Local Path -> GCS Path
-    files_to_sync = [
-        ("data/my_stock.csv", "my_stock.csv"),
-        ("data/latest_indicators.json", "latest_indicators.json"),
-    ]
-
-    # Plots (indicators) -> charts/indicators/
-    for p in glob.glob(f"data/plots/{period}/*.png"):
-        files_to_sync.append((p, f"charts/indicators/{os.path.basename(p)}"))
-
-    # ChartImg (signals) -> charts/signals/
-    for p in glob.glob(f"data/chartImg/{period}/*.png"):
-        files_to_sync.append((p, f"charts/signals/{os.path.basename(p)}"))
+    files_to_sync = build_sync_list(period)
 
     print(f"Found {len(files_to_sync)} files to upload.")
 
