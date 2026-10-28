@@ -120,8 +120,10 @@ fi
 if [ "${OSLOGIN^^}" != "TRUE" ]; then
     echo "WARNING: OS Login が有効になっていません (enable-oslogin=${OSLOGIN:-未設定})。" >&2
 fi
+# サーバー側のフィルターはリスト型の項目にうまく効かないため、一覧を取ってから絞る
 IAP_RULES="$(gcloud compute firewall-rules list --project "$PROJECT_ID" \
-    --filter 'direction=INGRESS AND sourceRanges:35.235.240.0/20 AND disabled=false' --format 'value(name)')"
+    --format 'value(name,direction,disabled,sourceRanges.list())' \
+    | awk '$2 == "INGRESS" && $3 != "True" && $4 ~ /35\.235\.240\.0\/20/ {print $1}')"
 if [ -z "$IAP_RULES" ]; then
     echo "WARNING: IAP (35.235.240.0/20) から tcp:22 を許可するファイアウォールルールが見つかりません。" >&2
 fi
