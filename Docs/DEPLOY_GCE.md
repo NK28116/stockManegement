@@ -37,8 +37,8 @@ sudo -u <リポジトリの持ち主> bash scripts/deploy_gce.sh /home/<リポ�
 ### 1. GCP
 
 `gcloud` にプロジェクトのオーナー権限でログインした状態で、リポジトリのルートで実行します。
-Workload Identity のプールとプロバイダーは `scripts/setup_wif.sh` で作成済みのもの
-(`github-actions-pool-1` / `github-actions-provider-1`) を使います。
+Workload Identity のプール `github-actions-pool-1` とプロバイダー `github-actions-provider-1` が無ければ作ります。
+プロバイダーは、このリポジトリのワークフローが発行したトークンだけを受け付けます。
 
 ```bash
 GCE_INSTANCE=<インスタンス名> GCE_ZONE=<ゾーン> bash scripts/setup_gce_deploy.sh
@@ -54,7 +54,7 @@ Settings → Secrets and variables → Actions → **Secrets** に登録しま�
 
 | Secret | 値 |
 | --- | --- |
-| `GCP_WIF_PROVIDER` | `projects/<番号>/locations/global/workloadIdentityPools/.../providers/...` (Cloud Run 用に登録済みならそのまま) |
+| `GCE_WIF_PROVIDER` | `projects/<番号>/locations/global/workloadIdentityPools/github-actions-pool-1/providers/github-actions-provider-1` |
 | `GCE_DEPLOY_SERVICE_ACCOUNT` | `gce-deployer@<GCP_PROJECT_ID>.iam.gserviceaccount.com` |
 | `GCE_INSTANCE` | インスタンス名 |
 | `GCE_ZONE` | ゾーン |
@@ -72,7 +72,7 @@ Actions → 「Deploy to GCE」→ **Run workflow** (ブランチは `main`) で
 
 | エラー | 原因と対処 |
 | --- | --- |
-| `Permission 'iam.serviceAccounts.getAccessToken' denied` | Workload Identity の紐付けが無い。`setup_gce_deploy.sh` を再実行する |
+| `Permission 'iam.serviceAccounts.getAccessToken' denied` / `invalid_target` | Workload Identity の紐付けが無い。`setup_gce_deploy.sh` を再実行する |
 | `failed to connect to backend` / `4033: not authorized` | IAP の権限かファイアウォールルールが無い |
 | `Permission denied (publickey)` | OS Login の権限が無いか、OS Login が無効 |
 | `sudo: a password is required` | OS Login の権限が `osLogin` (sudo なし) になっている。`osAdminLogin` を付ける |

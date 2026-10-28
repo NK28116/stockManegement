@@ -14,7 +14,7 @@
 #       * 対象インスタンスのみ: OS Login (sudo あり)
 #       * VM に付いているサービスアカウント: その SA として動く VM へのログインに必要
 #   - GitHub リポジトリからこの SA を使えるようにする Workload Identity の紐付け
-#     (プール・プロバイダーは scripts/setup_wif.sh で作ったものを使う)
+#     (プール・プロバイダーが無ければ作る。scripts/setup_wif.sh と同じ名前)
 # ===================================================================
 set -euo pipefail
 
@@ -49,6 +49,11 @@ echo "リポジトリ:     $GITHUB_REPO"
 echo "デプロイ用 SA:  $SA_EMAIL"
 echo "------------------------------------------------"
 
+# 0. 必要な API (有効なら何もしない)
+#    STS / IAM Credentials: GitHub のトークンを SA の短命トークンに交換する / IAP: SSH トンネル
+gcloud services enable sts.googleapis.com iamcredentials.googleapis.com iap.googleapis.com \
+    --project "$PROJECT_ID"
+
 # 1. デプロイ専用のサービスアカウント
 if gcloud iam service-accounts describe "$SA_EMAIL" --project "$PROJECT_ID" >/dev/null 2>&1; then
     echo "サービスアカウントは作成済みです。"
@@ -81,7 +86,22 @@ if [ -n "$VM_SA" ]; then
     echo "VM のサービスアカウント $VM_SA の利用権限を付けました。"
 fi
 
-# 3. GitHub リポジトリからこの SA を使えるようにする
+# 3. GitHub リポジトリからこの SA を使えるようにする (Workload Identity 連携)
+# プール・プロバイダーが無ければ作る。プロバイダーはこのリポジトリのトークンだけを受け付ける。
+if ! gcloud iam workload-identity-pools describe "$POOL_NAME" --project "$PROJECT_ID" \
+        --location global >/dev/null 2>&1; then
+    gcloud iam workload-identity-pools create "$POOL_NAME" --project "$PROJECT_ID" \
+        --location global --display-name "GitHub Actions"
+fi
+if ! gcloud iam workload-identity-pools providers describe "$PROVIDER_NAME" --project "$PROJECT_ID" \
+        --location global --workload-identity-pool "$POOL_NAME" >/dev/null 2>&1; then
+    gcloud iam workload-identity-pools providers create-oidc "$PROVIDER_NAME" --project "$PROJECT_ID" \
+        --location global --workload-identity-pool "$POOL_NAME" \
+        --display-name "GitHub Actions" \
+        --issuer-uri "https://token.actions.githubusercontent.com" \
+        --attribute-mapping "google.subject=assertion.sub,attribute.repository=assertion.repository,attribute.ref=assertion.ref" \
+        --attribute-condition "assertion.repository=='${GITHUB_REPO}'"
+fi
 POOL_ID="$(gcloud iam workload-identity-pools describe "$POOL_NAME" --project "$PROJECT_ID" \
     --location global --format 'value(name)')"
 PROVIDER_ID="$(gcloud iam workload-identity-pools providers describe "$PROVIDER_NAME" --project "$PROJECT_ID" \
@@ -112,7 +132,7 @@ echo "完了しました。GitHub の Settings → Secrets and variables → Act
 echo ""
 echo "公開リポジトリの Actions のログは誰でも読めるため、識別子もすべて Secrets に入れる (ログでは *** になる)。"
 echo ""
-echo "  GCP_WIF_PROVIDER             ${PROVIDER_ID}   (Cloud Run 用に登録済みなら不要)"
+echo "  GCE_WIF_PROVIDER             ${PROVIDER_ID}"
 echo "  GCE_DEPLOY_SERVICE_ACCOUNT   ${SA_EMAIL}"
 echo "  GCE_INSTANCE                 ${GCE_INSTANCE}"
 echo "  GCE_ZONE                     ${GCE_ZONE}"
