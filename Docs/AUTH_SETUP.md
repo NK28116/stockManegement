@@ -103,7 +103,7 @@ python -c "import secrets; print(secrets.token_urlsafe(32))" \
 | `/auth/logout` | Cookie を破棄するだけで、未認証で叩いても安全 |
 | `/api/auth/status` | 画面が認証状態を判定するための最小情報のみ返す |
 | `/health` | 外形監視 / PaaS のヘルスチェック。認証を要求すると死活監視が常に失敗する |
-| `/static` | 認証前のログイン画面が参照する静的アセット |
+| `/static` | ビルド済みの Tailwind CSS / Vue (`python/web/static/`)。秘密情報を含まない公開アセットで、ログイン画面からも参照できるようにする |
 
 保護される既存の画面 / API (`tests/test_auth.py` のパラメタライズドテストで検証):
 

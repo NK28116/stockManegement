@@ -1,11 +1,10 @@
 """ドロップダウン配置と小画面 overflow の回帰テスト (PRIDEV-484)
 
-CI にブラウザが無く、テンプレートが Tailwind / Vue を CDN から読み込む構成のため、
-実ブラウザでの実測は行わず、レイアウト崩れを引き起こす「クラス構成の退行」を
-静的に検出する。代表的な viewport 幅ごとに、その幅で必要になる指定が
-テンプレートへ残っていることを固定する。
+レイアウト崩れを引き起こす「クラス構成の退行」を静的に検出する。
+代表的な viewport 幅ごとに、その幅で必要になる指定がテンプレートへ残っていることを固定する。
 
-実ブラウザでの検証は System Monitor の E2E 基盤 (PRIDEV-494) で扱う。
+実ブラウザでの実測 (横 overflow / コントロール位置 / Vue のマウント) は
+tests/test_ui_browser.py で行う (PRIDEV-527)。
 """
 
 import re
@@ -72,10 +71,13 @@ def test_template_tags_are_balanced(template):
 
 
 # --- 通常幅で不要な横スクロールを起こさない ------------------------------------
-def test_page_body_does_not_scroll_horizontally(template):
-    """ページ本体は横スクロールさせない (必要箇所だけ .table-scroll で許可する)。"""
-    assert re.search(r"html,\s*body\s*\{[^}]*overflow-x:\s*hidden", template), (
-        "body の横スクロール抑止が失われている"
+def test_page_body_does_not_hide_overflow(template):
+    """はみ出しを overflow-x: hidden で隠さず、原因側 (max-width / min-width) で抑える。
+
+    実際に横 overflow が無いことは tests/test_ui_browser.py が実ブラウザで検証する (PRIDEV-527)。
+    """
+    assert not re.search(r"html,\s*body\s*\{[^}]*overflow-x:\s*hidden", template), (
+        "overflow-x: hidden ははみ出しを隠すだけで、主要コンテンツが切れる原因になる"
     )
     assert re.search(r"html,\s*body\s*\{[^}]*max-width:\s*100%", template)
 

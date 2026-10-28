@@ -29,6 +29,7 @@ help:
 	@echo "Development:"
 	@echo "  install         Install all dependencies"
 	@echo "  test            Run tests"
+	@echo "  assets          Rebuild static CSS/JS under python/web/static (needs Node.js)"
 	@echo "  lint            Run code linter"
 	@echo "  format          Format code using black and isort"
 	@echo "  clean           Clean up temporary files"
@@ -96,6 +97,12 @@ install:
 test:
 	@echo "Running tests..."
 	@PYTHONPATH=. pytest tests/
+
+# 画面の静的アセット (Tailwind CSS / Vue) を再生成する。
+# テンプレートや画面で使う Tailwind クラスを変更したら実行し、成果物をコミットする。
+.PHONY: assets
+assets:
+	@cd frontend && npm ci && npm run build
 
 # DB スキーマと Alembic 履歴の整合を確認する (読み取り専用 / PRIDEV-487)
 .PHONY: db-check

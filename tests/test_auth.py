@@ -650,6 +650,7 @@ def test_every_registered_route_is_protected_or_explicitly_public(auth_env):
         "/auth/logout",
         "/api/auth/status",
         "/health",
+        "/static",
     }
 
     unexpected_public = {

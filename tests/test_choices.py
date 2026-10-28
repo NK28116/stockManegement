@@ -164,7 +164,9 @@ def test_held_judgement_is_not_reimplemented_in_the_template(template):
 
 
 def test_sort_order_is_derived_from_choices(template):
-    assert "const statusOrder = this.statusOrder" in template
+    """並び順は choices の保存値 (key) から作る。実際の並び順は test_ui_browser.py で検証する。"""
+    assert "order[choice.key] = index" in template
+    assert "choice.value" not in template
     assert template.count("statusOrder[a.status]") == 1
 
 

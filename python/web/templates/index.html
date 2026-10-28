@@ -6,9 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock Management UI</title>
     <!-- Tailwind CSS for basic styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/tailwind.css">
     <!-- Vue.js 3 -->
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="/static/vendor/vue.global.prod.js"></script>
     <!-- 起動待ちUXの設定値 (PRIDEV-485)。サーバ側 python/web/startup.py を単一の正とする -->
     <script>
         window.__STARTUP_CONFIG__ = {{ startup_config | tojson }};

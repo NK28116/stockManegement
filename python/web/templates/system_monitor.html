@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>System Monitor | Stock Management</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link rel="stylesheet" href="/static/css/tailwind.css">
+    <script src="/static/vendor/vue.global.prod.js"></script>
     <!-- 表示件数の設定 (PRIDEV-493)。サーバ側 python/web/routes/system_monitor.py を単一の正とする -->
     <script>
         window.__MONITOR_CONFIG__ = {{ monitor_config | tojson }};

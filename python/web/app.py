@@ -8,6 +8,7 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from python.utils.logger import get_logger
@@ -116,8 +117,11 @@ app.include_router(watchlist.router, dependencies=_ADMIN_ROUTE_GUARD)
 templates_dir = Path(__file__).resolve().parent / "templates"
 templates = Jinja2Templates(directory=str(templates_dir))
 
-# Serve static files (if we had any CSS/JS files, standard pattern)
-# app.mount("/static", StaticFiles(directory="static"), name="static")
+# 画面が使う Tailwind CSS / Vue はビルド済みのものを自前で配信する。
+# CDN へ依存しないため、コールドスタート時の外部取得待ちが無く、オフラインでも描画できる。
+# 生成手順は frontend/package.json (make assets)。
+static_dir = Path(__file__).resolve().parent / "static"
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
 
 @app.get("/health", include_in_schema=False)
