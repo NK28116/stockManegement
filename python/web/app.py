@@ -11,8 +11,9 @@ from fastapi.templating import Jinja2Templates
 
 from python.utils.logger import get_logger
 from python.web import auth
-from python.web.api import rules, signals, simulate, watchlist
+from python.web.api import rules, signals, simulate, system_monitor, watchlist
 from python.web.routes import actions, analytics, charts
+from python.web.routes import system_monitor as system_monitor_page
 
 logger = get_logger("web", "app")
 
@@ -91,6 +92,8 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 _ADMIN_ROUTE_GUARD = [Depends(auth.require_auth)]
 
 app.include_router(auth.router)
+app.include_router(system_monitor.router, dependencies=_ADMIN_ROUTE_GUARD)
+app.include_router(system_monitor_page.router, dependencies=_ADMIN_ROUTE_GUARD)
 app.include_router(rules.router, dependencies=_ADMIN_ROUTE_GUARD)
 app.include_router(signals.router, dependencies=_ADMIN_ROUTE_GUARD)
 app.include_router(charts.router, dependencies=_ADMIN_ROUTE_GUARD)
