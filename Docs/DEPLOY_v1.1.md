@@ -55,11 +55,15 @@ pg_dump -Fc -f ~/stock_db_before_v1.1.dump <DB名>
 mkdir -p ~/stock-private-backup/manual && cp -p data/my_stock*.csv ~/stock-private-backup/manual/
 ```
 
-- [ ] DB の状態を確認する (読み取りのみ)。結果は手順 3 で使う
+- [ ] (任意) DB の状態を見ておく (読み取りのみ)。`schema_check` は v1.1 で追加したコマンドで、
+      デプロイ前の GCE にはまだ無いため、`psql` で直接確認する。正式な確認は手順 3 で行う
 
 ```bash
-./venv/bin/python -m python.db.schema_check
+psql -h localhost -U <DBユーザー> -d <DB名> -c "select version_num from alembic_version;" -c "\dt"
 ```
+
+- [ ] リポジトリの持ち主 (cron と自動デプロイを動かすユーザー) と、GitHub の Secrets `GCE_USERNAME` が一致していることを確認する。
+      別のユーザーで SSH した場合は、`sudo -u <持ち主>` を付けて実行する
 
 ### GCS
 
@@ -106,7 +110,13 @@ ls -l data/my_stock*.csv
 bash scripts/cron_daily.sh && tail -n 30 log/cron_daily.log
 ```
 
-- [ ] DB の状態に応じて対応する (`Docs/DB_MIGRATION.md`)。`[OK]` 以外のときだけ:
+- [ ] DB の状態を確認する (読み取りのみ)
+
+```bash
+./venv/bin/python -m python.db.schema_check
+```
+
+- [ ] 結果に応じて対応する (`Docs/DB_MIGRATION.md`)。`[OK]` 以外のときだけ:
 
 ```bash
 ./venv/bin/python -m alembic stamp head     # テーブルはあるが履歴が無い場合
