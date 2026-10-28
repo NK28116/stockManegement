@@ -1,5 +1,7 @@
 # v1.1 — 運用・UX安定化
 
+> 本番に出す手順は [DEPLOY_v1.1.md](DEPLOY_v1.1.md) を参照。
+
 統合ブランチ: `integration/v1.1-ops-ux-stabilization` (base: `develop`)
 
 ## スコープ
