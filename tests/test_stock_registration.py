@@ -394,3 +394,20 @@ def test_chart_list_falls_back_to_charts_when_csv_is_unavailable(monkeypatch):
     monkeypatch.chdir("/")  # ローカルの data/my_stock.csv を読まないようにする
     codes = {item["code"] for item in asyncio.run(charts.list_charts())}
     assert codes == {"9434", "1111"}
+
+
+def test_chart_list_shows_status_of_row_without_prices(monkeypatch):
+    """購入直後の行 (current_price などが空欄) も、ステータス・株数付きで返す"""
+
+    class _NewRow(_StubGcs):
+        CSV = (
+            "code,name,quantity,purchase_price,purchase_date,purpose,status,current_price,profit_loss,profit_loss_percent\n"
+            "9434.T,SOFTBANK,5,100,2026-01-01,long,HOLDING,110,10,10%\n"
+            "4755.T,RAKUTEN,10,,2026-10-29,swing,HOLDING,,,\n"
+        )
+
+    monkeypatch.setattr(charts, "gcs", _NewRow())
+    listed = {item["code"]: item for item in asyncio.run(charts.list_charts())}
+    assert listed["4755"]["status"] == StockStatus.HOLDING
+    assert listed["4755"]["quantity"] == "10"
+    assert listed["4755"]["analysis_pending"] is True

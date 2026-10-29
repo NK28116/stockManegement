@@ -40,6 +40,13 @@ else:
     }
 
 
+def _to_float(value, default: float = 0.0) -> float:
+    """CSV の数値欄を float にする。空欄は default。数値でない値は ValueError。"""
+    if value is None or str(value).strip() == "":
+        return default
+    return float(value)
+
+
 @router.get("/list")
 async def list_charts() -> List[Dict[str, Any]]:
     """List available charts grouped by company"""
@@ -190,8 +197,9 @@ async def list_charts() -> List[Dict[str, Any]]:
                     csv_names[code_key] = row.get("name") or code_key
                     # Safe conversion for numbers
                     try:
-                        purchase_price = float(row.get("purchase_price", 0))
-                        current_price = float(row.get("current_price", 0))
+                        # 登録した直後の行は current_price などが空欄 (価格更新の前) なので 0 とみなす
+                        purchase_price = _to_float(row.get("purchase_price"))
+                        current_price = _to_float(row.get("current_price"))
 
                         # Handle potentially broken profit_loss_percent (e.g. template string)
                         pl_pct_str = row.get("profit_loss_percent", "")
@@ -215,8 +223,8 @@ async def list_charts() -> List[Dict[str, Any]]:
                         # Calculate simple profit_loss if needed
                         pl_val_str = row.get("profit_loss", "")
                         if "{" in pl_val_str or not pl_val_str:
-                            pl_val = (current_price - purchase_price) * float(
-                                row.get("quantity", 1)
+                            pl_val = (current_price - purchase_price) * _to_float(
+                                row.get("quantity"), 1.0
                             )
                         else:
                             try:
