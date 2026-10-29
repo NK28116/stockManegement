@@ -65,18 +65,19 @@ class ChartJobs:
             self._failed -= keys
         return sorted(keys)
 
-    def run(self, after: Optional[Callable[[], None]] = None) -> None:
+    def run(self, after: Optional[Callable[[List[str]], None]] = None) -> None:
         """待ち行列が空になるまでチャートを作る (バックグラウンドのスレッドで呼ぶ)。
 
         Args:
             after: 作り終えたあとに 1 回だけ呼ぶ処理 (シグナルの更新)。
+                チャートを作れた銘柄のキーを渡す。
         """
         with self._lock:
             if self._running:
                 return  # 実行中の処理が、追加された分もまとめて作る
             self._running = True
 
-        created_any = False
+        created_all: Set[str] = set()
         while True:
             with self._lock:
                 batch = set(self._queue)
@@ -96,11 +97,11 @@ class ChartJobs:
             with self._lock:
                 self._generating -= batch
                 self._failed |= batch - created
-            created_any = created_any or bool(created)
+            created_all |= created
 
-        if created_any and after is not None:
+        if created_all and after is not None:
             try:
-                after()
+                after(sorted(created_all))
             except Exception as e:
                 logger.error(
                     f"チャート作成後のシグナル更新に失敗しました: {e}", exc_info=True

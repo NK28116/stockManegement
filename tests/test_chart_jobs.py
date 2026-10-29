@@ -39,12 +39,12 @@ def test_run_generates_queued_codes_and_then_updates_signals(monkeypatch):
     jobs = ChartJobs()
     assert jobs.enqueue(["4755.T", "9984"]) == ["4755", "9984"]
     assert jobs.generating() == ["4755", "9984"]
-    jobs.run(after=lambda: after.append(True))
+    jobs.run(after=lambda codes: after.append(codes))
 
     assert calls == [["4755", "9984"]]
     assert jobs.generating() == []
     assert jobs.failed() == []
-    assert after == [True]  # シグナルの更新は 1 回だけ
+    assert after == [["4755", "9984"]]  # シグナルの更新は 1 回だけ、作れた銘柄について
 
 
 def test_codes_added_while_running_are_generated_in_the_same_run(monkeypatch):
@@ -72,7 +72,7 @@ def test_failed_codes_are_reported_and_signals_not_updated(monkeypatch):
     after = []
     jobs = ChartJobs()
     jobs.enqueue(["4755"])
-    jobs.run(after=lambda: after.append(True))
+    jobs.run(after=lambda codes: after.append(codes))
     assert jobs.failed() == ["4755"]
     assert after == []
 
@@ -217,8 +217,8 @@ def client(monkeypatch):
 
     class _Analyze:
         @staticmethod
-        def main():
-            analyzed.append(True)
+        def main(codes=None):
+            analyzed.append(codes)
 
     monkeypatch.setattr(actions, "analyze", _Analyze)
     monkeypatch.delenv("DISABLE_NEW_STOCK_CHARTS", raising=False)
@@ -254,7 +254,7 @@ def test_commit_registers_updates_and_starts_charts(client):
 
     # レスポンスのあとで、新しい銘柄だけチャートを作り、シグナルを更新する
     assert data["generated"] == [["4755", "9984"]]
-    assert data["analyzed"] == [True]
+    assert data["analyzed"] == [["4755", "9984"]]  # 新しく登録した銘柄だけ分析する
 
 
 def test_commit_saves_nothing_when_one_is_invalid(client):
@@ -299,3 +299,28 @@ def test_status_reports_chart_generation(client, monkeypatch):
     body = http.get("/api/actions/status").json()
     assert body["generating_charts"] == ["4755"]
     assert body["chart_failed"] == []
+
+
+# --- シグナル分析の対象 (GCS の保有株リストを読む) ------------------------------------
+
+
+def test_analyze_reads_portfolio_through_load_codes(monkeypatch):
+    """Render (GCS を使う環境) でも、登録済みの銘柄を分析対象にする"""
+    from python.watch import analyze
+
+    df = pd.DataFrame({"code": ["7203.T", "7326", "9984.T", None]})
+    monkeypatch.setattr(bss, "load_codes", lambda path: df.copy())
+    assert analyze.load_target_symbols() == ["7203.T", "7326.T", "9984.T"]
+    assert analyze.load_target_symbols(["7326"]) == ["7326.T"]
+
+
+def test_analyze_main_only_given_codes(monkeypatch):
+    from python.watch import analyze
+
+    df = pd.DataFrame({"code": ["7203.T", "7326.T"]})
+    monkeypatch.setattr(bss, "load_codes", lambda path: df.copy())
+    analyzed = []
+    monkeypatch.setattr(analyze, "_analyze_weekly_swing", analyzed.append)
+    monkeypatch.setattr(analyze.time, "sleep", lambda s: None)
+    analyze.main(["7326"])
+    assert analyzed == ["7326.T"]

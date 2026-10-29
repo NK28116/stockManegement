@@ -4,7 +4,7 @@ import json
 import logging
 import time
 from datetime import date
-from typing import Dict, List, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
 import ta
@@ -538,22 +538,48 @@ def _save_signal(
         logger.error(f"シグナル保存エラー ({symbol}): {e}")
 
 
-def main() -> None:
+def load_target_symbols(codes: Optional[Iterable[str]] = None) -> List[str]:
+    """分析する銘柄コード (7203.T の形) を返す。
+
+    保有株リストは buy_and_sell_stock.load_codes で読む。GCS を使う環境 (Render) では
+    GCS の my_stock.csv を、それ以外はローカルの CSV を読む。以前は config.codes_path の
+    ローカルファイルだけを読んでいたため、そのファイルが無い Render では
+    「Check Signals」や登録直後の分析が何もせずに終わっていた。
+
+    Args:
+        codes: 指定すると、その銘柄だけに絞る (新しく登録した銘柄など)。
+    """
+    from python.trading.buy_and_sell_stock import code_key, load_codes, normalize_code
+
+    stock_df = load_codes(config.codes_path)
+    symbols = []
+    for raw in stock_df["code"].dropna().astype(str):
+        if raw.strip() and normalize_code(raw) not in symbols:
+            symbols.append(normalize_code(raw))
+    if codes is not None:
+        keys = {code_key(code) for code in codes}
+        symbols = [symbol for symbol in symbols if code_key(symbol) in keys]
+    return symbols
+
+
+def main(codes: Optional[Iterable[str]] = None) -> None:
     """
     登録銘柄の週足スイングトレード分析エントリーポイント
+
+    Args:
+        codes: 指定すると、その銘柄だけを分析する。省略すると登録銘柄すべて。
     """
     logger.info("週足スイングトレード分析 開始")
 
     try:
-        stock_df = pd.read_csv(config.codes_path)
+        symbols = load_target_symbols(codes)
     except Exception as e:
         logger.error(f"銘柄リスト読み込みエラー: {e}")
         return
 
-    logger.info(f"分析対象銘柄数: {len(stock_df)}")
+    logger.info(f"分析対象銘柄数: {len(symbols)}")
 
-    for _, row in stock_df.iterrows():
-        symbol = str(row["code"])
+    for symbol in symbols:
         try:
             _analyze_weekly_swing(symbol)
         except Exception as e:
