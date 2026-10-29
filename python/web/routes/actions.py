@@ -4,8 +4,9 @@ import asyncio
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import List, Optional
 
+import pandas as pd
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
@@ -45,6 +46,28 @@ class BuyRequest(BaseModel):
     purpose: Optional[str] = None
     # 登録区分。HOLDING (購入) / NEXT_BUY (次回のスイングで購入) / WATCHING (監視中)
     status: Optional[str] = None
+
+
+def _row_payload(df, code: str) -> Optional[dict]:
+    """保存した行を、画面 (チャート一覧の 1 行) と同じ形で返す。"""
+    idx = buy_and_sell_stock.find_rows(df, code)
+    if len(idx) == 0:
+        return None
+    row = df.loc[idx[0]]
+
+    def _text(key):
+        value = row.get(key, "")
+        return "" if pd.isna(value) else str(value)
+
+    return {
+        "code": buy_and_sell_stock.code_key(code),
+        "name": _text("name") or code,
+        "status": _text("status"),
+        "quantity": _text("quantity"),
+        "purchase_price": float(row.get("purchase_price") or 0),
+        "purchase_date": _text("purchase_date"),
+        "purpose": _text("purpose"),
+    }
 
 
 _REGISTRABLE_STATUSES = tuple(choice["key"] for choice in constants.register_choices())
@@ -104,6 +127,7 @@ async def buy_stock(code: str, buy_request: BuyRequest):
             "code": code,
             "registered_status": status,
             "message": f"Successfully registered {code} as {status}.",
+            "item": _row_payload(updated_df, code),
         }
     except HTTPException:
         raise
@@ -125,6 +149,8 @@ async def sell_stock(code: str, sell_request: SellRequest):
             "status": "success",
             "message": result.get("message", f"Stock {code} sold."),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error selling stock {code}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -150,6 +176,110 @@ async def delete_stock(code: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class UpdateStockRequest(BaseModel):
+    """保有銘柄の更新。変更する項目だけを送る。"""
+
+    quantity: Optional[int] = None
+    purchase_price: Optional[float] = None
+    purchase_date: Optional[str] = None
+    status: Optional[str] = None
+    purpose: Optional[str] = None
+
+
+def _validate_purpose(changes: dict) -> None:
+    if "purpose" in changes and changes["purpose"] not in (
+        "",
+        None,
+        *constants.purpose_keys(),
+    ):
+        raise ValueError(f"目的 {changes['purpose']} は指定できません")
+
+
+@router.put("/stock/{code}")
+async def update_stock(code: str, request: UpdateStockRequest):
+    """
+    登録済みの銘柄の内容 (株数・取得単価・購入日・ステータス・目的) を更新するエンドポイント。
+    """
+    changes = request.model_dump(exclude_unset=True)
+    if not changes:
+        raise HTTPException(status_code=400, detail="変更する項目がありません")
+
+    try:
+        df = buy_and_sell_stock.load_codes(buy_and_sell_stock.config.codes_path)
+        try:
+            _validate_purpose(changes)
+            updated_df = buy_and_sell_stock.update_stock(df, code, changes)
+        except KeyError:
+            raise HTTPException(status_code=404, detail=f"Stock code {code} not found.")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        buy_and_sell_stock.save_codes(updated_df, buy_and_sell_stock.config.codes_path)
+        return {
+            "status": "success",
+            "message": f"Updated {code}.",
+            "item": _row_payload(updated_df, code),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating stock {code}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class StockUpdateItem(UpdateStockRequest):
+    code: str
+
+
+class BulkUpdateRequest(BaseModel):
+    updates: List[StockUpdateItem]
+
+
+@router.put("/stocks")
+async def update_stocks(request: BulkUpdateRequest):
+    """
+    画面で保存した複数銘柄の変更を、まとめて反映するエンドポイント
+    (ダッシュボードの「Update Stock All Data (N)」)。
+
+    すべての変更を検証してから 1 回だけ保存する。1 件でも不正な変更があれば、
+    どれも保存せずに 400 を返す (一部だけ反映された状態にしない)。
+    """
+    if not request.updates:
+        raise HTTPException(status_code=400, detail="変更がありません")
+
+    try:
+        df = buy_and_sell_stock.load_codes(buy_and_sell_stock.config.codes_path)
+        errors = []
+        for update in request.updates:
+            changes = update.model_dump(exclude_unset=True, exclude={"code"})
+            try:
+                if not changes:
+                    raise ValueError("変更する項目がありません")
+                _validate_purpose(changes)
+                df = buy_and_sell_stock.update_stock(df, update.code, changes)
+            except KeyError:
+                errors.append({"code": update.code, "detail": "銘柄が見つかりません"})
+            except ValueError as e:
+                errors.append({"code": update.code, "detail": str(e)})
+        if errors:
+            summary = " / ".join(f"{e['code']}: {e['detail']}" for e in errors)
+            raise HTTPException(
+                status_code=400,
+                detail=f"保存しませんでした ({len(errors)} 件の不正な変更): {summary}",
+            )
+
+        buy_and_sell_stock.save_codes(df, buy_and_sell_stock.config.codes_path)
+        return {
+            "status": "success",
+            "message": f"Updated {len(request.updates)} stocks.",
+            "items": [_row_payload(df, u.code) for u in request.updates],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating stocks: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 class ActionState:
     last_update_time: Optional[datetime] = None
     is_updating: bool = False
@@ -164,7 +294,7 @@ async def _run_market_update():
     """
     バックグラウンドで実行される市場データ更新処理
 
-    ダッシュボードの「Update Data」ボタンから呼ばれる。以下のステップを順に実行する。
+    ダッシュボードの「Update Market Data」ボタンから呼ばれる。以下のステップを順に実行する。
       1) watch.main(): intraday 株価取得 + DB 保存 (従来通り)
       2) refresh_prices(): ポートフォリオCSVの current_price / profit_loss /
          profit_loss_percent / last_updated を最新の株価で書き換える

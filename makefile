@@ -13,6 +13,10 @@ LOG_DIR = log
 help:
 	@echo "Stock Management System - Available commands:"
 	@echo ""
+	@echo "Local Web UI:"
+	@echo "  dev             Start the web UI locally (no cloud access; works in any branch/worktree)"
+	@echo "  dev-reset       Recreate local data from the sample, then start"
+	@echo ""
 	@echo "Watch Module:"
 	@echo "  watch-dev       Run watch.py in development mode with a specific date (e.g., make watch-dev DATE=20250115)"
 	@echo "  watch-realtime  Run watch.py in real-time monitoring mode"
@@ -93,6 +97,17 @@ install:
 	@echo "Installing dependencies..."
 	@pip install -r requirements.txt
 	@if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+
+# ローカルで Web UI を起動する (develop・ブランチ・worktree のどこでも同じ手順 / Docs/LOCAL_DEV.md)
+# 本番の GCS・DB・Slack には触れない。ポートは 8888 から空いている番号を使う (DEV_PORT で指定可)
+.PHONY: dev
+dev:
+	@bash scripts/dev_server.sh
+
+# ローカルのデータ (data/my_stock_local.csv と SQLite) をサンプルで作り直してから起動する
+.PHONY: dev-reset
+dev-reset:
+	@DEV_RESET=1 bash scripts/dev_server.sh
 
 .PHONY: test
 test:

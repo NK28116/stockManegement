@@ -46,6 +46,8 @@ data/API/kabu_STATION_API.yaml
 
 # 個人情報/取引履歴/ポートフォリオデータ (公開リポジトリには含めない。形式は data/my_stock.sample.csv を参照)
 data/my_stock*.csv
+# make dev のローカル専用データ (SQLite など)
+data/dev/
 !data/my_stock.sample.csv
 data/latest_indicators.json
 data/quarterly_analysis.csv

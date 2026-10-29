@@ -328,3 +328,51 @@ def test_dashboard_and_system_monitor_link_to_each_other(browser, base_url, widt
         page.wait_for_selector(".table-scroll table tbody tr", timeout=10000)
     finally:
         context.close()
+
+
+# --- 編集の保存は反映待ちに積み、Update Stock All Data (N) でまとめて送る ---------
+def test_saved_edits_are_applied_together(browser, base_url):
+    context, page, page_errors = _open_dashboard(browser, base_url, 1440)
+    try:
+        sent = []
+
+        def handle_bulk(route):
+            body = json.loads(route.request.post_data)
+            sent.append(body)
+            items = [{**CHARTS[0], **u} for u in body["updates"]]
+            route.fulfill(status=200, content_type="application/json", body=json.dumps({"items": items}))
+
+        page.route("**/api/actions/stocks", handle_bulk)
+
+        button = page.get_by_role("button", name="Update Stock All Data (0)")
+        assert button.is_disabled()
+
+        # 2 銘柄を編集して保存する (まだサーバーへは送らない)
+        rows = page.locator(".table-scroll tbody tr")
+        for index, quantity in ((0, "300"), (1, "50")):
+            row = rows.nth(index)
+            row.get_by_role("button", name="編集").click()
+            row.locator(".edit-panel input").first.fill(quantity)
+            row.get_by_role("button", name="保存").click()
+        assert sent == []
+        assert page.locator("text=未反映").count() == 2
+
+        page.get_by_role("button", name="Update Stock All Data (2)").click()
+        page.get_by_role("button", name="Update Stock All Data (0)").wait_for()
+
+        assert len(sent) == 1
+        assert sorted(u["quantity"] for u in sent[0]["updates"]) == [50, 300]
+        # 変えていない項目は送らない
+        assert all(set(u) == {"code", "quantity"} for u in sent[0]["updates"])
+        assert page.locator("text=未反映").count() == 0
+        assert page_errors == []
+    finally:
+        context.close()
+
+
+def test_market_update_button_is_renamed(browser, base_url):
+    context, page, _ = _open_dashboard(browser, base_url, 1440)
+    try:
+        assert page.get_by_role("button", name="Update Market Data").is_visible()
+    finally:
+        context.close()

@@ -29,6 +29,9 @@ __all__ = [
     "get_price",
     "buy",
     "normalize_code",
+    "code_key",
+    "find_rows",
+    "update_stock",
     "PLANNED_STATUSES",
     "register_planned",
     "sell",
@@ -103,15 +106,14 @@ def load_codes(path: str) -> pd.DataFrame:
 
 def save_codes(df: pd.DataFrame, path: str):
     if gcs.use_gcs:
-        try:
-            csv_str = df.to_csv(index=False, encoding="utf-8")
-            blob = gcs.bucket.blob("my_stock.csv")
-            blob.upload_from_string(csv_str, content_type="text/csv")
-            print("更新完了 (GCS): my_stock.csv")
-            return
-        except Exception as e:
-            print(f"Failed to save to GCS: {e}")
-            # Fallback to local save if GCS fails (though redundant in stateless container)
+        # GCS の my_stock.csv が正。書き込みに失敗したときにローカルへ保存して成功扱いにすると、
+        # 画面には「登録しました」と出るのに一覧へ反映されない (Render のコンテナ内に残るだけ)。
+        # 失敗は呼び出し元へ伝える
+        csv_str = df.to_csv(index=False, encoding="utf-8")
+        blob = gcs.bucket.blob("my_stock.csv")
+        blob.upload_from_string(csv_str, content_type="text/csv")
+        print("更新完了 (GCS): my_stock.csv")
+        return
 
     df.to_csv(path, index=False, encoding="utf-8")
     print(f"更新完了: {os.path.relpath(path, os.path.dirname(__file__))}")
@@ -135,6 +137,27 @@ _TSE_CODE = re.compile(r"^[0-9][0-9A-Z]{3}$")
 
 # 保有せずに一覧へ載せるステータス (画面の「次回のスイングで購入」「監視中」)
 PLANNED_STATUSES = (StockStatus.NEXT_BUY, StockStatus.WATCHING)
+
+
+def code_key(code: str) -> str:
+    """表記ゆれを除いた比較用のキー (7203 / 7203.T / 7203_T → 7203)。
+
+    画面 (チャート一覧) は接尾辞なしの 7203、保存データは 7203.T を使うため、
+    行を探すときはこのキーで比較する。
+    """
+    code = str(code).strip().upper()
+    for suffix in (".T", "_T"):
+        if code.endswith(suffix):
+            code = code[: -len(suffix)]
+    return code.replace(".", "")
+
+
+def find_rows(df: pd.DataFrame, code: str) -> pd.Index:
+    """銘柄コードに一致する行の index (表記ゆれを許容する)。"""
+    if df.empty or "code" not in df.columns:
+        return df.index[:0]
+    key = code_key(code)
+    return df.index[df["code"].astype(str).map(code_key) == key]
 
 
 def normalize_code(code: str) -> str:
@@ -167,7 +190,10 @@ def _is_not_held_row(df: pd.DataFrame, i) -> bool:
 
 def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFrame:
     today = datetime.now().strftime("%Y-%m-%d")
-    idx = df.index[df["code"] == code]
+    idx = find_rows(df, code)
+    if len(idx) > 0:
+        # 古い表記 (7203 など) の行も、保存形式 (7203.T) へそろえる
+        df.loc[idx, "code"] = code
     if not price:
         # 単価が分からない (None / 0) ときは現在値で記録する
         price = get_price(code)
@@ -271,7 +297,7 @@ def sell_stock(code: str, sell_type: str) -> dict:
     except FileNotFoundError:
         return {"error": f"File not found: {path}"}
 
-    idx = df.index[df["code"] == code]
+    idx = find_rows(df, code)
     if len(idx) == 0:
         return {"error": f"Stock code {code} not found."}
 
@@ -316,7 +342,8 @@ def delete_stock(code: str) -> dict:
     except FileNotFoundError:
         return {"error": f"File not found: {path}"}
 
-    idx = df.index[df["code"] == code]
+    # 表記ゆれで重複している行 (7203 と 7203.T など) もまとめて削除する
+    idx = find_rows(df, code)
     if len(idx) == 0:
         return {"error": f"Stock code {code} not found."}
 
@@ -454,7 +481,7 @@ def register_planned(
         price = get_price(code)
     price = round(float(price), 2) if price else 0.0
 
-    idx = df.index[df["code"] == code]
+    idx = find_rows(df, code)
     if len(idx) == 0:
         df.loc[len(df)] = {
             "code": code,
@@ -470,6 +497,7 @@ def register_planned(
         if not _is_not_held_row(df, i):
             # 1 銘柄 1 行で管理しているため、保有中の行を予定の行で上書きしない
             raise ValueError(f"{code} は保有中です")
+        df.at[i, "code"] = code
         df.at[i, "quantity"] = qty
         df.at[i, "purchase_price"] = price
         df.at[i, "purchase_date"] = today
@@ -483,6 +511,59 @@ def register_planned(
     from python.utils.alert import send_alert
 
     send_alert(message, level="INFO")
+    return df
+
+
+_HOLDING_STATUSES_NEED_QUANTITY = (
+    StockStatus.HOLDING,
+    StockStatus.SELL_PLANNED_PROFIT,
+    StockStatus.SELL_PLANNED_LOSS,
+)
+
+
+def update_stock(df: pd.DataFrame, code: str, changes: dict) -> pd.DataFrame:
+    """登録済みの銘柄の内容 (株数・取得単価・購入日・ステータス・目的) を書き換える。
+
+    Args:
+        changes: 変更する項目だけを入れた dict。
+            quantity / purchase_price / purchase_date / status / purpose
+
+    Raises:
+        KeyError: 銘柄が見つからない。
+        ValueError: 値が不正。
+    """
+    idx = find_rows(df, code)
+    if len(idx) == 0:
+        raise KeyError(code)
+    i = idx[0]
+
+    if "quantity" in changes:
+        qty = int(changes["quantity"])
+        if qty < 0:
+            raise ValueError("株数は 0 以上で指定してください")
+        df.at[i, "quantity"] = qty
+    if "purchase_price" in changes:
+        price = float(changes["purchase_price"])
+        if price < 0:
+            raise ValueError("取得単価は 0 以上で指定してください")
+        df.at[i, "purchase_price"] = round(price, 2)
+    if "purchase_date" in changes:
+        try:
+            date = datetime.strptime(str(changes["purchase_date"]), "%Y-%m-%d")
+        except ValueError:
+            raise ValueError("購入日は YYYY-MM-DD の形式で指定してください")
+        df.at[i, "purchase_date"] = date.strftime("%Y-%m-%d")
+    if "status" in changes:
+        status = str(changes["status"])
+        if status not in status_keys():
+            raise ValueError(f"ステータス {status} は指定できません")
+        df.at[i, "status"] = status
+    if "purpose" in changes:
+        df.at[i, "purpose"] = changes["purpose"] or ""
+
+    status = normalize(df.at[i, "status"], df.at[i, "quantity"])
+    if status in _HOLDING_STATUSES_NEED_QUANTITY and int(df.at[i, "quantity"]) <= 0:
+        raise ValueError("保有中・売却予定の銘柄は株数を 1 以上にしてください")
     return df
 
 

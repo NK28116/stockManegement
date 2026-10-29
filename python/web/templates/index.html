@@ -46,6 +46,12 @@
             }
         }
 
+        /* 保有銘柄の更新パネルは一覧の狭い列に入るため、入力欄を列の幅に合わせて縦に並べる */
+        .edit-panel .form-control {
+            width: 100%;
+            min-width: 0;
+        }
+
         /* 横スクロールを許可する箇所を明示する */
         .table-scroll {
             overflow-x: auto;
@@ -122,7 +128,13 @@
                         <span v-if="actionStatus.is_updating">Updating...</span>
                         <span v-else-if="!actionStatus.can_update">Wait {{ actionStatus.cooldown_remaining_minutes
                             }}m</span>
-                        <span v-else>Update Data</span>
+                        <span v-else>Update Market Data</span>
+                    </button>
+                    <!-- 編集パネルで「保存」した変更を、まとめて反映する。() は反映待ちの銘柄数 -->
+                    <button @click="applyAllUpdates" :disabled="pendingCount === 0 || applyingUpdates"
+                        :class="['px-3 py-2 rounded text-sm font-bold', (pendingCount === 0 || applyingUpdates) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700']">
+                        <span v-if="applyingUpdates">Updating...</span>
+                        <span v-else>Update Stock All Data ({{ pendingCount }})</span>
                     </button>
                     <button @click="triggerAnalysis" :disabled="actionStatus.is_analyzing || swingAnalyzing"
                         :class="['px-3 py-2 rounded text-sm font-bold', (actionStatus.is_analyzing || swingAnalyzing) ? 'bg-gray-300 text-gray-500 cursor-not-allowed' : 'bg-purple-600 text-white hover:bg-purple-700']">
@@ -231,6 +243,11 @@
                                     class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full whitespace-nowrap">
                                     {{ purposeLabel(item.purpose) }}
                                 </span>
+                                <span v-if="pendingUpdates[item.code]"
+                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full whitespace-nowrap bg-yellow-100 text-yellow-800"
+                                    title="Update Stock All Data で反映されます">
+                                    未反映
+                                </span>
                             </div>
                             <div class="text-sm text-gray-500">{{ item.code }}</div>
 
@@ -256,6 +273,11 @@
                                     {{ expandedCharts[item.code] ? 'Hide Details' : 'Show Details' }}
                                 </button>
 
+                                <button @click="startEdit(item)"
+                                    class="ml-2 text-xs text-blue-600 hover:text-blue-800 underline focus:outline-none">
+                                    編集
+                                </button>
+
                                 <button @click="sellStock(item.code)"
                                     class="ml-2 text-xs text-red-600 hover:text-red-800 underline focus:outline-none">
                                     Sell
@@ -268,6 +290,60 @@
                                     <span v-if="deletingCode === item.code">削除中...</span>
                                     <span v-else>🗑️ 削除</span>
                                 </button>
+
+                                <!-- 保有銘柄の更新 (株数・取得単価・購入日・ステータス・目的) -->
+                                <div v-if="editingCode === item.code"
+                                    class="edit-panel mt-2 p-3 bg-gray-50 rounded text-xs border border-gray-100">
+                                    <div class="flex flex-col gap-2">
+                                        <label class="flex flex-col">
+                                            <span class="text-gray-400">株数</span>
+                                            <input v-model.number="editForm.quantity" type="text"
+                                                class="form-control bg-blue-100 border-gray-300 text-right">
+                                        </label>
+                                        <label class="flex flex-col">
+                                            <span class="text-gray-400">取得単価</span>
+                                            <input v-model.number="editForm.purchase_price" type="text"
+                                                class="form-control bg-blue-100 border-gray-300 text-right">
+                                        </label>
+                                        <label class="flex flex-col">
+                                            <span class="text-gray-400">購入日</span>
+                                            <input v-model="editForm.purchase_date" type="date"
+                                                class="form-control bg-blue-100 border-gray-300">
+                                        </label>
+                                        <label class="flex flex-col">
+                                            <span class="text-gray-400">ステータス</span>
+                                            <select v-model="editForm.status" class="form-control bg-blue-100 border-gray-300">
+                                                <option v-for="choice in statusChoices" :key="choice.key" :value="choice.key">
+                                                    {{ choice.label }}
+                                                </option>
+                                            </select>
+                                        </label>
+                                        <label class="flex flex-col">
+                                            <span class="text-gray-400">目的別</span>
+                                            <select v-model="editForm.purpose" class="form-control bg-blue-100 border-gray-300">
+                                                <option value="">-</option>
+                                                <option v-for="choice in purposeChoices" :key="choice.key" :value="choice.key">
+                                                    {{ choice.label }}
+                                                </option>
+                                            </select>
+                                        </label>
+                                    </div>
+                                    <div class="mt-2">
+                                        <button @click="saveEdit(item)"
+                                            class="text-xs text-blue-600 hover:text-blue-800 underline focus:outline-none">
+                                            保存
+                                        </button>
+                                        <button @click="editingCode = null"
+                                            class="ml-2 text-xs text-gray-500 hover:text-gray-700 underline focus:outline-none">
+                                            キャンセル
+                                        </button>
+                                        <button v-if="pendingUpdates[item.code]" @click="discardPending(item.code)"
+                                            class="ml-2 text-xs text-red-500 hover:text-red-700 underline focus:outline-none">
+                                            変更を取り消す
+                                        </button>
+                                    </div>
+                                    <p class="mt-1 text-gray-400">保存した変更は「Update Stock All Data」でまとめて反映されます</p>
+                                </div>
 
                                 <div v-if="expandedCharts[item.code]"
                                     class="mt-2 p-3 bg-gray-50 rounded text-xs border border-gray-100">
@@ -1012,6 +1088,12 @@
                     registerChoices: [],
                     registerStatus: '', // registerChoices 取得後に先頭 (購入) の key で初期化される
                     registering: false,
+                    // 保有銘柄の更新 (編集中の銘柄コードと入力値)
+                    editingCode: null,
+                    editForm: {},
+                    // 保存済み・反映待ちの変更 { 銘柄コード: { 変更した項目だけ } }
+                    pendingUpdates: {},
+                    applyingUpdates: false,
                     currentTab: 'dashboard',
                     charts: [],
                     rules: {}, // Nested structure
@@ -1078,6 +1160,13 @@
                 }
             },
             mounted() {
+                // 反映していない変更があるままページを閉じようとしたら確認する
+                window.addEventListener('beforeunload', event => {
+                    if (this.pendingCount > 0) {
+                        event.preventDefault()
+                        event.returnValue = ''
+                    }
+                })
                 this.fetchChoices()
                 this.fetchCharts()
                 this.fetchRules()
@@ -1112,6 +1201,9 @@
                 registerButtonLabel() {
                     if (this.registering) return '登録中...'
                     return this.isPurchaseRegistration ? '購入' : '登録'
+                },
+                pendingCount() {
+                    return Object.keys(this.pendingUpdates).length
                 },
                 calculatedTotalPrice() {
                     const qty = this.quantity || 0;
@@ -1315,18 +1407,25 @@
                         return orderA - orderB
                     })
                 },
-                async fetchCharts() {
-                    this.loadingCharts = true
-                    this.errorMessage = ''
+                // quiet: 登録・更新の直後の再取得。表を「Loading」に切り替えず、表示したまま差し替える
+                async fetchCharts({ quiet = false } = {}) {
+                    if (!quiet) {
+                        this.loadingCharts = true
+                        this.errorMessage = ''
+                    }
 
                     try {
                         this.charts = await this.fetchJson('/api/charts/list')
                         this.sortCharts()
+                        // 削除などで一覧から消えた銘柄の反映待ちは捨てる
+                        for (const code of Object.keys(this.pendingUpdates)) {
+                            if (!this.charts.some(c => c.code == code)) delete this.pendingUpdates[code]
+                        }
                     } catch (e) {
                         console.error(e)
-                        this.errorMessage = 'Failed to load charts: ' + e.message
+                        if (!quiet) this.errorMessage = 'Failed to load charts: ' + e.message
                     } finally {
-                        this.loadingCharts = false
+                        if (!quiet) this.loadingCharts = false
                     }
                 },
                 async fetchRules() {
@@ -1601,7 +1700,7 @@
                             const errorData = await response.json();
                             throw new Error(errorData.detail || 'Failed to sell stock');
                         }
-                        await this.fetchCharts();
+                        await this.fetchCharts({ quiet: true });
                         this.toastMessage = `${code} を売却しました (${sell_type === 'profit' ? '利益確定' : '損切り'})`;
                         this.toastType = 'success';
                         setTimeout(() => { this.toastMessage = ''; }, 7000);
@@ -1625,7 +1724,7 @@
                             const errorData = await response.json();
                             throw new Error(errorData.detail || 'Failed to delete stock');
                         }
-                        await this.fetchCharts();
+                        await this.fetchCharts({ quiet: true });
                         this.toastMessage = `${name || code} をダッシュボードから削除しました`;
                         this.toastType = 'success';
                         setTimeout(() => { this.toastMessage = ''; }, 7000);
@@ -1635,6 +1734,84 @@
                         setTimeout(() => { this.toastMessage = ''; }, 7000);
                     } finally {
                         this.deletingCode = null;
+                    }
+                },
+
+                // 保存した行を一覧へ反映する。新しい銘柄はチャートが無いので「分析待ち」で追加する
+                upsertChartItem(item) {
+                    if (!item) return
+                    const existing = this.charts.find(c => c.code == item.code)
+                    if (existing) {
+                        Object.assign(existing, item)
+                    } else {
+                        this.charts.push({ plots: null, chartImg: null, analysis_pending: true, ...item })
+                    }
+                    this.sortCharts()
+                },
+
+                // 編集パネルに表示する値。反映待ちの変更があればそれを重ねる
+                editableValues(item) {
+                    return {
+                        quantity: Number(item.quantity) || 0,
+                        purchase_price: Number(item.purchase_price) || 0,
+                        purchase_date: item.purchase_date || '',
+                        status: item.status || '',
+                        purpose: item.purpose || '',
+                    }
+                },
+
+                startEdit(item) {
+                    this.editingCode = item.code
+                    this.editForm = { ...this.editableValues(item), ...(this.pendingUpdates[item.code] || {}) }
+                },
+
+                // 「保存」は反映待ちに積むだけ。Update Stock All Data でまとめてサーバーへ送る
+                saveEdit(item) {
+                    const original = this.editableValues(item)
+                    const changes = {}
+                    for (const [key, value] of Object.entries(this.editForm)) {
+                        if (value === '' && (key === 'purchase_date' || key === 'status')) continue
+                        if (String(value) !== String(original[key])) changes[key] = value
+                    }
+                    if (Object.keys(changes).length) {
+                        this.pendingUpdates[item.code] = changes
+                    } else {
+                        delete this.pendingUpdates[item.code]
+                    }
+                    this.editingCode = null
+                },
+
+                discardPending(code) {
+                    delete this.pendingUpdates[code]
+                    this.editingCode = null
+                },
+
+                async applyAllUpdates() {
+                    const updates = Object.entries(this.pendingUpdates).map(([code, changes]) => ({ code, ...changes }))
+                    if (!updates.length) return
+                    this.applyingUpdates = true
+                    try {
+                        const response = await fetch('/api/actions/stocks', {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ updates }),
+                        })
+                        if (!response.ok) {
+                            const errorData = await response.json()
+                            throw new Error(errorData.detail || 'Failed to update stocks')
+                        }
+                        const result = await response.json()
+                        for (const item of result.items || []) this.upsertChartItem(item)
+                        this.pendingUpdates = {}
+                        this.toastMessage = `${updates.length} 銘柄を更新しました`
+                        this.toastType = 'success'
+                        setTimeout(() => { this.toastMessage = ''; }, 4000)
+                        await this.fetchCharts({ quiet: true })
+                    } catch (error) {
+                        // 1 件でも不正な変更があればどれも保存されない。反映待ちは残して直せるようにする
+                        alert(`更新できませんでした: ${error.message}`)
+                    } finally {
+                        this.applyingUpdates = false
                     }
                 },
 
@@ -1665,11 +1842,16 @@
                             throw new Error(errorData.detail || 'Failed to register stock');
                         }
                         const result = await response.json();
+                        // 一覧の再取得を待たずに、登録した行をすぐ表示する (反映されないと思って二重に操作するのを防ぐ)
+                        this.upsertChartItem(result.item)
+                        // 同じ内容をもう一度送らないよう、入力を空にする
+                        this.stock = ''
+                        this.quantity = 0
                         const label = (this.registerChoices.find(c => c.key === status) || {}).label || status
                         this.toastMessage = `${result.code || code} を「${label}」で登録しました。チャートは次回の更新で作成されます`;
                         this.toastType = 'success';
                         setTimeout(() => { this.toastMessage = ''; }, 5000);
-                        await this.fetchCharts(); // Refresh the list
+                        await this.fetchCharts({ quiet: true }); // Refresh the list
                     } catch (error) {
                         alert(`登録できませんでした: ${error.message}`);
                     } finally {

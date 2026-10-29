@@ -168,7 +168,7 @@ graph TD
 ### 前提条件
 
 * Python 3.12+
-* Docker & Docker Compose (DB用)
+* Docker & Docker Compose (日次バッチを PostgreSQL で動かす場合のみ)
 
 ### インストール
 
@@ -187,27 +187,15 @@ graph TD
     pip install -r requirements.txt
     ```
 
-3. データベースの起動
+3. Web UIの起動 (DB は SQLite を使うので、Docker は不要です)
 
     ```bash
-    docker-compose up -d db
+    make dev
     ```
 
-4. ポートフォリオ CSV の用意
-
-    実際の保有データはリポジトリに含めていません。形式はサンプルを参考にしてください。
-
-    ```bash
-    cp data/my_stock.sample.csv data/my_stock_local.csv
-    ```
-
-5. Web UIの起動
-
-    ```bash
-    uvicorn python.web.app:app --reload --port 8888
-    ```
-
-    ブラウザで `http://localhost:8888` にアクセスしてください。
+    表示された URL (`http://localhost:8888` など) をブラウザで開いてください。
+    ローカル用のデータ (`data/my_stock_local.csv`) が無ければサンプルから作り、本番の GCS・DB・Slack には接続しません。
+    ブランチや worktree ごとの使い方は [`Docs/LOCAL_DEV.md`](Docs/LOCAL_DEV.md) を参照してください。
 
 ## ドキュメント
 
