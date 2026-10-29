@@ -255,7 +255,7 @@ async def list_charts() -> List[Dict[str, Any]]:
             print(f"Error reading CSV: {e}")
 
     # 一覧に出す銘柄は my_stock.csv が正。
-    # - 登録したばかりでチャートがまだ無い銘柄も出す (チャートは日次バッチか Update ボタンの分析で作られる)
+    # - 登録したばかりでチャートがまだ無い銘柄も出す (チャートは日次バッチか Update Market Data ボタンの分析で作られる)
     # - 削除済みの銘柄のチャート画像が残っていても出さない (削除ボタンを押しても消せない行になるため)
     # CSV を読めなかったときだけ、従来どおりチャート画像から一覧を作る
     if csv_names:
@@ -303,7 +303,7 @@ async def get_chart_image(category: str, filename: str):
     if not content:
         raise HTTPException(status_code=404, detail="Image not found")
 
-    # チャート画像は Update Data 実行後に同じファイル名で上書きされるため、
+    # チャート画像は Update Market Data 実行後に同じファイル名で上書きされるため、
     # ブラウザ側キャッシュを常に無効化して最新を取得させる。
     headers = {
         "Cache-Control": "no-cache, no-store, must-revalidate",

@@ -411,3 +411,34 @@ def test_chart_list_shows_status_of_row_without_prices(monkeypatch):
     assert listed["4755"]["status"] == StockStatus.HOLDING
     assert listed["4755"]["quantity"] == "10"
     assert listed["4755"]["analysis_pending"] is True
+
+
+# --- まとめて反映 (Update Stock All Data) ------------------------------------------
+
+
+def test_api_bulk_update_applies_all(client, store):
+    res = client.put(
+        "/api/actions/stocks",
+        json={"updates": [{"code": "7203", "quantity": 30}, {"code": "6758", "purpose": "swing"}]},
+    )
+    assert res.status_code == 200, res.text
+    assert [item["code"] for item in res.json()["items"]] == ["7203", "6758"]
+    df = store["df"]
+    assert df.iloc[0]["quantity"] == 30
+    assert df.iloc[1]["purpose"] == "swing"
+
+
+def test_api_bulk_update_saves_nothing_when_one_is_invalid(client, store):
+    before = store["df"].copy()
+    res = client.put(
+        "/api/actions/stocks",
+        json={"updates": [{"code": "7203", "quantity": 30}, {"code": "9999", "quantity": 1}]},
+    )
+    assert res.status_code == 400
+    assert "9999" in res.json()["detail"]
+    pd.testing.assert_frame_equal(store["df"], before)  # 7203 の変更も保存しない
+
+
+def test_api_bulk_update_requires_changes(client):
+    assert client.put("/api/actions/stocks", json={"updates": []}).status_code == 400
+    assert client.put("/api/actions/stocks", json={"updates": [{"code": "7203"}]}).status_code == 400
