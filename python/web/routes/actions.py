@@ -6,6 +6,7 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional
 
+import pandas as pd
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
@@ -45,6 +46,28 @@ class BuyRequest(BaseModel):
     purpose: Optional[str] = None
     # 登録区分。HOLDING (購入) / NEXT_BUY (次回のスイングで購入) / WATCHING (監視中)
     status: Optional[str] = None
+
+
+def _row_payload(df, code: str) -> Optional[dict]:
+    """保存した行を、画面 (チャート一覧の 1 行) と同じ形で返す。"""
+    idx = buy_and_sell_stock.find_rows(df, code)
+    if len(idx) == 0:
+        return None
+    row = df.loc[idx[0]]
+
+    def _text(key):
+        value = row.get(key, "")
+        return "" if pd.isna(value) else str(value)
+
+    return {
+        "code": buy_and_sell_stock.code_key(code),
+        "name": _text("name") or code,
+        "status": _text("status"),
+        "quantity": _text("quantity"),
+        "purchase_price": float(row.get("purchase_price") or 0),
+        "purchase_date": _text("purchase_date"),
+        "purpose": _text("purpose"),
+    }
 
 
 _REGISTRABLE_STATUSES = tuple(choice["key"] for choice in constants.register_choices())
@@ -104,6 +127,7 @@ async def buy_stock(code: str, buy_request: BuyRequest):
             "code": code,
             "registered_status": status,
             "message": f"Successfully registered {code} as {status}.",
+            "item": _row_payload(updated_df, code),
         }
     except HTTPException:
         raise
@@ -125,6 +149,8 @@ async def sell_stock(code: str, sell_request: SellRequest):
             "status": "success",
             "message": result.get("message", f"Stock {code} sold."),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error selling stock {code}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -147,6 +173,54 @@ async def delete_stock(code: str):
         raise
     except Exception as e:
         logger.error(f"Error deleting stock {code}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class UpdateStockRequest(BaseModel):
+    """保有銘柄の更新。変更する項目だけを送る。"""
+
+    quantity: Optional[int] = None
+    purchase_price: Optional[float] = None
+    purchase_date: Optional[str] = None
+    status: Optional[str] = None
+    purpose: Optional[str] = None
+
+
+@router.put("/stock/{code}")
+async def update_stock(code: str, request: UpdateStockRequest):
+    """
+    登録済みの銘柄の内容 (株数・取得単価・購入日・ステータス・目的) を更新するエンドポイント。
+    """
+    changes = request.model_dump(exclude_unset=True)
+    if not changes:
+        raise HTTPException(status_code=400, detail="変更する項目がありません")
+    if "purpose" in changes and changes["purpose"] not in (
+        "",
+        None,
+        *constants.purpose_keys(),
+    ):
+        raise HTTPException(
+            status_code=400, detail=f"目的 {changes['purpose']} は指定できません"
+        )
+
+    try:
+        df = buy_and_sell_stock.load_codes(buy_and_sell_stock.config.codes_path)
+        try:
+            updated_df = buy_and_sell_stock.update_stock(df, code, changes)
+        except KeyError:
+            raise HTTPException(status_code=404, detail=f"Stock code {code} not found.")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        buy_and_sell_stock.save_codes(updated_df, buy_and_sell_stock.config.codes_path)
+        return {
+            "status": "success",
+            "message": f"Updated {code}.",
+            "item": _row_payload(updated_df, code),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating stock {code}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 

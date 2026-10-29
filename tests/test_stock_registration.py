@@ -216,3 +216,181 @@ def test_register_choices_are_served_from_backend():
     assert [c["purchase"] for c in register] == [True, False, False]
     assert register[1]["label"] == "次回のスイングで購入"
     assert register[2]["label"] == "監視中"
+
+
+# --- 銘柄コードの表記ゆれ (画面は 7203、保存データは 7203.T) ---------------------
+
+
+@pytest.mark.parametrize("raw", ["7203", "7203.T", "7203_T", " 7203.t "])
+def test_code_key_ignores_suffix(raw):
+    assert bss.code_key(raw) == "7203"
+
+
+def test_find_rows_matches_screen_code():
+    df = _df(["7203.T", "T", 100, 1000.0, "2026-01-01", "", StockStatus.HOLDING])
+    assert list(bss.find_rows(df, "7203")) == [0]
+
+
+@pytest.fixture
+def store(monkeypatch):
+    """load_codes / save_codes をメモリ上の DataFrame に差し替える"""
+    data = {
+        "df": _df(
+            ["7203.T", "TOYOTA", 100, 1000.0, "2026-01-01", "long", StockStatus.HOLDING],
+            ["6758", "SONY", 0, 0.0, "2026-01-01", "", StockStatus.WATCHING],  # 古い表記の行
+        )
+    }
+    monkeypatch.setattr(bss, "load_codes", lambda path: data["df"].copy())
+    monkeypatch.setattr(bss, "save_codes", lambda df, path: data.update(df=df))
+    return data
+
+
+def test_delete_accepts_code_without_suffix(store):
+    """画面から送られる 7203 で、保存データの 7203.T を削除できる"""
+    result = bss.delete_stock("7203")
+    assert "error" not in result
+    assert list(store["df"]["code"]) == ["6758"]
+
+
+def test_sell_accepts_code_without_suffix(store):
+    result = bss.sell_stock("7203", "profit")
+    assert "error" not in result
+    assert store["df"].iloc[0]["status"] == StockStatus.SOLD_PROFIT
+
+
+def test_buy_normalizes_legacy_code(store):
+    df = bss.buy(store["df"], "6758.T", 10, 3000.0)
+    assert list(df["code"]) == ["7203.T", "6758.T"]  # 行は増えず、表記だけそろう
+    assert df.iloc[1]["status"] == StockStatus.HOLDING
+
+
+# --- 保有銘柄の更新 ---------------------------------------------------------------
+
+
+def test_update_stock_changes_given_fields_only(store):
+    df = bss.update_stock(store["df"], "7203", {"quantity": 50, "purchase_price": 1234.567})
+    row = df.iloc[0]
+    assert row["quantity"] == 50
+    assert row["purchase_price"] == 1234.57
+    assert row["purchase_date"] == "2026-01-01"
+    assert row["purpose"] == "long"
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"quantity": -1},
+        {"purchase_price": -1},
+        {"purchase_date": "2026/01/01"},
+        {"status": "UNKNOWN"},
+        {"quantity": 0},  # 保有中のまま株数 0 にはできない
+    ],
+)
+def test_update_stock_rejects_invalid_values(store, changes):
+    with pytest.raises(ValueError):
+        bss.update_stock(store["df"], "7203", changes)
+
+
+def test_update_stock_can_mark_as_sell_planned(store):
+    df = bss.update_stock(store["df"], "7203", {"status": StockStatus.SELL_PLANNED_PROFIT})
+    assert df.iloc[0]["status"] == StockStatus.SELL_PLANNED_PROFIT
+
+
+def test_update_stock_unknown_code(store):
+    with pytest.raises(KeyError):
+        bss.update_stock(store["df"], "9999", {"quantity": 1})
+
+
+@pytest.fixture
+def client(store):
+    app = FastAPI()
+    app.include_router(actions.router)
+    return TestClient(app)
+
+
+def test_api_update_stock(client, store):
+    res = client.put("/api/actions/stock/7203", json={"quantity": 30, "purpose": "swing"})
+    assert res.status_code == 200, res.text
+    assert res.json()["item"]["quantity"] == "30"
+    assert store["df"].iloc[0]["purpose"] == "swing"
+
+
+@pytest.mark.parametrize(
+    "code,body,expected",
+    [
+        ("9999", {"quantity": 1}, 404),
+        ("7203", {}, 400),
+        ("7203", {"purpose": "unknown"}, 400),
+        ("7203", {"quantity": -5}, 400),
+    ],
+)
+def test_api_update_stock_errors(client, code, body, expected):
+    assert client.put(f"/api/actions/stock/{code}", json=body).status_code == expected
+
+
+def test_api_delete_with_screen_code(client, store):
+    assert client.delete("/api/actions/stock/7203").status_code == 200
+    assert "7203.T" not in list(store["df"]["code"])
+
+
+def test_api_sell_error_is_400_not_500(client):
+    res = client.post("/api/actions/sell/9999", json={"sell_type": "profit"})
+    assert res.status_code == 400
+
+
+def test_api_register_returns_row_for_immediate_display(client):
+    res = client.post("/api/actions/buy/9984", json={"quantity": 10})
+    assert res.status_code == 200, res.text
+    item = res.json()["item"]
+    assert item["code"] == "9984"  # 一覧と同じ表記
+    assert item["status"] == StockStatus.HOLDING
+    assert item["quantity"] == "10"
+
+
+# --- 保存の失敗を成功扱いにしない -------------------------------------------------
+
+
+def test_save_codes_raises_when_gcs_upload_fails(monkeypatch, tmp_path):
+    class _Blob:
+        def upload_from_string(self, *a, **k):
+            raise RuntimeError("403 Forbidden")
+
+    class _Bucket:
+        def blob(self, name):
+            return _Blob()
+
+    class _Gcs:
+        use_gcs = True
+        bucket = _Bucket()
+
+    monkeypatch.setattr(bss, "gcs", _Gcs())
+    local = tmp_path / "my_stock.csv"
+    with pytest.raises(RuntimeError):
+        bss.save_codes(_df(), str(local))
+    assert not local.exists()  # ローカルへこっそり保存しない
+
+
+# --- チャート一覧は my_stock.csv が正 ------------------------------------------------
+
+
+class _StubGcsWithOrphan(_StubGcs):
+    def list_files(self, prefix):
+        # 1111 は削除済み (CSV に無い) 銘柄の古いチャート
+        return ["9434_ソフトバンク_1mo.png", "1111_テスト_1mo.png"]
+
+
+def test_chart_list_hides_charts_of_deleted_stocks(monkeypatch):
+    monkeypatch.setattr(charts, "gcs", _StubGcsWithOrphan())
+    codes = {item["code"] for item in asyncio.run(charts.list_charts())}
+    assert codes == {"9434", "7203"}
+
+
+def test_chart_list_falls_back_to_charts_when_csv_is_unavailable(monkeypatch):
+    class _NoCsv(_StubGcsWithOrphan):
+        def get_file_content(self, path):
+            return None
+
+    monkeypatch.setattr(charts, "gcs", _NoCsv())
+    monkeypatch.chdir("/")  # ローカルの data/my_stock.csv を読まないようにする
+    codes = {item["code"] for item in asyncio.run(charts.list_charts())}
+    assert codes == {"9434", "1111"}

@@ -186,6 +186,8 @@ async def list_charts() -> List[Dict[str, Any]]:
                 code_key = raw_code.replace(".T", "").replace(".", "")
 
                 if code_key:
+                    # 数値が壊れている行も、一覧には出す (削除・編集できるように)
+                    csv_names[code_key] = row.get("name") or code_key
                     # Safe conversion for numbers
                     try:
                         purchase_price = float(row.get("purchase_price", 0))
@@ -226,7 +228,6 @@ async def list_charts() -> List[Dict[str, Any]]:
                         # 英字キーで返す。解決できない値はそのまま返し、未保有扱いになる
                         # (誤って保有表示しない / PRIDEV-524)。
                         raw_status = row.get("status", "")
-                        csv_names[code_key] = row.get("name") or code_key
                         stock_data[code_key] = {
                             "status": normalize_status(raw_status, row.get("quantity"))
                             or raw_status,
@@ -245,16 +246,27 @@ async def list_charts() -> List[Dict[str, Any]]:
         except Exception as e:
             print(f"Error reading CSV: {e}")
 
-    # 登録したばかりでチャートがまだ無い銘柄も一覧に出す。
-    # チャートは日次バッチ (または Update ボタン) の分析で作られる
-    for code_key, name in csv_names.items():
-        if code_key not in charts_map:
-            charts_map[code_key] = {
-                "code": code_key,
-                "name": name,
-                "plots": None,
-                "chartImg": None,
-            }
+    # 一覧に出す銘柄は my_stock.csv が正。
+    # - 登録したばかりでチャートがまだ無い銘柄も出す (チャートは日次バッチか Update ボタンの分析で作られる)
+    # - 削除済みの銘柄のチャート画像が残っていても出さない (削除ボタンを押しても消せない行になるため)
+    # CSV を読めなかったときだけ、従来どおりチャート画像から一覧を作る
+    if csv_names:
+        for code_key, name in csv_names.items():
+            if code_key not in charts_map:
+                charts_map[code_key] = {
+                    "code": code_key,
+                    "name": name,
+                    "plots": None,
+                    "chartImg": None,
+                }
+        orphans = sorted(set(charts_map) - set(csv_names))
+        if orphans:
+            logger.info(
+                f"my_stock.csv に無い銘柄のチャートを一覧から除外しました: {orphans}"
+            )
+        charts_map = {
+            code: item for code, item in charts_map.items() if code in csv_names
+        }
 
     results = sorted(list(charts_map.values()), key=lambda x: x["code"])
 
