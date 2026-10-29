@@ -35,6 +35,15 @@ for f in $PRIVATE_FILES; do
     fi
 done
 
+# 実行権限だけの変更 (サーバー上での chmod) は pull を止めてしまうので、管理下の版へ戻す。
+# 中身が変わっているファイルはそのまま残し、下の pull で止まらせる (手作業の変更を消さない)。
+for f in $(git diff --name-only); do
+    if git -c core.fileMode=false diff --quiet -- "$f"; then
+        git checkout -- "$f"
+        echo "権限の変更を戻しました: $f"
+    fi
+done
+
 BEFORE="$(git rev-parse --short HEAD)"
 # fast-forward できない (サーバー上でコミットされている等) 場合は止める
 git pull --ff-only origin main

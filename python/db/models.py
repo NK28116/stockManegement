@@ -141,4 +141,6 @@ class StockNote(Base):
     code = Column(String, nullable=False, index=True)
     body = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.now, nullable=False)
-    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
+    updated_at = Column(
+        DateTime, default=datetime.now, onupdate=datetime.now, nullable=False
+    )

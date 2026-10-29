@@ -4,6 +4,7 @@ Claude / ChatGPT / Gemini が共通で呼び出せる MCP ツールを登録す�
 DB アクセスは ``python.web.services.watchlist_service`` に委譲しており、
 将来 FastAPI を Go (Gin) に移植する場合も同仕様を再実装すれば足りる。
 """
+
 from typing import Optional
 
 from mcp.server.fastmcp import FastMCP
@@ -22,9 +23,7 @@ def list_watchlist() -> list[dict]:
 
 
 @mcp.tool()
-def add_to_watchlist(
-    code: str, tags: Optional[str] = None, priority: int = 0
-) -> dict:
+def add_to_watchlist(code: str, tags: Optional[str] = None, priority: int = 0) -> dict:
     """監視銘柄を追加する。既に存在すれば tags / priority を上書きする。
 
     User confirmation required before invoking: this writes to the DB.

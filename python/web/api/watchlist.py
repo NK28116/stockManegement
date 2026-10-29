@@ -4,6 +4,7 @@ Watchlist / Stock Note API エンドポイント
 監視銘柄 (Watchlist) とメモ (StockNote) の CRUD。
 ビジネスロジックは python/web/services/watchlist_service.py に委譲する。
 """
+
 from typing import Optional
 
 from fastapi import APIRouter, HTTPException

@@ -77,7 +77,9 @@ class CloudMonitoringReader:
         try:
             self._client = monitoring_v3.MetricServiceClient()
         except Exception as exc:  # noqa: BLE001 - SDK 例外を正規化する
-            raise normalize_exception(exc, "Cloud Monitoring クライアントの初期化") from exc
+            raise normalize_exception(
+                exc, "Cloud Monitoring クライアントの初期化"
+            ) from exc
         return self._client
 
     def metric_type(self, metric: str) -> str:
@@ -95,14 +97,21 @@ class CloudMonitoringReader:
         個々の指標が取れなくても例外にせず、unavailable として返す。
         クライアント初期化そのものが失敗した場合は全指標を unavailable にする。
         """
-        target_metrics = list(metrics) if metrics is not None else list(self._settings.monitored_metrics)
+        target_metrics = (
+            list(metrics)
+            if metrics is not None
+            else list(self._settings.monitored_metrics)
+        )
         now = now or datetime.now(timezone.utc)
 
         try:
             client = self._get_client()
         except ObservabilityError as exc:
             logger.warning(f"Cloud Monitoring を利用できません: {exc}")
-            return {name: MetricSample.unavailable(name, str(exc)) for name in target_metrics}
+            return {
+                name: MetricSample.unavailable(name, str(exc))
+                for name in target_metrics
+            }
 
         results: Dict[str, MetricSample] = {}
         for name in target_metrics:
@@ -112,7 +121,9 @@ class CloudMonitoringReader:
     def _fetch_one(self, client: Any, metric: str, now: datetime) -> MetricSample:
         metric_type = self.metric_type(metric)
         if not metric_type:
-            return MetricSample.unavailable(metric, "この実行環境では取得できない指標です")
+            return MetricSample.unavailable(
+                metric, "この実行環境では取得できない指標です"
+            )
 
         try:
             series = client.list_time_series(

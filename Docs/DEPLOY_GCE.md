@@ -31,6 +31,9 @@ sudo -u <リポジトリの持ち主> bash scripts/deploy_gce.sh /home/<リポ�
 
 - `.env` に `GCS_BUCKET_NAME` が無い
 - サーバー上でコミットされているなど、fast-forward で更新できない
+- 管理下のファイルの中身がサーバー上で書き換えられている (`Your local changes ... would be overwritten`)
+
+実行権限だけの変更 (サーバー上での `chmod`) は、止まらずに管理下の版へ戻してから更新します。
 
 ## 初回の設定 (1 回だけ)
 
@@ -78,3 +81,4 @@ Actions → 「Deploy to GCE」→ **Run workflow** (ブランチは `main`) で
 | `sudo: a password is required` | OS Login の権限が `osLogin` (sudo なし) になっている。`osAdminLogin` を付ける |
 | `ERROR: .env に GCS_BUCKET_NAME がありません` | GCE の `.env` にバケット名を書く |
 | `fatal: Not possible to fast-forward` | GCE 上でコミットや変更がある。`git status` / `git log` で確認して片付ける |
+| `Your local changes to the following files would be overwritten by merge` | GCE 上で管理下のファイルが編集されている。`git diff` で中身を確認し、不要なら `git checkout -- <ファイル>` で戻す |

@@ -44,7 +44,6 @@ def expected_tables() -> List[str]:
 def _script_directory():
     from alembic.config import Config
     from alembic.script import ScriptDirectory
-
     from python.config import config as app_config
 
     alembic_cfg = Config(str(app_config.root_dir / "alembic.ini"))
@@ -70,7 +69,9 @@ def db_revisions(engine: Engine) -> List[str]:
     with engine.connect() as connection:
         from sqlalchemy import text
 
-        rows = connection.execute(text(f"SELECT version_num FROM {ALEMBIC_VERSION_TABLE}"))
+        rows = connection.execute(
+            text(f"SELECT version_num FROM {ALEMBIC_VERSION_TABLE}")
+        )
         return sorted(row[0] for row in rows)
 
 
@@ -125,7 +126,9 @@ class SchemaReport:
         return "\n".join(lines)
 
 
-def check_schema(engine: Optional[Engine] = None, required: Optional[Sequence[str]] = None) -> SchemaReport:
+def check_schema(
+    engine: Optional[Engine] = None, required: Optional[Sequence[str]] = None
+) -> SchemaReport:
     """スキーマと Alembic 履歴の整合を検証する (読み取り専用)。"""
     if engine is None:
         from python.db.database import engine as default_engine
@@ -144,7 +147,9 @@ def check_schema(engine: Optional[Engine] = None, required: Optional[Sequence[st
     )
 
     if report.missing_tables:
-        report.problems.append(f"必要テーブルが存在しません: {', '.join(report.missing_tables)}")
+        report.problems.append(
+            f"必要テーブルが存在しません: {', '.join(report.missing_tables)}"
+        )
         report.hints.append("alembic upgrade head を実行してください")
 
     if not report.db_revisions:
@@ -185,12 +190,20 @@ def check_schema(engine: Optional[Engine] = None, required: Optional[Sequence[st
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="実スキーマと Alembic 履歴の整合を検証する")
-    parser.add_argument("--json", action="store_true", help="機械可読な JSON で出力する")
+    parser = argparse.ArgumentParser(
+        description="実スキーマと Alembic 履歴の整合を検証する"
+    )
+    parser.add_argument(
+        "--json", action="store_true", help="機械可読な JSON で出力する"
+    )
     args = parser.parse_args(argv)
 
     report = check_schema()
-    print(json.dumps(report.to_dict(), ensure_ascii=False, indent=2) if args.json else report.render())
+    print(
+        json.dumps(report.to_dict(), ensure_ascii=False, indent=2)
+        if args.json
+        else report.render()
+    )
     return 0 if report.ok else 1
 
 

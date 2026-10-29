@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | Web UI | Render | Render のダッシュボードで追跡ブランチが `main` なら自動デプロイ (`render.yaml` の `autoDeploy: true`) |
 | 日次バッチ・DB | GCE | `.github/workflows/deploy-gce.yml` が IAP 経由の SSH で `git pull` → `pip install` (設定: `Docs/DEPLOY_GCE.md`) |
-| (旧) Cloud Run | Cloud Run | `.github/workflows/google-cloudrun-docker.yml` がテスト → デプロイ。lint の既存エラーと既知の失敗テスト (PRIDEV-479) でテストが落ちるため、デプロイ段階までは進まない |
+| (旧) Cloud Run | Cloud Run | `.github/workflows/google-cloudrun-docker.yml` はテストのみ (lint・整形・pytest)。Cloud Run へのデプロイは手動実行のときだけ |
 
 ## 今回のデプロイで気をつけること
 

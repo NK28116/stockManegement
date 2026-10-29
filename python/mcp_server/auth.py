@@ -3,6 +3,7 @@
 環境変数 ``MCP_API_KEY`` が設定されている場合のみ有効化する。
 未設定時は常にリクエストを通過させ、起動ログで警告する。
 """
+
 import os
 
 from starlette.middleware.base import BaseHTTPMiddleware

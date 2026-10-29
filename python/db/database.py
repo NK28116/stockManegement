@@ -7,7 +7,6 @@ from sqlalchemy import create_engine, delete, update
 from sqlalchemy.orm import sessionmaker
 
 from python.config import config
-from python.db.url import build_database_url, is_sqlite, sqlite_path
 
 # 全モデルをインポートして Base.metadata に登録する（create_all に必要）
 from python.db.models import (
@@ -20,6 +19,7 @@ from python.db.models import (
     StockNote,
     Watchlist,
 )
+from python.db.url import build_database_url, is_sqlite, sqlite_path
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,9 @@ logger = logging.getLogger(__name__)
 DATABASE_URL = build_database_url()
 
 if is_sqlite():
-    engine = create_engine(DATABASE_URL, echo=False, connect_args={"check_same_thread": False})
+    engine = create_engine(
+        DATABASE_URL, echo=False, connect_args={"check_same_thread": False}
+    )
     logger.info(f"SQLite モードで起動: {sqlite_path()}")
     # SQLite 環境では Alembic マイグレーションを使わない運用も想定されるため、
     # エンジン生成直後に全テーブルを自動作成する。
@@ -194,7 +196,9 @@ def sync_csv_to_portfolio() -> None:
         df = df.where(pd.notnull(df), None)
         records = [_clean_portfolio_row(r) for r in df.to_dict("records")]
         upsert_portfolio_data(records)
-        logger.info(f"✅ sync_csv_to_portfolio: {len(records)} 件を同期しました ({csv_path})")
+        logger.info(
+            f"✅ sync_csv_to_portfolio: {len(records)} 件を同期しました ({csv_path})"
+        )
     except Exception as e:
         logger.error(f"❌ sync_csv_to_portfolio エラー: {e}", exc_info=True)
 
@@ -209,7 +213,9 @@ def delete_portfolio_record(code: str) -> None:
             stmt = delete(Portfolio).where(Portfolio.code == code)
             result = session.execute(stmt)
             session.commit()
-            logger.info(f"✅ delete_portfolio_record: {code} を削除しました ({result.rowcount} 件)")
+            logger.info(
+                f"✅ delete_portfolio_record: {code} を削除しました ({result.rowcount} 件)"
+            )
     except Exception as e:
         logger.error(f"❌ delete_portfolio_record エラー ({code}): {e}", exc_info=True)
 
@@ -221,7 +227,11 @@ def update_portfolio_status(code: str, status: str, quantity: int = 0) -> None:
     """
     try:
         with get_db_session() as session:
-            stmt = update(Portfolio).where(Portfolio.code == code).values(status=status, quantity=quantity)
+            stmt = (
+                update(Portfolio)
+                .where(Portfolio.code == code)
+                .values(status=status, quantity=quantity)
+            )
             result = session.execute(stmt)
             session.commit()
             logger.info(

@@ -14,8 +14,8 @@ import yfinance as yf
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
-from python.db.database import get_db_session, engine
-from python.db.models import Signal, SignalHistory
+from python.db.database import engine, get_db_session
+from python.db.models import SignalHistory
 from python.trading import stock_status
 from python.trading.trading_rules import ImprovedTradingRules
 from python.utils.logger import get_logger
@@ -104,8 +104,7 @@ async def get_latest_signals():
         # GROUP BY + MAX(created_at) で銘柄ごとの最新レコードを取得し、
         # portfolio テーブルと LEFT JOIN して保有フラグを付与する
         # (DISTINCT ON は PostgreSQL 固有のため、SQLite でも動く標準 SQL に変更)
-        query = text(
-            """
+        query = text("""
             SELECT
                 t1.id, t1.symbol, t1.analysis_date, t1.signal_type, t1.score,
                 t1.detected_patterns, t1.stop_loss, t1.take_profit, t1.rationale, t1.created_at,
@@ -122,8 +121,7 @@ async def get_latest_signals():
                 WHERE status IN :held_statuses
             ) p ON t1.symbol = p.code
             ORDER BY t1.signal_type DESC, t1.score DESC
-            """
-        )
+            """)
 
         # 保有とみなす保存値は python/trading/stock_status.py が単一の正 (PRIDEV-486)
         held_statuses = tuple(stock_status.held_status_values())
@@ -235,4 +233,6 @@ async def check_signal(request: SignalCheckRequest):
         raise
     except Exception as e:
         logger.error(f"シグナルチェック中にエラーが発生しました: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"内部エラーが発生しました: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"内部エラーが発生しました: {str(e)}"
+        )

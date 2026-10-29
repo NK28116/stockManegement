@@ -21,7 +21,10 @@ from python.observability.logging_adapter import CloudLoggingReader
 from python.observability.masking import mask_mapping, mask_text
 from python.observability.models import LogEntry, MetricSample
 from python.observability.monitoring_adapter import CloudMonitoringReader
-from python.observability.settings import ObservabilitySettings, get_observability_settings
+from python.observability.settings import (
+    ObservabilitySettings,
+    get_observability_settings,
+)
 from python.utils.logger import get_logger
 
 logger = get_logger("observability", "health")
@@ -104,7 +107,9 @@ class SystemHealth:
             "warning_count": self.warning_count,
             "last_success_at": self.last_success_at,
             "recent_errors": [entry.to_dict() for entry in self.recent_errors],
-            "metrics": {name: sample.to_dict() for name, sample in self.metrics.items()},
+            "metrics": {
+                name: sample.to_dict() for name, sample in self.metrics.items()
+            },
         }
 
 
@@ -118,8 +123,12 @@ class SystemHealthService:
         settings: Optional[ObservabilitySettings] = None,
     ) -> None:
         self._settings = settings or get_observability_settings()
-        self._logging_reader = logging_reader or CloudLoggingReader(settings=self._settings)
-        self._monitoring_reader = monitoring_reader or CloudMonitoringReader(settings=self._settings)
+        self._logging_reader = logging_reader or CloudLoggingReader(
+            settings=self._settings
+        )
+        self._monitoring_reader = monitoring_reader or CloudMonitoringReader(
+            settings=self._settings
+        )
 
     def collect(
         self,
@@ -145,7 +154,9 @@ class SystemHealthService:
         limit: Optional[int],
     ) -> List[LogEntry]:
         try:
-            return self._logging_reader.fetch_recent(lookback_hours=lookback_hours, limit=limit)
+            return self._logging_reader.fetch_recent(
+                lookback_hours=lookback_hours, limit=limit
+            )
         except ObservabilityPermissionError as exc:
             health.degraded_reasons.append(f"ログの取得権限がありません: {exc}")
         except ObservabilityError as exc:
@@ -158,8 +169,12 @@ class SystemHealthService:
     @staticmethod
     def _classify(health: SystemHealth, entries: List[LogEntry]) -> None:
         """severity で分類し、エラーのみを画面向けに整形する。"""
-        errors = [entry for entry in entries if entry.severity.upper() in ERROR_SEVERITIES]
-        warnings = [entry for entry in entries if entry.severity.upper() in WARNING_SEVERITIES]
+        errors = [
+            entry for entry in entries if entry.severity.upper() in ERROR_SEVERITIES
+        ]
+        warnings = [
+            entry for entry in entries if entry.severity.upper() in WARNING_SEVERITIES
+        ]
 
         health.error_count = len(errors)
         health.warning_count = len(warnings)
@@ -174,12 +189,18 @@ class SystemHealthService:
             health.degraded_reasons.append("稼働指標を取得できませんでした")
             return
 
-        unavailable = [name for name, sample in health.metrics.items() if not sample.available]
+        unavailable = [
+            name for name, sample in health.metrics.items() if not sample.available
+        ]
         if unavailable and len(unavailable) == len(health.metrics):
             health.degraded_reasons.append("稼働指標を取得できませんでした")
 
         last_success = health.metrics.get("last_success_at")
-        if last_success is not None and last_success.available and last_success.value is not None:
+        if (
+            last_success is not None
+            and last_success.available
+            and last_success.value is not None
+        ):
             health.last_success_at = datetime.fromtimestamp(
                 last_success.value, tz=timezone.utc
             ).isoformat()

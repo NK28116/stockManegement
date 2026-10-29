@@ -15,5 +15,7 @@ def get_bucket_name() -> str:
     load_dotenv()  # 既に設定済みの環境変数は上書きしない
     name = (os.getenv("GCS_BUCKET_NAME") or "").strip()
     if not name:
-        raise RuntimeError("GCS_BUCKET_NAME が設定されていません。環境変数または .env で指定してください")
+        raise RuntimeError(
+            "GCS_BUCKET_NAME が設定されていません。環境変数または .env で指定してください"
+        )
     return name

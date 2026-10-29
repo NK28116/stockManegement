@@ -124,15 +124,15 @@ def test_header_navigation_wraps_on_narrow_viewports(template, name, width):
 
 
 def test_purchase_form_wraps_and_aligns_controls(template):
-    """購入フォームが折り返し、入力と select の基準位置が揃っていること。"""
-    form = re.search(r"株式の購入.*?</div>\s*</div>", template, re.DOTALL)
-    assert form, "購入フォームが見つからない"
+    """登録フォームが折り返し、入力と select の基準位置が揃っていること。"""
+    form = re.search(r"銘柄の登録.*?</div>\s*</div>", template, re.DOTALL)
+    assert form, "登録フォームが見つからない"
     form_html = form.group(0)
 
     assert "flex flex-wrap items-end" in form_html, "小画面で折り返せない"
     # input / select / button すべてが共通クラスで同じ高さ・幅になる
-    assert form_html.count("form-control") == 5, "入力部品の基準位置が揃っていない"
-    assert form_html.count("form-field") == 4
+    assert form_html.count("form-control") == 6, "入力部品の基準位置が揃っていない"
+    assert form_html.count("form-field") == 5
     assert "w-full sm:w-auto" in form_html, "狭い幅では 1 列、通常幅では横並びにすること"
 
 

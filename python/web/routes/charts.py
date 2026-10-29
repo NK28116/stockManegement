@@ -7,7 +7,6 @@ from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, Response
 
-from python.config import config
 from python.trading.stock_status import normalize as normalize_status
 from python.utils.gcs_client import gcs
 
@@ -80,7 +79,9 @@ async def list_charts() -> List[Dict[str, Any]]:
                 with open(local_json_path, "rb") as f:
                     json_content = f.read()
             except Exception as e:
-                logger.warning(f"Error reading local JSON fallback '{local_json_path}': {e}")
+                logger.warning(
+                    f"Error reading local JSON fallback '{local_json_path}': {e}"
+                )
         else:
             logger.info(f"Local JSON file '{local_json_path}' not found.")
 
@@ -93,7 +94,9 @@ async def list_charts() -> List[Dict[str, Any]]:
         except Exception as e:
             logger.error(f"Unexpected error loading {json_filename}: {e}")
     else:
-        logger.info(f"Could not load {json_filename}. Proceeding without specific indicators.")
+        logger.info(
+            f"Could not load {json_filename}. Proceeding without specific indicators."
+        )
 
     # Normalize keys in latest_indicators (remove .T) to match chart keys
     normalized_indicators = {}
@@ -149,7 +152,9 @@ async def list_charts() -> List[Dict[str, Any]]:
 
     # Fallback logic for GCS: If GCS file is missing, try local data/my_stock.csv
     if gcs.use_gcs and not csv_content:
-        logger.warning("GCS my_stock.csv not found. Falling back to local data/my_stock.csv")
+        logger.warning(
+            "GCS my_stock.csv not found. Falling back to local data/my_stock.csv"
+        )
         try:
             with open("data/my_stock.csv", "rb") as f:
                 csv_content = f.read()
@@ -167,6 +172,7 @@ async def list_charts() -> List[Dict[str, Any]]:
             logger.error(f"Error reading local CSV fallback '{csv_filename}': {e}")
 
     stock_data = {}
+    csv_names = {}
 
     if csv_content:
         try:
@@ -189,19 +195,27 @@ async def list_charts() -> List[Dict[str, Any]]:
                         pl_pct_str = row.get("profit_loss_percent", "")
                         if "{" in pl_pct_str or not pl_pct_str:
                             if purchase_price != 0:
-                                pl_pct = (current_price - purchase_price) / purchase_price * 100
+                                pl_pct = (
+                                    (current_price - purchase_price)
+                                    / purchase_price
+                                    * 100
+                                )
                             else:
                                 pl_pct = 0.0
                         else:
                             try:
-                                pl_pct = float(pl_pct_str.replace("%", "").replace("+", ""))
+                                pl_pct = float(
+                                    pl_pct_str.replace("%", "").replace("+", "")
+                                )
                             except ValueError:
                                 pl_pct = 0.0
 
                         # Calculate simple profit_loss if needed
                         pl_val_str = row.get("profit_loss", "")
                         if "{" in pl_val_str or not pl_val_str:
-                            pl_val = (current_price - purchase_price) * float(row.get("quantity", 1))
+                            pl_val = (current_price - purchase_price) * float(
+                                row.get("quantity", 1)
+                            )
                         else:
                             try:
                                 pl_val = float(pl_val_str)
@@ -212,6 +226,7 @@ async def list_charts() -> List[Dict[str, Any]]:
                         # 英字キーで返す。解決できない値はそのまま返し、未保有扱いになる
                         # (誤って保有表示しない / PRIDEV-524)。
                         raw_status = row.get("status", "")
+                        csv_names[code_key] = row.get("name") or code_key
                         stock_data[code_key] = {
                             "status": normalize_status(raw_status, row.get("quantity"))
                             or raw_status,
@@ -230,6 +245,17 @@ async def list_charts() -> List[Dict[str, Any]]:
         except Exception as e:
             print(f"Error reading CSV: {e}")
 
+    # 登録したばかりでチャートがまだ無い銘柄も一覧に出す。
+    # チャートは日次バッチ (または Update ボタン) の分析で作られる
+    for code_key, name in csv_names.items():
+        if code_key not in charts_map:
+            charts_map[code_key] = {
+                "code": code_key,
+                "name": name,
+                "plots": None,
+                "chartImg": None,
+            }
+
     results = sorted(list(charts_map.values()), key=lambda x: x["code"])
 
     # Merge stock_data into results
@@ -237,6 +263,7 @@ async def list_charts() -> List[Dict[str, Any]]:
         code = item["code"]
         if code in stock_data:
             item.update(stock_data[code])
+        item["analysis_pending"] = not item["plots"] and not item["chartImg"]
 
     print(f"DEBUG: Found {len(results)} companies")
     return results

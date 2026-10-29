@@ -19,6 +19,7 @@ __all__ = [
     "DEFAULT_PURPOSE_BADGE_CLASS",
     "DEFAULT_STATUS_BADGE_CLASS",
     "PURPOSE_CHOICES",
+    "register_choices",
     "as_client_payload",
     "purpose_keys",
     "purpose_label",
@@ -28,10 +29,18 @@ __all__ = [
 # --- 保有目的 -----------------------------------------------------------------
 # 保存値は英字キー (data/my_stock*.csv の purpose 列)、表示は日本語。
 PURPOSE_CHOICES: Tuple[Dict[str, str], ...] = (
-    {"key": "long", "label": "長期（バリュー投資）", "badge_class": "bg-green-100 text-green-800"},
+    {
+        "key": "long",
+        "label": "長期（バリュー投資）",
+        "badge_class": "bg-green-100 text-green-800",
+    },
     {"key": "middle", "label": "中期", "badge_class": "bg-blue-100 text-blue-800"},
     {"key": "present", "label": "優待目的", "badge_class": "bg-pink-100 text-pink-800"},
-    {"key": "swing", "label": "スイングトレード", "badge_class": "bg-orange-100 text-orange-800"},
+    {
+        "key": "swing",
+        "label": "スイングトレード",
+        "badge_class": "bg-orange-100 text-orange-800",
+    },
 )
 
 DEFAULT_PURPOSE_BADGE_CLASS = "bg-gray-100 text-gray-800"
@@ -49,11 +58,29 @@ def purpose_label(key: str) -> str:
     return choice["label"] if choice else key
 
 
+def register_choices() -> List[Dict[str, object]]:
+    """ダッシュボードの登録フォームの区分 (購入 / 次回のスイングで購入 / 監視中)。
+
+    purchase=True の区分は購入として記録する (株数は 1 以上が必須)。
+    それ以外は保有せずに一覧へ載せる (株数は予定・任意)。
+    """
+    S = stock_status.StockStatus
+    choices: List[Dict[str, object]] = [
+        {"key": S.HOLDING, "label": "購入", "purchase": True},
+    ]
+    for key in (S.NEXT_BUY, S.WATCHING):
+        choices.append(
+            {"key": key, "label": stock_status.status_label(key), "purchase": False}
+        )
+    return choices
+
+
 def as_client_payload() -> Dict[str, object]:
     """UI へ渡す選択肢一覧。"""
     return {
         "status": [choice.to_dict() for choice in stock_status.STATUS_CHOICES],
         "purpose": [dict(choice) for choice in PURPOSE_CHOICES],
+        "register": register_choices(),
         "default_status_badge_class": DEFAULT_STATUS_BADGE_CLASS,
         "default_purpose_badge_class": DEFAULT_PURPOSE_BADGE_CLASS,
     }

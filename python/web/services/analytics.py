@@ -4,8 +4,8 @@ Analytics Service
 ポートフォリオの分析機能を提供するサービス層
 総資産額と評価損益を計算
 """
+
 from datetime import datetime
-from typing import Dict
 
 from python.analysis.portfolio_analyzer import PortfolioAnalyzer
 from python.utils.logger import get_logger
