@@ -13,6 +13,8 @@ from pydantic import BaseModel
 from python.trading import buy_and_sell_stock
 from python.trading.stock_status import StockStatus
 from python.web import constants
+from python.web.services import chart_jobs as chart_jobs_module
+from python.web.services.chart_jobs import chart_jobs
 
 router = APIRouter(prefix="/api/actions", tags=["actions"])
 logger = logging.getLogger(__name__)
@@ -280,6 +282,112 @@ async def update_stocks(request: BulkUpdateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class RegistrationItem(BuyRequest):
+    """カートに入れた新規登録 1 件"""
+
+    code: str
+
+
+class CommitRequest(BaseModel):
+    registrations: List[RegistrationItem] = []
+    updates: List[StockUpdateItem] = []
+
+
+def _apply_registration(df, item: RegistrationItem):
+    """登録 1 件を DataFrame に反映する。不正なら ValueError。"""
+    code = buy_and_sell_stock.normalize_code(item.code)
+    status = item.status or StockStatus.HOLDING
+    if status not in _REGISTRABLE_STATUSES:
+        raise ValueError(f"登録できないステータスです: {status}")
+    if status == StockStatus.HOLDING and item.quantity <= 0:
+        raise ValueError("購入する株数は 1 以上で指定してください")
+    if item.quantity < 0:
+        raise ValueError("株数は 0 以上で指定してください")
+    _validate_purpose({"purpose": item.purpose} if item.purpose else {})
+
+    if status == StockStatus.HOLDING:
+        df = buy_and_sell_stock.buy(df, code, item.quantity, item.price)
+    else:
+        df = buy_and_sell_stock.register_planned(
+            df, code, status, item.quantity, item.price, item.purpose
+        )
+    if item.purpose:
+        df.loc[buy_and_sell_stock.find_rows(df, code), "purpose"] = item.purpose
+    return df, code
+
+
+def _analyze_after_charts() -> None:
+    """新しい銘柄のチャートを作り終えたら、シグナルを更新する (Check Signals と同じ)。"""
+    if analyze is None or _state.is_analyzing:
+        return
+    _state.is_analyzing = True
+    try:
+        analyze.main()
+    finally:
+        _state.is_analyzing = False
+
+
+@router.post("/commit")
+async def commit_changes(request: CommitRequest, background_tasks: BackgroundTasks):
+    """
+    カートの新規登録と、編集パネルで保存した変更をまとめて反映するエンドポイント
+    (ダッシュボードの「Update Stock All Data (N)」)。
+
+    - すべて検証してから 1 回だけ保存する。1 件でも不正なら、どれも保存しない
+    - 保存後、新しく登録した銘柄のチャートをバックグラウンドで作り、作り終えたらシグナルを更新する
+    """
+    if not request.registrations and not request.updates:
+        raise HTTPException(status_code=400, detail="反映する変更がありません")
+
+    try:
+        df = buy_and_sell_stock.load_codes(buy_and_sell_stock.config.codes_path)
+        errors = []
+        registered = []
+        for item in request.registrations:
+            try:
+                df, code = _apply_registration(df, item)
+                registered.append(code)
+            except ValueError as e:
+                errors.append({"code": item.code, "detail": str(e)})
+        for update in request.updates:
+            changes = update.model_dump(exclude_unset=True, exclude={"code"})
+            try:
+                if not changes:
+                    raise ValueError("変更する項目がありません")
+                _validate_purpose(changes)
+                df = buy_and_sell_stock.update_stock(df, update.code, changes)
+            except KeyError:
+                errors.append({"code": update.code, "detail": "銘柄が見つかりません"})
+            except ValueError as e:
+                errors.append({"code": update.code, "detail": str(e)})
+        if errors:
+            summary = " / ".join(f"{e['code']}: {e['detail']}" for e in errors)
+            raise HTTPException(
+                status_code=400,
+                detail=f"保存しませんでした ({len(errors)} 件の不正な変更): {summary}",
+            )
+
+        buy_and_sell_stock.save_codes(df, buy_and_sell_stock.config.codes_path)
+
+        generating = []
+        if registered and chart_jobs_module.is_enabled():
+            generating = chart_jobs.enqueue(registered)
+            background_tasks.add_task(chart_jobs.run, _analyze_after_charts)
+
+        codes = registered + [u.code for u in request.updates]
+        return {
+            "status": "success",
+            "message": f"Registered {len(registered)}, updated {len(request.updates)}.",
+            "items": [_row_payload(df, code) for code in codes],
+            "generating_charts": generating,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error committing changes: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 class ActionState:
     last_update_time: Optional[datetime] = None
     is_updating: bool = False
@@ -467,6 +575,9 @@ async def get_action_status():
     return {
         "is_updating": _state.is_updating,
         "is_analyzing": _state.is_analyzing,
+        # 新しく登録した銘柄のチャート作成 (銘柄コードは一覧と同じ 7203 の形)
+        "generating_charts": chart_jobs.generating(),
+        "chart_failed": chart_jobs.failed(),
         "last_update_time": _state.last_update_time,
         "cooldown_remaining_seconds": (
             max(

@@ -342,7 +342,7 @@ def test_saved_edits_are_applied_together(browser, base_url):
             items = [{**CHARTS[0], **u} for u in body["updates"]]
             route.fulfill(status=200, content_type="application/json", body=json.dumps({"items": items}))
 
-        page.route("**/api/actions/stocks", handle_bulk)
+        page.route("**/api/actions/commit", handle_bulk)
 
         button = page.get_by_role("button", name="Update Stock All Data (0)")
         assert button.is_disabled()
@@ -374,5 +374,69 @@ def test_market_update_button_is_renamed(browser, base_url):
     context, page, _ = _open_dashboard(browser, base_url, 1440)
     try:
         assert page.get_by_role("button", name="Update Market Data").is_visible()
+    finally:
+        context.close()
+
+
+# --- 新規登録はカートに入れ、Update Stock All Data でまとめて登録してチャートを作る -------
+def test_cart_registrations_are_committed_together(browser, base_url):
+    context, page, page_errors = _open_dashboard(browser, base_url, 1440)
+    try:
+        sent = []
+        status_calls = {"n": 0}
+
+        def handle_commit(route):
+            body = json.loads(route.request.post_data)
+            sent.append(body)
+            items = [
+                {"code": r["code"], "name": r["code"], "status": r["status"], "quantity": str(r["quantity"])}
+                for r in body["registrations"]
+            ]
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps({"items": items, "generating_charts": ["4755", "9984"]}),
+            )
+
+        def handle_status(route):
+            # 1 回目は作成中、2 回目以降は完了
+            status_calls["n"] += 1
+            generating = ["4755", "9984"] if status_calls["n"] == 1 else []
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps({"is_updating": False, "is_analyzing": False, "generating_charts": generating}),
+            )
+
+        def handle_list(route):
+            # 登録後の一覧には、登録した銘柄がチャート無しで含まれる (実際の API と同じ)
+            added = [
+                {**_chart(90 + i, r["status"] or "HOLDING"), "code": r["code"], "analysis_pending": True}
+                for body in sent
+                for i, r in enumerate(body["registrations"])
+            ]
+            route.fulfill(status=200, content_type="application/json", body=json.dumps(CHARTS + added))
+
+        page.route("**/api/actions/commit", handle_commit)
+        page.route("**/api/actions/status", handle_status)
+        page.route("**/api/charts/list", handle_list)
+
+        form_inputs = page.locator(".form-field input")
+        for code in ("4755", "9984"):
+            form_inputs.nth(0).fill(code)
+            form_inputs.nth(1).fill("100")
+            page.get_by_role("button", name="カートに追加").click()
+        assert sent == []
+        assert page.locator("text=カート (2 件)").is_visible()
+
+        page.get_by_role("button", name="Update Stock All Data (2)").click()
+        page.get_by_role("button", name="Update Stock All Data (0)").wait_for()
+
+        assert len(sent) == 1
+        assert [r["code"] for r in sent[0]["registrations"]] == ["4755", "9984"]
+        assert sent[0]["updates"] == []
+        # 作成中の銘柄には、作成中の表記を出す
+        assert page.get_by_text("現在チャートを作成中です．作成したらsignalを更新します").count() == 2
+        assert page_errors == []
     finally:
         context.close()
