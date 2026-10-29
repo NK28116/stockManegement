@@ -2,6 +2,7 @@
 import argparse
 import io
 import os
+import re
 from datetime import datetime
 
 import pandas as pd
@@ -27,6 +28,9 @@ __all__ = [
     "save_codes",
     "get_price",
     "buy",
+    "normalize_code",
+    "PLANNED_STATUSES",
+    "register_planned",
     "sell",
     "refresh_prices",
     "get_name",
@@ -126,10 +130,46 @@ def get_price(code: str) -> float:
     return 0.0
 
 
+# 東証の銘柄コード (数字 4 桁、または 2024 年以降の英字入り 4 桁。例: 7203 / 285A)
+_TSE_CODE = re.compile(r"^[0-9][0-9A-Z]{3}$")
+
+# 保有せずに一覧へ載せるステータス (画面の「次回のスイングで購入」「監視中」)
+PLANNED_STATUSES = (StockStatus.NEXT_BUY, StockStatus.WATCHING)
+
+
+def normalize_code(code: str) -> str:
+    """画面で入力された銘柄コードを保存形式にそろえる (7203 → 7203.T)。
+
+    保存データと株価の取得 (yfinance) は「7203.T」の形を使う。
+    すでに市場の接尾辞が付いているコード (例: 7203.T、AAPL) はそのまま返す。
+    """
+    code = str(code).strip().upper()
+    if _TSE_CODE.match(code):
+        return f"{code}.T"
+    return code
+
+
+# 保有していないことがはっきりしているステータス。
+# 空欄や解釈できない値の行は、保有中として扱う (誤って記録をリセットしない)
+_NOT_HELD_STATUSES = (
+    *PLANNED_STATUSES,
+    StockStatus.SOLD_PROFIT,
+    StockStatus.SOLD_LOSS,
+    StockStatus.EXCLUDED,
+)
+
+
+def _is_not_held_row(df: pd.DataFrame, i) -> bool:
+    if "status" not in df.columns:
+        return False
+    return normalize(df.at[i, "status"], df.at[i, "quantity"]) in _NOT_HELD_STATUSES
+
+
 def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFrame:
     today = datetime.now().strftime("%Y-%m-%d")
     idx = df.index[df["code"] == code]
-    if price is None:
+    if not price:
+        # 単価が分からない (None / 0) ときは現在値で記録する
         price = get_price(code)
     if len(idx) == 0:
         # 新規行
@@ -143,6 +183,15 @@ def buy(df: pd.DataFrame, code: str, qty: int, price: float | None) -> pd.DataFr
         }
         if "status" in df.columns:
             df.loc[len(df) - 1, "status"] = StockStatus.HOLDING
+    elif qty > 0 and _is_not_held_row(df, idx[0]):
+        # 次回購入・監視中・売却済みなどの行を購入した場合は、新しい購入として記録し直す
+        # (予定の株数や登録時の参考価格と合算しない)
+        i = idx[0]
+        df.at[i, "quantity"] = qty
+        df.at[i, "purchase_price"] = round(float(price), 2) if price else 0.0
+        df.at[i, "purchase_date"] = today
+        if "status" in df.columns:
+            df.at[i, "status"] = StockStatus.HOLDING
     else:
         i = idx[0]
         old_q = int(df.at[i, "quantity"])
@@ -338,12 +387,14 @@ def refresh_prices(df: pd.DataFrame, target_code: str | None = None) -> pd.DataF
         qty = int(row.get("quantity", 0) or 0)
         status = str(row.get("status", "")).strip()
 
-        # quantityが0で、かつ売却済み / 除外ではない場合は削除対象
+        # quantityが0で、かつ売却済み / 除外 / 次回購入 / 監視中ではない場合は削除対象
+        # (次回購入・監視中は株数を決めずに登録できる)
         normalized_status = normalize(status, qty)
         if qty == 0 and normalized_status not in (
             StockStatus.SOLD_PROFIT,
             StockStatus.SOLD_LOSS,
             StockStatus.EXCLUDED,
+            *PLANNED_STATUSES,
         ):
             print(
                 f"銘柄 {code} は保有数が0で、かつ有効な売却みステータスではないため削除します。"
@@ -376,6 +427,65 @@ def refresh_prices(df: pd.DataFrame, target_code: str | None = None) -> pd.DataF
 
 
 # 追加
+def register_planned(
+    df: pd.DataFrame,
+    code: str,
+    status: str,
+    qty: int = 0,
+    price: float | None = None,
+    purpose: str | None = None,
+) -> pd.DataFrame:
+    """保有せずに一覧へ載せる (「次回のスイングで購入」「監視中」)。
+
+    Args:
+        qty: 予定の株数。監視だけなら 0 でよい。
+        price: 参考価格。省略すると現在値を記録する。
+
+    Raises:
+        ValueError: ステータスが対象外、または保有中の銘柄を指定した場合。
+    """
+    if status not in PLANNED_STATUSES:
+        raise ValueError(f"ステータス {status} は登録できません")
+    if qty < 0:
+        raise ValueError("株数は 0 以上で指定してください")
+
+    today = datetime.now().strftime("%Y-%m-%d")
+    if not price:
+        price = get_price(code)
+    price = round(float(price), 2) if price else 0.0
+
+    idx = df.index[df["code"] == code]
+    if len(idx) == 0:
+        df.loc[len(df)] = {
+            "code": code,
+            "name": get_name(code),
+            "quantity": qty,
+            "purchase_price": price,
+            "purchase_date": today,
+            "purpose": purpose or "",
+            "status": status,
+        }
+    else:
+        i = idx[0]
+        if not _is_not_held_row(df, i):
+            # 1 銘柄 1 行で管理しているため、保有中の行を予定の行で上書きしない
+            raise ValueError(f"{code} は保有中です")
+        df.at[i, "quantity"] = qty
+        df.at[i, "purchase_price"] = price
+        df.at[i, "purchase_date"] = today
+        df.at[i, "status"] = status
+        if purpose:
+            df.at[i, "purpose"] = purpose
+
+    label = "次回のスイングで購入" if status == StockStatus.NEXT_BUY else "監視中"
+    message = f"{label}: {code} {qty}株 @¥{price if price else 'N/A'}"
+    print(message)
+    from python.utils.alert import send_alert
+
+    send_alert(message, level="INFO")
+    return df
+
+
 def get_name(code: str) -> str:
     if yf is None:
         return code

@@ -10,6 +10,8 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
 from python.trading import buy_and_sell_stock
+from python.trading.stock_status import StockStatus
+from python.web import constants
 
 router = APIRouter(prefix="/api/actions", tags=["actions"])
 logger = logging.getLogger(__name__)
@@ -38,23 +40,57 @@ class SellRequest(BaseModel):
 
 class BuyRequest(BaseModel):
     quantity: int
+    # 1 株あたりの価格。省略 (または 0) なら現在値で記録する
     price: Optional[float] = None
     purpose: Optional[str] = None
+    # 登録区分。HOLDING (購入) / NEXT_BUY (次回のスイングで購入) / WATCHING (監視中)
+    status: Optional[str] = None
+
+
+_REGISTRABLE_STATUSES = tuple(choice["key"] for choice in constants.register_choices())
 
 
 @router.post("/buy/{code}")
 async def buy_stock(code: str, buy_request: BuyRequest):
     """
-    指定された銘柄コードの株を購入するAPIエンドポイント。
+    銘柄を一覧へ登録するAPIエンドポイント。
+
+    status が HOLDING (省略時) なら購入として記録し、NEXT_BUY / WATCHING なら
+    保有せずに一覧へ載せる。
     """
+    code = buy_and_sell_stock.normalize_code(code)
+    status = buy_request.status or StockStatus.HOLDING
+    if status not in _REGISTRABLE_STATUSES:
+        raise HTTPException(
+            status_code=400, detail=f"登録できないステータスです: {status}"
+        )
+    if status == StockStatus.HOLDING and buy_request.quantity <= 0:
+        raise HTTPException(
+            status_code=400, detail="購入する株数は 1 以上で指定してください"
+        )
+    if buy_request.quantity < 0:
+        raise HTTPException(status_code=400, detail="株数は 0 以上で指定してください")
+
     try:
         # 既存のCSVファイルを読み込む
         df = buy_and_sell_stock.load_codes(buy_and_sell_stock.config.codes_path)
 
-        # buy関数を呼び出してデータフレームを更新
-        updated_df = buy_and_sell_stock.buy(
-            df, code, buy_request.quantity, buy_request.price
-        )
+        if status == StockStatus.HOLDING:
+            updated_df = buy_and_sell_stock.buy(
+                df, code, buy_request.quantity, buy_request.price
+            )
+        else:
+            try:
+                updated_df = buy_and_sell_stock.register_planned(
+                    df,
+                    code,
+                    status,
+                    buy_request.quantity,
+                    buy_request.price,
+                    buy_request.purpose,
+                )
+            except ValueError as e:
+                raise HTTPException(status_code=409, detail=str(e))
 
         # purposeが指定されていれば更新
         if buy_request.purpose and code in updated_df["code"].values:
@@ -65,8 +101,12 @@ async def buy_stock(code: str, buy_request: BuyRequest):
 
         return {
             "status": "success",
-            "message": f"Successfully bought {buy_request.quantity} of {code}.",
+            "code": code,
+            "registered_status": status,
+            "message": f"Successfully registered {code} as {status}.",
         }
+    except HTTPException:
+        raise
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Portfolio file not found.")
     except Exception as e:

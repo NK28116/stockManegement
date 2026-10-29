@@ -158,14 +158,22 @@
             <div v-else-if="charts.length === 0" class="text-gray-500 italic">No charts found.</div>
 
             <div class="mb-4">
-                <p class="text-sm font-semibold text-gray-700 mb-2">株式の購入</p>
+                <p class="text-sm font-semibold text-gray-700 mb-2">銘柄の登録</p>
                 <div class="flex flex-wrap items-end gap-3">
+                    <label class="form-field flex flex-col gap-1 w-full sm:w-auto">
+                        <span class="text-xs text-gray-500">区分</span>
+                        <select v-model="registerStatus" class="form-control bg-blue-100 border-gray-300">
+                            <option v-for="choice in registerChoices" :key="choice.key" :value="choice.key">
+                                {{ choice.label }}
+                            </option>
+                        </select>
+                    </label>
                     <label class="form-field flex flex-col gap-1 w-full sm:w-auto">
                         <span class="text-xs text-gray-500">銘柄</span>
                         <input v-model="stock" class="form-control bg-blue-100 border-gray-300" placeholder="Ext: 7203">
                     </label>
                     <label class="form-field flex flex-col gap-1 w-full sm:w-auto">
-                        <span class="text-xs text-gray-500">株数</span>
+                        <span class="text-xs text-gray-500">{{ isPurchaseRegistration ? '株数' : '株数 (予定・任意)' }}</span>
                         <input v-model.number="quantity" type="text"
                             class="form-control bg-blue-100 border-gray-300 text-right">
                     </label>
@@ -183,8 +191,10 @@
                             </option>
                         </select>
                     </label>
-                    <button @click="buyStock(stock, quantity, calculatedTotalPrice, purpose)"
-                        class="form-control w-full sm:w-auto bg-blue-100 border-black-300 border-2 font-semibold">購入</button>
+                    <button @click="registerStock(stock, quantity, purpose, registerStatus)"
+                        :disabled="registering"
+                        class="form-control w-full sm:w-auto bg-blue-100 border-black-300 border-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
+                        {{ registerButtonLabel }}</button>
                 </div>
             </div>
 
@@ -294,6 +304,7 @@
                                     class="w-full h-auto rounded shadow cursor-pointer hover:opacity-80 transition-opacity">
                                 <p class="text-xs text-center text-gray-400 mt-1">{{ item.plots }}</p>
                             </div>
+                            <span v-else-if="item.analysis_pending" class="text-gray-400 text-sm">分析待ち (次回の更新でチャートを作成します)</span>
                             <span v-else class="text-gray-400 text-sm">No plot</span>
                         </td>
                         <td class="px-6 py-4">
@@ -303,6 +314,7 @@
                                     class="w-full h-auto rounded shadow cursor-pointer hover:opacity-80 transition-opacity">
                                 <p class="text-xs text-center text-gray-400 mt-1">{{ item.chartImg }}</p>
                             </div>
+                            <span v-else-if="item.analysis_pending" class="text-gray-400 text-sm">分析待ち</span>
                             <span v-else class="text-gray-400 text-sm">No chart</span>
                         </td>
                     </tr>
@@ -996,6 +1008,10 @@
                     defaultStatusBadgeClass: 'bg-gray-100 text-gray-800',
                     defaultPurposeBadgeClass: 'bg-gray-100 text-gray-800',
                     purpose: '', // purposeChoices 取得後に先頭の key で初期化される
+                    // 登録フォームの区分 (購入 / 次回のスイングで購入 / 監視中)。/api/choices の register から取得する
+                    registerChoices: [],
+                    registerStatus: '', // registerChoices 取得後に先頭 (購入) の key で初期化される
+                    registering: false,
                     currentTab: 'dashboard',
                     charts: [],
                     rules: {}, // Nested structure
@@ -1088,6 +1104,14 @@
                     // loose comparison (==) to handle string/number differences
                     const found = this.charts.find(c => c.code == this.stock);
                     return found ? (found.current_price || 0) : 0;
+                },
+                isPurchaseRegistration() {
+                    const choice = this.registerChoices.find(c => c.key === this.registerStatus)
+                    return !choice || Boolean(choice.purchase)
+                },
+                registerButtonLabel() {
+                    if (this.registering) return '登録中...'
+                    return this.isPurchaseRegistration ? '購入' : '登録'
                 },
                 calculatedTotalPrice() {
                     const qty = this.quantity || 0;
@@ -1264,6 +1288,10 @@
                         const data = await this.fetchJson('/api/choices')
                         this.statusChoices = data.status || []
                         this.purposeChoices = data.purpose || []
+                        this.registerChoices = data.register || []
+                        if (this.registerChoices.length && !this.registerChoices.some(c => c.key === this.registerStatus)) {
+                            this.registerStatus = this.registerChoices[0].key
+                        }
                         this.defaultStatusBadgeClass =
                             data.default_status_badge_class || this.defaultStatusBadgeClass
                         this.defaultPurposeBadgeClass =
@@ -1610,63 +1638,42 @@
                     }
                 },
 
-                async buyStock(code, quantity, price, purpose) {
+                async registerStock(code, quantity, purpose, status) {
+                    code = String(code || '').trim()
+                    if (!code) {
+                        alert('銘柄コードを入力してください')
+                        return
+                    }
+                    const qty = Number(quantity) || 0
+                    if (this.isPurchaseRegistration && qty <= 0) {
+                        alert('購入する株数を入力してください')
+                        return
+                    }
+                    this.registering = true
                     try {
-                        const response = await fetch(`/api/actions/buy/${code}`, {
+                        // 単価は 1 株あたり。一覧に現在値があればそれを、無ければサーバー側で現在値を取得する
+                        const unitPrice = this.currentUnitStockPrice || null
+                        const response = await fetch(`/api/actions/buy/${encodeURIComponent(code)}`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json'
                             },
-                            body: JSON.stringify({ quantity: quantity, price: price, purpose: purpose })
+                            body: JSON.stringify({ quantity: qty, price: unitPrice, purpose: purpose, status: status })
                         });
                         if (!response.ok) {
                             const errorData = await response.json();
-                            throw new Error(errorData.detail || 'Failed to buy stock');
+                            throw new Error(errorData.detail || 'Failed to register stock');
                         }
-                        alert(`Stock ${code} bought successfully!`);
-                        this.fetchCharts(); // Refresh the list
+                        const result = await response.json();
+                        const label = (this.registerChoices.find(c => c.key === status) || {}).label || status
+                        this.toastMessage = `${result.code || code} を「${label}」で登録しました。チャートは次回の更新で作成されます`;
+                        this.toastType = 'success';
+                        setTimeout(() => { this.toastMessage = ''; }, 5000);
+                        await this.fetchCharts(); // Refresh the list
                     } catch (error) {
-                        alert(`Error buying stock: ${error.message}`);
-                    }
-                },
-
-                async prebuyStock(code) {
-                    if (!confirm(`Are you sure you want to buy stock ${code} in next swing term?`)) {
-                        return;
-                    }
-                    try {
-                        const response = await fetch(`/api/actions/pre-buy/${code}`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            }
-                        });
-                        if (!response.ok) {
-                            const errorData = await response.json();
-                            throw new Error(errorData.detail || 'Failed to pre-buy stock');
-                        }
-                        alert(`Stock ${code}  pre-bought successfully!`);
-                        this.fetchCharts(); // Refresh the list
-                    } catch (error) {
-                        alert(`Error pre-buying stock: ${error.message}`);
-                    }
-                },
-
-                async watchStock(code) {
-                    try {
-                        const response = await fetch(`/api/actions/watch/${code}`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            }
-                        });
-                        if (!response.ok) {
-                            const errorData = await response.json();
-                            throw new Error(errorData.detail || 'Failed to watch stock');
-                        }
-                        this.fetchCharts(); // Refresh the list
-                    } catch (error) {
-                        alert(`Error pre-buying stock: ${error.message}`);
+                        alert(`登録できませんでした: ${error.message}`);
+                    } finally {
+                        this.registering = false
                     }
                 },
 

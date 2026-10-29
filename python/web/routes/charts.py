@@ -172,6 +172,7 @@ async def list_charts() -> List[Dict[str, Any]]:
             logger.error(f"Error reading local CSV fallback '{csv_filename}': {e}")
 
     stock_data = {}
+    csv_names = {}
 
     if csv_content:
         try:
@@ -225,6 +226,7 @@ async def list_charts() -> List[Dict[str, Any]]:
                         # 英字キーで返す。解決できない値はそのまま返し、未保有扱いになる
                         # (誤って保有表示しない / PRIDEV-524)。
                         raw_status = row.get("status", "")
+                        csv_names[code_key] = row.get("name") or code_key
                         stock_data[code_key] = {
                             "status": normalize_status(raw_status, row.get("quantity"))
                             or raw_status,
@@ -243,6 +245,17 @@ async def list_charts() -> List[Dict[str, Any]]:
         except Exception as e:
             print(f"Error reading CSV: {e}")
 
+    # 登録したばかりでチャートがまだ無い銘柄も一覧に出す。
+    # チャートは日次バッチ (または Update ボタン) の分析で作られる
+    for code_key, name in csv_names.items():
+        if code_key not in charts_map:
+            charts_map[code_key] = {
+                "code": code_key,
+                "name": name,
+                "plots": None,
+                "chartImg": None,
+            }
+
     results = sorted(list(charts_map.values()), key=lambda x: x["code"])
 
     # Merge stock_data into results
@@ -250,6 +263,7 @@ async def list_charts() -> List[Dict[str, Any]]:
         code = item["code"]
         if code in stock_data:
             item.update(stock_data[code])
+        item["analysis_pending"] = not item["plots"] and not item["chartImg"]
 
     print(f"DEBUG: Found {len(results)} companies")
     return results

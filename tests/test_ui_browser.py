@@ -202,7 +202,7 @@ def test_empty_state_hides_table_and_keeps_purchase_form(browser, base_url):
         page.wait_for_selector("text=No charts found.")
 
         assert page.locator(".table-scroll table").count() == 0
-        assert page.get_by_text("株式の購入").is_visible()
+        assert page.get_by_text("銘柄の登録").is_visible()
     finally:
         context.close()
 
@@ -238,7 +238,7 @@ def test_purchase_form_controls_are_fully_visible(browser, base_url, name, width
                         top: rect.top, height: rect.height}
             })""",
         )
-        assert len(boxes) == 5
+        assert len(boxes) == 6  # 区分 / 銘柄 / 株数 / 概算 / 目的別 / ボタン
         for box in boxes:
             assert box["left"] >= 0 and box["right"] <= width, f"{name}({width}px) で切れている: {box}"
 
