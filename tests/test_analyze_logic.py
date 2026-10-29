@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from python.trading.rules import risk_management
 from python.watch.analyze import (
     _linear_slope,
     calculate_risk,
@@ -150,15 +151,16 @@ class TestCalculateRisk:
         result = calculate_risk(df, "LONG")
         assert result["entry"] == 0.0
 
-    def test_rr_ratio_approximately_2(self):
-        """RR 比率が概ね 2:1 になっていることを確認"""
+    def test_rr_ratio_matches_risk_management(self):
+        """RR 比率が risk_management の設定 (ATR_TP_MULTIPLIER / ATR_STOP_MULTIPLIER) どおりになる"""
         df = _make_weekly_df(n=60, trend="up")
         result = calculate_risk(df, "LONG")
         if result["entry"] > 0 and result["stop_loss"] > 0:
             stop_dist = abs(result["entry"] - result["stop_loss"])
             tp_dist = abs(result["take_profit"] - result["entry"])
             rr = tp_dist / stop_dist
-            assert 1.9 <= rr <= 2.1, f"RR ratio expected ~2.0, got {rr:.2f}"
+            expected = risk_management.ATR_TP_MULTIPLIER / risk_management.ATR_STOP_MULTIPLIER
+            assert rr == pytest.approx(expected, rel=0.01), f"RR ratio expected {expected:.2f}, got {rr:.2f}"
 
 
 # ---------------------------------------------------------------------------
@@ -173,15 +175,15 @@ class TestScorePattern:
         patterns = ["double_bottom", "volume_surge"]
         risk = {"entry": 1000.0, "stop_loss": 900.0, "take_profit": 1200.0, "atr": 50.0}
         score, rationale = score_pattern("LONG", patterns, df, risk)
-        assert score >= 8
+        assert risk_management.SCORE_THRESHOLD_ENTRY <= score <= risk_management.SCORE_MAX
         assert isinstance(rationale, str)
 
-    def test_trend_only_gives_3_points(self):
-        """トレンドのみで +3 点"""
-        df = _make_weekly_df(n=60, trend="up")
+    def test_trend_only_gives_trend_weight(self):
+        """トレンド一致だけなら trend_match の点数になる (データが短く RSI / MACD は判定されない)"""
+        df = _make_weekly_df(n=10, trend="up")
         risk = {"entry": 0.0, "stop_loss": 0.0, "take_profit": 0.0, "atr": 0.0}
         score, _ = score_pattern("LONG", [], df, risk)
-        assert score == 3
+        assert score == risk_management.SCORE_WEIGHTS["trend_match"]
 
     def test_no_trend_gives_zero_trend_points(self):
         """NONE トレンドではトレンドスコアが加算されない"""
@@ -190,27 +192,35 @@ class TestScorePattern:
         score, _ = score_pattern("NONE", [], df, risk)
         assert score == 0
 
-    def test_volume_surge_adds_2_points(self):
+    def test_volume_surge_adds_volume_weight(self):
         df = _make_weekly_df(n=60, trend="up")
         risk = {"entry": 0.0, "stop_loss": 0.0, "take_profit": 0.0, "atr": 0.0}
         score_without, _ = score_pattern("LONG", [], df, risk)
         score_with, _ = score_pattern("LONG", ["volume_surge"], df, risk)
-        assert score_with - score_without == 2
+        assert score_with - score_without == risk_management.SCORE_WEIGHTS["volume_match"]
 
-    def test_pattern_adds_3_points(self):
+    def test_pattern_adds_pattern_weight(self):
         df = _make_weekly_df(n=60, trend="up")
         risk = {"entry": 0.0, "stop_loss": 0.0, "take_profit": 0.0, "atr": 0.0}
         score_without, _ = score_pattern("LONG", [], df, risk)
         score_with, _ = score_pattern("LONG", ["double_bottom"], df, risk)
-        assert score_with - score_without == 3
+        assert score_with - score_without == risk_management.SCORE_WEIGHTS["pattern_match"]
 
-    def test_good_rr_adds_1_point(self):
+    def test_rr_is_not_scored(self):
+        """7 点満点のスコアに RR は含まれない (RR の最低値は利確目標の計算側で担保する)"""
         df = _make_weekly_df(n=60, trend="up")
         risk_good = {"entry": 1000.0, "stop_loss": 900.0, "take_profit": 1200.0, "atr": 50.0}
         risk_bad = {"entry": 1000.0, "stop_loss": 900.0, "take_profit": 1050.0, "atr": 50.0}
         score_good, _ = score_pattern("LONG", [], df, risk_good)
         score_bad, _ = score_pattern("LONG", [], df, risk_bad)
-        assert score_good > score_bad
+        assert score_good == score_bad
+
+    def test_score_never_exceeds_max(self):
+        df = _make_weekly_df(n=60, trend="up", volume_spike=True)
+        risk = {"entry": 1000.0, "stop_loss": 900.0, "take_profit": 1200.0, "atr": 50.0}
+        patterns = ["double_bottom", "inverse_head_and_shoulders", "flag", "volume_surge"]
+        score, _ = score_pattern("LONG", patterns, df, risk)
+        assert score <= risk_management.SCORE_MAX
 
 
 # ---------------------------------------------------------------------------

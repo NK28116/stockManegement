@@ -12,6 +12,8 @@
 import os
 import sys
 
+import numpy as np
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -58,8 +60,36 @@ def db_session():
         Base.metadata.drop_all(bind=test_engine)
 
 
+# テストで「存在する」とみなす銘柄コード。それ以外は株価が取れない (空の DataFrame) 扱い
+KNOWN_STOCK_CODES = {"7203.T", "6758.T", "9984.T"}
+
+
+class _FakeTicker:
+    """yfinance.Ticker の代わり。外部 API に依存せず、決まった株価データを返す"""
+
+    def __init__(self, stock_code):
+        self.stock_code = stock_code
+
+    def history(self, period="3mo"):
+        if self.stock_code not in KNOWN_STOCK_CODES:
+            return pd.DataFrame()
+        index = pd.bdate_range(end="2026-10-28", periods=63)
+        rng = np.random.default_rng(0)
+        close = 2500 + np.cumsum(rng.normal(0, 30, len(index)))
+        return pd.DataFrame(
+            {
+                "Open": close * 0.995,
+                "High": close * 1.01,
+                "Low": close * 0.99,
+                "Close": close,
+                "Volume": rng.integers(1_000_000, 3_000_000, len(index)),
+            },
+            index=index,
+        )
+
+
 @pytest.fixture(scope="function")
-def client(db_session):
+def client(db_session, monkeypatch):
     """
     FastAPIのTestClientを提供するフィクスチャ
 
@@ -81,6 +111,15 @@ def client(db_session):
             db_session.rollback()
             raise
     
+    # 株価の取得は外部 API (Yahoo Finance) に依存させない。CI からの通信は不安定で、結果も日によって変わる
+    monkeypatch.setattr(signals_module.yf, "Ticker", _FakeTicker)
+
+    # 起動時のウォームアップ (CSV → DB 同期) は別スレッドで動く。下で差し替えるテスト用セッションを
+    # リクエスト処理と同時に使うと競合して不定期に失敗するため、このテストでは無効にする
+    import python.web.app as app_module
+
+    monkeypatch.setattr(app_module, "_warmup", lambda: None)
+
     # Monkey patch the function in both modules
     db_module.get_db_session = override_get_db_session
     signals_module.get_db_session = override_get_db_session
@@ -154,7 +193,8 @@ def test_signal_check_success(client, db_session):
     latest_record = records[-1]
     assert latest_record.stock_code == "7203.T"
     assert latest_record.signal == response_json["signal"]
-    assert float(latest_record.price) == response_json["price"]
+    # DB の price 列は小数 2 桁で保存される
+    assert float(latest_record.price) == pytest.approx(response_json["price"], abs=0.005)
     assert latest_record.reason == response_json["reason"]
     assert latest_record.rule_version == response_json["rule_version"]
 
