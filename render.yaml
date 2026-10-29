@@ -44,6 +44,10 @@ services:
       # --- 案B: 重いチャート生成はGCEワーカーに集約。RenderのUIは生成しない ---
       - key: DISABLE_CHART_GENERATION
         value: "1"
+      # 新しく登録した銘柄のチャートだけは、登録 (Update Stock All Data) の直後に Render で作る
+      # (python/web/services/chart_jobs.py)。メモリ不足などで止めたいときは "1" にする (日次バッチを待つ)
+      - key: DISABLE_NEW_STOCK_CHARTS
+        value: "0"
 
       # --- GCP / GCS ---
       - key: GOOGLE_CLOUD_PROJECT

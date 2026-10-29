@@ -61,9 +61,22 @@ __all__ = ["StockChartVisualizer", "main"]
 class StockChartVisualizer:
     """株価チャート可視化クラス"""
 
-    def __init__(self, period="3mo", is_test_mode: bool = False):
+    def __init__(
+        self,
+        period="3mo",
+        is_test_mode: bool = False,
+        only_codes: Optional[List[str]] = None,
+    ):
+        """
+        Args:
+            only_codes: 指定すると、その銘柄だけチャートを作る (新しく登録した銘柄など)。
+                ほかの銘柄のチャート・サマリー・最新指標値には触れない。
+        """
         self.period = period
         self.is_test_mode = is_test_mode
+        self.only_codes = (
+            {self._code_key(code) for code in only_codes} if only_codes else None
+        )
 
         # Load dynamic rules
         try:
@@ -94,6 +107,13 @@ class StockChartVisualizer:
         if not self.is_test_mode:
             os.makedirs(self.data_dir, exist_ok=True)
             os.makedirs(self.plot_image_dir, exist_ok=True)
+
+    @staticmethod
+    def _code_key(code) -> str:
+        """7203 / 7203.T / 7203_T を同じ銘柄として比べるためのキー"""
+        from python.trading.buy_and_sell_stock import code_key
+
+        return code_key(code)
 
     def clean_data_dir(self):
         """出力先の既存PNGを削除"""
@@ -141,6 +161,10 @@ class StockChartVisualizer:
 
             stocks = []
             for _, row in df.iterrows():
+                if self.only_codes is not None and (
+                    self._code_key(row.get("code", "")) not in self.only_codes
+                ):
+                    continue
                 if pd.notna(row.get("code")) and str(row.get("code")).strip():
                     stocks.append(
                         {
@@ -426,6 +450,16 @@ class StockChartVisualizer:
         # --- JSONファイルに保存 ---
         if not self.is_test_mode and latest_indicator_values:
             json_path = os.path.join(config.data_dir, "latest_indicators.json")
+            if self.only_codes is not None and os.path.exists(json_path):
+                # 一部の銘柄だけ作ったときは、ほかの銘柄の値を残して上書きする
+                try:
+                    with open(json_path, encoding="utf-8") as f:
+                        latest_indicator_values = {
+                            **json.load(f),
+                            **latest_indicator_values,
+                        }
+                except Exception as e:
+                    print(f"既存の最新指標値を読めませんでした: {e}")
             try:
                 with open(json_path, "w", encoding="utf-8") as f:
                     json.dump(latest_indicator_values, f, ensure_ascii=False, indent=2)
@@ -562,8 +596,9 @@ class StockChartVisualizer:
                 print(f"  エラー: {stock_info['code']} - {e}")
                 continue
 
-        # Save summary report
-        self.save_summary_report(summary_report, portfolio_file)
+        # Save summary report (一部の銘柄だけ作ったときは、全銘柄のレポートを上書きしない)
+        if self.only_codes is None:
+            self.save_summary_report(summary_report, portfolio_file)
         self.create_MACD_and_Bollinger_Band_chart(portfolio_file)
 
         print("\n=== 処理完了 ===")

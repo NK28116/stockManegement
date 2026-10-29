@@ -203,10 +203,24 @@
                             </option>
                         </select>
                     </label>
-                    <button @click="registerStock(stock, quantity, purpose, registerStatus)"
-                        :disabled="registering"
-                        class="form-control w-full sm:w-auto bg-blue-100 border-black-300 border-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed">
-                        {{ registerButtonLabel }}</button>
+                    <button @click="addToCart(stock, quantity, purpose, registerStatus)"
+                        class="form-control w-full sm:w-auto bg-blue-100 border-black-300 border-2 font-semibold">
+                        カートに追加</button>
+                </div>
+                <!-- カート: 「Update Stock All Data」でまとめて登録し、その場でチャートを作る -->
+                <div v-if="cart.length" class="mt-3 p-3 bg-gray-50 rounded text-xs border border-gray-100">
+                    <p class="font-semibold text-gray-700 mb-1">カート ({{ cart.length }} 件)</p>
+                    <ul>
+                        <li v-for="item in cart" :key="item.code" class="flex flex-wrap items-center gap-2 py-1">
+                            <span class="font-mono font-bold text-gray-900">{{ item.code }}</span>
+                            <span>{{ registerLabel(item.status) }}</span>
+                            <span>{{ item.quantity }}株</span>
+                            <span v-if="item.purpose" class="text-gray-500">{{ purposeLabel(item.purpose) }}</span>
+                            <button @click="removeFromCart(item.code)"
+                                class="text-xs text-red-500 hover:text-red-700 underline focus:outline-none">取り消す</button>
+                        </li>
+                    </ul>
+                    <p class="mt-1 text-gray-400">「Update Stock All Data」でまとめて登録し、チャートを作成します</p>
                 </div>
             </div>
 
@@ -380,6 +394,8 @@
                                     class="w-full h-auto rounded shadow cursor-pointer hover:opacity-80 transition-opacity">
                                 <p class="text-xs text-center text-gray-400 mt-1">{{ item.plots }}</p>
                             </div>
+                            <span v-else-if="isGeneratingChart(item.code)" class="text-gray-400 text-sm">現在チャートを作成中です．作成したらsignalを更新します</span>
+                            <span v-else-if="isChartFailed(item.code)" class="text-gray-400 text-sm">チャートを作成できませんでした (次回の更新で作成します)</span>
                             <span v-else-if="item.analysis_pending" class="text-gray-400 text-sm">分析待ち (次回の更新でチャートを作成します)</span>
                             <span v-else class="text-gray-400 text-sm">No plot</span>
                         </td>
@@ -390,6 +406,7 @@
                                     class="w-full h-auto rounded shadow cursor-pointer hover:opacity-80 transition-opacity">
                                 <p class="text-xs text-center text-gray-400 mt-1">{{ item.chartImg }}</p>
                             </div>
+                            <span v-else-if="isGeneratingChart(item.code)" class="text-gray-400 text-sm">チャート作成中</span>
                             <span v-else-if="item.analysis_pending" class="text-gray-400 text-sm">分析待ち</span>
                             <span v-else class="text-gray-400 text-sm">No chart</span>
                         </td>
@@ -1087,7 +1104,8 @@
                     // 登録フォームの区分 (購入 / 次回のスイングで購入 / 監視中)。/api/choices の register から取得する
                     registerChoices: [],
                     registerStatus: '', // registerChoices 取得後に先頭 (購入) の key で初期化される
-                    registering: false,
+                    // カート (まだ登録していない新規銘柄)。Update Stock All Data でまとめて登録する
+                    cart: [],
                     // 保有銘柄の更新 (編集中の銘柄コードと入力値)
                     editingCode: null,
                     editForm: {},
@@ -1172,7 +1190,10 @@
                 this.fetchRules()
                 this.fetchDefaultRules()
                 this.fetchHistory()
-                this.fetchActionStatus()
+                // 再読み込みしたときに、登録した銘柄のチャートを作成中なら、終わるまで見守る
+                this.fetchActionStatus().then(() => {
+                    if ((this.actionStatus.generating_charts || []).length) this.watchChartGeneration()
+                })
                 this.fetchSignals()
                 setInterval(this.fetchActionStatus, 30000) // Poll status every 30s
             },
@@ -1198,12 +1219,9 @@
                     const choice = this.registerChoices.find(c => c.key === this.registerStatus)
                     return !choice || Boolean(choice.purchase)
                 },
-                registerButtonLabel() {
-                    if (this.registering) return '登録中...'
-                    return this.isPurchaseRegistration ? '購入' : '登録'
-                },
+                // 反映待ち = カートの新規登録 + 編集パネルで保存した変更
                 pendingCount() {
-                    return Object.keys(this.pendingUpdates).length
+                    return this.cart.length + Object.keys(this.pendingUpdates).length
                 },
                 calculatedTotalPrice() {
                     const qty = this.quantity || 0;
@@ -1786,37 +1804,21 @@
                     this.editingCode = null
                 },
 
-                async applyAllUpdates() {
-                    const updates = Object.entries(this.pendingUpdates).map(([code, changes]) => ({ code, ...changes }))
-                    if (!updates.length) return
-                    this.applyingUpdates = true
-                    try {
-                        const response = await fetch('/api/actions/stocks', {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ updates }),
-                        })
-                        if (!response.ok) {
-                            const errorData = await response.json()
-                            throw new Error(errorData.detail || 'Failed to update stocks')
-                        }
-                        const result = await response.json()
-                        for (const item of result.items || []) this.upsertChartItem(item)
-                        this.pendingUpdates = {}
-                        this.toastMessage = `${updates.length} 銘柄を更新しました`
-                        this.toastType = 'success'
-                        setTimeout(() => { this.toastMessage = ''; }, 4000)
-                        await this.fetchCharts({ quiet: true })
-                    } catch (error) {
-                        // 1 件でも不正な変更があればどれも保存されない。反映待ちは残して直せるようにする
-                        alert(`更新できませんでした: ${error.message}`)
-                    } finally {
-                        this.applyingUpdates = false
-                    }
+                registerLabel(status) {
+                    return (this.registerChoices.find(c => c.key === status) || {}).label || status
                 },
 
-                async registerStock(code, quantity, purpose, status) {
-                    code = String(code || '').trim()
+                isGeneratingChart(code) {
+                    return (this.actionStatus.generating_charts || []).some(c => c == code)
+                },
+
+                isChartFailed(code) {
+                    return (this.actionStatus.chart_failed || []).some(c => c == code)
+                },
+
+                // 新規登録はカートに入れるだけ。Update Stock All Data でまとめて登録する
+                addToCart(code, quantity, purpose, status) {
+                    code = String(code || '').trim().toUpperCase()
                     if (!code) {
                         alert('銘柄コードを入力してください')
                         return
@@ -1826,37 +1828,84 @@
                         alert('購入する株数を入力してください')
                         return
                     }
-                    this.registering = true
-                    try {
-                        // 単価は 1 株あたり。一覧に現在値があればそれを、無ければサーバー側で現在値を取得する
-                        const unitPrice = this.currentUnitStockPrice || null
-                        const response = await fetch(`/api/actions/buy/${encodeURIComponent(code)}`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ quantity: qty, price: unitPrice, purpose: purpose, status: status })
-                        });
-                        if (!response.ok) {
-                            const errorData = await response.json();
-                            throw new Error(errorData.detail || 'Failed to register stock');
-                        }
-                        const result = await response.json();
-                        // 一覧の再取得を待たずに、登録した行をすぐ表示する (反映されないと思って二重に操作するのを防ぐ)
-                        this.upsertChartItem(result.item)
-                        // 同じ内容をもう一度送らないよう、入力を空にする
-                        this.stock = ''
-                        this.quantity = 0
-                        const label = (this.registerChoices.find(c => c.key === status) || {}).label || status
-                        this.toastMessage = `${result.code || code} を「${label}」で登録しました。チャートは次回の更新で作成されます`;
-                        this.toastType = 'success';
-                        setTimeout(() => { this.toastMessage = ''; }, 5000);
-                        await this.fetchCharts({ quiet: true }); // Refresh the list
-                    } catch (error) {
-                        alert(`登録できませんでした: ${error.message}`);
-                    } finally {
-                        this.registering = false
+                    // 単価は 1 株あたり。一覧に現在値があればそれを、無ければサーバー側で現在値を取得する
+                    const price = this.currentUnitStockPrice || null
+                    const entry = { code, quantity: qty, purpose, status, price }
+                    // 同じ銘柄をもう一度入れたときは、新しい内容で置き換える
+                    const index = this.cart.findIndex(item => item.code === code)
+                    if (index >= 0) {
+                        this.cart.splice(index, 1, entry)
+                    } else {
+                        this.cart.push(entry)
                     }
+                    this.stock = ''
+                    this.quantity = 0
+                },
+
+                removeFromCart(code) {
+                    this.cart = this.cart.filter(item => item.code !== code)
+                },
+
+                async applyAllUpdates() {
+                    const registrations = this.cart.map(item => ({ ...item }))
+                    const updates = Object.entries(this.pendingUpdates).map(([code, changes]) => ({ code, ...changes }))
+                    if (!registrations.length && !updates.length) return
+                    this.applyingUpdates = true
+                    try {
+                        const response = await fetch('/api/actions/commit', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ registrations, updates }),
+                        })
+                        if (!response.ok) {
+                            const errorData = await response.json()
+                            throw new Error(errorData.detail || 'Failed to update stocks')
+                        }
+                        const result = await response.json()
+                        // 一覧の再取得を待たずに、登録・更新した行をすぐ表示する
+                        for (const item of result.items || []) this.upsertChartItem(item)
+                        this.cart = []
+                        this.pendingUpdates = {}
+                        const generating = result.generating_charts || []
+                        this.actionStatus = { ...this.actionStatus, generating_charts: generating }
+                        const parts = []
+                        if (registrations.length) parts.push(`${registrations.length} 銘柄を登録`)
+                        if (updates.length) parts.push(`${updates.length} 銘柄を更新`)
+                        this.toastMessage = parts.join('、') + 'しました' + (generating.length ? '。チャートを作成しています' : '')
+                        this.toastType = 'success'
+                        setTimeout(() => { this.toastMessage = ''; }, 5000)
+                        await this.fetchCharts({ quiet: true })
+                        if (generating.length) this.watchChartGeneration()
+                    } catch (error) {
+                        // 1 件でも不正な変更があればどれも保存されない。カートと反映待ちは残して直せるようにする
+                        alert(`反映できませんでした: ${error.message}`)
+                    } finally {
+                        this.applyingUpdates = false
+                    }
+                },
+
+                // チャートの作成とシグナルの更新が終わるまで状態を見て、終わったら一覧とシグナルを読み直す
+                watchChartGeneration() {
+                    if (this._chartPollTimer) return
+                    let ticks = 0
+                    const MAX_TICKS = 120 // 5 秒 x 120 回 = 最大 10 分
+                    this._chartPollTimer = setInterval(async () => {
+                        ticks += 1
+                        await this.fetchActionStatus()
+                        const busy = (this.actionStatus.generating_charts || []).length > 0 || this.actionStatus.is_analyzing
+                        if (!busy || ticks >= MAX_TICKS) {
+                            clearInterval(this._chartPollTimer)
+                            this._chartPollTimer = null
+                            this.imageCacheBust = Date.now()
+                            await this.fetchCharts({ quiet: true })
+                            await this.fetchSignals()
+                            if (!busy) {
+                                this.toastMessage = 'チャートを作成し、シグナルを更新しました'
+                                this.toastType = 'success'
+                                setTimeout(() => { this.toastMessage = ''; }, 5000)
+                            }
+                        }
+                    }, 5000)
                 },
 
                 // Helper to flatten nested object for diffing (simplified for 2 levels)
