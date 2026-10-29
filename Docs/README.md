@@ -11,6 +11,7 @@
 
 | 文書 | 内容 |
 | --- | --- |
+| [LOCAL_DEV.md](LOCAL_DEV.md) | ローカルで動かす (`make dev`)。ブランチ・worktree ごとの確認方法 |
 | [AUTH_SETUP.md](AUTH_SETUP.md) | パスワード認証の設定 |
 | [SECRETS_BITWARDEN.md](SECRETS_BITWARDEN.md) | 秘密情報を Bitwarden で管理し、`make env` で `.env` を生成する |
 | [CHART_FONT_SETUP.md](CHART_FONT_SETUP.md) | チャートの日本語フォント |
