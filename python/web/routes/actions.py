@@ -316,15 +316,18 @@ def _apply_registration(df, item: RegistrationItem):
     return df, code
 
 
-def _analyze_after_charts() -> None:
-    """新しい銘柄のチャートを作り終えたら、シグナルを更新する (Check Signals と同じ)。"""
-    if analyze is None or _state.is_analyzing:
+def _analyze_after_charts(codes: List[str]) -> None:
+    """新しい銘柄のチャートを作り終えたら、その銘柄のシグナルを更新する。"""
+    if analyze is None:
         return
+    # Check Signals の分析が実行中なら、その状態表示は変えない
+    already_analyzing = _state.is_analyzing
     _state.is_analyzing = True
     try:
-        analyze.main()
+        analyze.main(codes)
     finally:
-        _state.is_analyzing = False
+        if not already_analyzing:
+            _state.is_analyzing = False
 
 
 @router.post("/commit")
