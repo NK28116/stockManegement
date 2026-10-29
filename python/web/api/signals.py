@@ -8,15 +8,17 @@
 import asyncio
 import json
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import yfinance as yf
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
+from python.config import config
 from python.db.database import engine, get_db_session
 from python.db.models import SignalHistory
 from python.trading import stock_status
+from python.trading.buy_and_sell_stock import code_key
 from python.trading.trading_rules import ImprovedTradingRules
 from python.utils.logger import get_logger
 from python.utils.rules_loader import get_active_rules
@@ -92,6 +94,28 @@ class SignalResponse(BaseModel):
         from_attributes = True
 
 
+def _current_portfolio() -> Optional[Dict[str, bool]]:
+    """いま登録されている銘柄 {7203 の形のキー: 保有中か} を返す。読めなければ None。
+
+    登録銘柄は my_stock.csv が正 (ダッシュボードの一覧と同じ)。GCS を使う環境では GCS から読む。
+    """
+    from python.trading.buy_and_sell_stock import load_codes
+
+    try:
+        df = load_codes(config.codes_path)
+    except Exception as e:
+        logger.warning(f"登録銘柄を読めないため、シグナルを絞り込まずに返します: {e}")
+        return None
+    portfolio = {}
+    for _, row in df.iterrows():
+        code = str(row.get("code") or "").strip()
+        if code:
+            portfolio[code_key(code)] = stock_status.is_held(
+                row.get("status"), row.get("quantity")
+            )
+    return portfolio
+
+
 @router.get("/latest", response_model=List[SignalResponse])
 async def get_latest_signals():
     """
@@ -131,8 +155,21 @@ async def get_latest_signals():
                 {"held_statuses": list(held_statuses)},
             ).fetchall()
 
+        # 削除した銘柄の古いシグナルは出さない (signals テーブルには履歴として残る)。
+        # 保有中かどうかも、日次バッチでしか更新されない portfolio テーブルではなく
+        # 登録銘柄の CSV から判定する (当日に登録・売却した銘柄もすぐ反映される)
+        portfolio = _current_portfolio()
+
         results = []
         for row in rows:
+            if portfolio is not None:
+                key = code_key(row.symbol)
+                if key not in portfolio:
+                    continue
+                is_held = portfolio[key]
+            else:
+                is_held = bool(row.is_held)
+
             patterns_raw = row.detected_patterns or "[]"
             try:
                 patterns = json.loads(patterns_raw)
@@ -151,7 +188,7 @@ async def get_latest_signals():
                     take_profit=row.take_profit,
                     rationale=row.rationale,
                     created_at=str(row.created_at),
-                    is_held=bool(row.is_held),
+                    is_held=is_held,
                 )
             )
 
