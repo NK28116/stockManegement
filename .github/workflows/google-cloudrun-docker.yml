@@ -9,6 +9,8 @@ on:
       - "main"
   pull_request:
     branches: ["main"]
+  # Cloud Run へのデプロイは手動実行のときだけ (下の deploy ジョブ)
+  workflow_dispatch:
 
 env:
   REGION: "us-east1"
@@ -53,8 +55,9 @@ jobs:
   deploy:
     needs: test
     runs-on: "ubuntu-latest"
-    # Only deploy on push to main (not on PRs)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # 本番の Web UI は Render へ移行済み。Cloud Run は使っていないため、push では動かさず
+    # 手動実行 (Actions → Run workflow) のときだけデプロイする
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
 
     permissions:
       contents: "read"
