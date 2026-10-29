@@ -15,7 +15,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from python.observability.errors import ObservabilityPermissionError
 from python.observability.health import SystemHealthService
-from python.observability.settings import ObservabilitySettings, get_observability_settings
+from python.observability.settings import (
+    ObservabilitySettings,
+    get_observability_settings,
+)
 from python.utils.logger import get_logger
 from python.web.auth import require_auth
 

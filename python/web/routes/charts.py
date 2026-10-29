@@ -7,7 +7,6 @@ from typing import Any, Dict, List
 
 from fastapi import APIRouter, HTTPException, Response
 
-from python.config import config
 from python.trading.stock_status import normalize as normalize_status
 from python.utils.gcs_client import gcs
 
@@ -80,7 +79,9 @@ async def list_charts() -> List[Dict[str, Any]]:
                 with open(local_json_path, "rb") as f:
                     json_content = f.read()
             except Exception as e:
-                logger.warning(f"Error reading local JSON fallback '{local_json_path}': {e}")
+                logger.warning(
+                    f"Error reading local JSON fallback '{local_json_path}': {e}"
+                )
         else:
             logger.info(f"Local JSON file '{local_json_path}' not found.")
 
@@ -93,7 +94,9 @@ async def list_charts() -> List[Dict[str, Any]]:
         except Exception as e:
             logger.error(f"Unexpected error loading {json_filename}: {e}")
     else:
-        logger.info(f"Could not load {json_filename}. Proceeding without specific indicators.")
+        logger.info(
+            f"Could not load {json_filename}. Proceeding without specific indicators."
+        )
 
     # Normalize keys in latest_indicators (remove .T) to match chart keys
     normalized_indicators = {}
@@ -149,7 +152,9 @@ async def list_charts() -> List[Dict[str, Any]]:
 
     # Fallback logic for GCS: If GCS file is missing, try local data/my_stock.csv
     if gcs.use_gcs and not csv_content:
-        logger.warning("GCS my_stock.csv not found. Falling back to local data/my_stock.csv")
+        logger.warning(
+            "GCS my_stock.csv not found. Falling back to local data/my_stock.csv"
+        )
         try:
             with open("data/my_stock.csv", "rb") as f:
                 csv_content = f.read()
@@ -189,19 +194,27 @@ async def list_charts() -> List[Dict[str, Any]]:
                         pl_pct_str = row.get("profit_loss_percent", "")
                         if "{" in pl_pct_str or not pl_pct_str:
                             if purchase_price != 0:
-                                pl_pct = (current_price - purchase_price) / purchase_price * 100
+                                pl_pct = (
+                                    (current_price - purchase_price)
+                                    / purchase_price
+                                    * 100
+                                )
                             else:
                                 pl_pct = 0.0
                         else:
                             try:
-                                pl_pct = float(pl_pct_str.replace("%", "").replace("+", ""))
+                                pl_pct = float(
+                                    pl_pct_str.replace("%", "").replace("+", "")
+                                )
                             except ValueError:
                                 pl_pct = 0.0
 
                         # Calculate simple profit_loss if needed
                         pl_val_str = row.get("profit_loss", "")
                         if "{" in pl_val_str or not pl_val_str:
-                            pl_val = (current_price - purchase_price) * float(row.get("quantity", 1))
+                            pl_val = (current_price - purchase_price) * float(
+                                row.get("quantity", 1)
+                            )
                         else:
                             try:
                                 pl_val = float(pl_val_str)

@@ -99,7 +99,9 @@ def _env_int(name: str, default: int) -> int:
     try:
         return int(raw)
     except ValueError:
-        logger.warning(f"{name} の値が整数として解釈できないため既定値 {default} を使用します")
+        logger.warning(
+            f"{name} の値が整数として解釈できないため既定値 {default} を使用します"
+        )
         return default
 
 
@@ -183,7 +185,9 @@ def _configured_worker_count() -> int:
             try:
                 return max(1, int(raw))
             except ValueError:
-                logger.warning(f"{name} を整数として解釈できないため 1 ワーカーとみなします")
+                logger.warning(
+                    f"{name} を整数として解釈できないため 1 ワーカーとみなします"
+                )
     return 1
 
 
@@ -278,7 +282,9 @@ def get_auth_settings() -> AuthSettings:
         session_max_age_seconds=_env_int(
             "AUTH_SESSION_MAX_AGE_SECONDS", DEFAULT_SESSION_MAX_AGE_SECONDS
         ),
-        max_login_attempts=_env_int("AUTH_MAX_LOGIN_ATTEMPTS", DEFAULT_MAX_LOGIN_ATTEMPTS),
+        max_login_attempts=_env_int(
+            "AUTH_MAX_LOGIN_ATTEMPTS", DEFAULT_MAX_LOGIN_ATTEMPTS
+        ),
         lockout_seconds=_env_int("AUTH_LOCKOUT_SECONDS", DEFAULT_LOCKOUT_SECONDS),
         public_prefixes=_load_public_prefixes(),
         cookie_secure=_resolve_cookie_secure(is_production),
@@ -297,7 +303,9 @@ def reset_auth_settings_cache() -> None:
 
 # --- セッショントークン -------------------------------------------------------
 def _sign(payload: str, secret_key: str) -> str:
-    digest = hmac.new(secret_key.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).digest()
+    digest = hmac.new(
+        secret_key.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256
+    ).digest()
     return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
 
 
@@ -309,7 +317,9 @@ def issue_session_token(settings: AuthSettings, *, now: Optional[float] = None) 
     return f"{payload}.{_sign(payload, settings.secret_key)}"
 
 
-def verify_session_token(token: str, settings: AuthSettings, *, now: Optional[float] = None) -> bool:
+def verify_session_token(
+    token: str, settings: AuthSettings, *, now: Optional[float] = None
+) -> bool:
     """トークンの署名と有効期限を検証する。"""
     if not token:
         return False
@@ -360,7 +370,9 @@ def _purge_expired_attempts(settings: AuthSettings, now: float) -> None:
             _login_attempts.pop(key, None)
     overflow = len(_login_attempts) - MAX_TRACKED_CLIENTS
     if overflow > 0:
-        for key, _ in sorted(_login_attempts.items(), key=lambda item: item[1][1])[:overflow]:
+        for key, _ in sorted(_login_attempts.items(), key=lambda item: item[1][1])[
+            :overflow
+        ]:
             _login_attempts.pop(key, None)
 
 
@@ -459,12 +471,16 @@ def _safe_next_path(candidate: str) -> str:
 @router.get(LOGIN_PATH, response_class=HTMLResponse)
 async def login_page(request: Request, next: str = "/") -> Response:
     if is_authenticated(request):
-        return RedirectResponse(_safe_next_path(next), status_code=status.HTTP_303_SEE_OTHER)
+        return RedirectResponse(
+            _safe_next_path(next), status_code=status.HTTP_303_SEE_OTHER
+        )
     return HTMLResponse(_render_login_page(_safe_next_path(next)))
 
 
 @router.post(LOGIN_PATH)
-async def login(request: Request, password: str = Form(...), next: str = Form("/")) -> Response:
+async def login(
+    request: Request, password: str = Form(...), next: str = Form("/")
+) -> Response:
     settings = get_auth_settings()
     next_path = _safe_next_path(next)
     now = time.time()
@@ -482,13 +498,21 @@ async def login(request: Request, password: str = Form(...), next: str = Form("/
     if not settings.enabled:
         logger.warning("パスワード未設定のためログイン要求を拒否しました")
         return _login_failure_response(
-            request, next_path, "サーバー側でパスワードが設定されていません", status.HTTP_503_SERVICE_UNAVAILABLE
+            request,
+            next_path,
+            "サーバー側でパスワードが設定されていません",
+            status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
     if not verify_password(password, settings.password_hash):
         _record_failure(key, settings, now)
         logger.info("ログインに失敗しました")  # パスワードは出力しない
-        return _login_failure_response(request, next_path, "パスワードが正しくありません", status.HTTP_401_UNAUTHORIZED)
+        return _login_failure_response(
+            request,
+            next_path,
+            "パスワードが正しくありません",
+            status.HTTP_401_UNAUTHORIZED,
+        )
 
     _login_attempts.pop(key, None)
     logger.info("ログインに成功しました")
@@ -505,7 +529,9 @@ def _wants_json(request: Request) -> bool:
     return "application/json" in request.headers.get("accept", "")
 
 
-def _login_failure_response(request: Request, next_path: str, message: str, status_code: int) -> Response:
+def _login_failure_response(
+    request: Request, next_path: str, message: str, status_code: int
+) -> Response:
     if _wants_json(request):
         return JSONResponse({"detail": message}, status_code=status_code)
     return HTMLResponse(_render_login_page(next_path, message), status_code=status_code)

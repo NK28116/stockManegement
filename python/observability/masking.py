@@ -94,7 +94,9 @@ def mask_text(text: Any) -> str:
     return masked
 
 
-def mask_mapping(mapping: Dict[str, Any], *, extra_keys: Iterable[str] = ()) -> Dict[str, str]:
+def mask_mapping(
+    mapping: Dict[str, Any], *, extra_keys: Iterable[str] = ()
+) -> Dict[str, str]:
     """ラベル等のマッピングから秘密値を取り除く。"""
     extra = {key.lower() for key in extra_keys}
     masked: Dict[str, str] = {}

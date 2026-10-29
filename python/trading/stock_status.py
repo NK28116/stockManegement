@@ -62,16 +62,39 @@ class StatusChoice:
 # 定義順がそのまま画面の表示順・並び順になる。
 STATUS_CHOICES: Tuple[StatusChoice, ...] = (
     StatusChoice(StockStatus.HOLDING, "保有中", "bg-blue-100 text-blue-800", held=True),
-    StatusChoice(StockStatus.NEXT_BUY, "次回のスイングで購入", "bg-purple-100 text-purple-800", held=False),
     StatusChoice(
-        StockStatus.SELL_PLANNED_PROFIT, "売却予定（利益確定）", "bg-teal-100 text-teal-800", held=True
+        StockStatus.NEXT_BUY,
+        "次回のスイングで購入",
+        "bg-purple-100 text-purple-800",
+        held=False,
     ),
     StatusChoice(
-        StockStatus.SELL_PLANNED_LOSS, "売却予定（損切り）", "bg-orange-100 text-orange-800", held=True
+        StockStatus.SELL_PLANNED_PROFIT,
+        "売却予定（利益確定）",
+        "bg-teal-100 text-teal-800",
+        held=True,
     ),
-    StatusChoice(StockStatus.SOLD_PROFIT, "売却済み（利益確定）", "bg-green-100 text-green-800", held=False),
-    StatusChoice(StockStatus.SOLD_LOSS, "売却済み（損切り）", "bg-red-100 text-red-800", held=False),
-    StatusChoice(StockStatus.WATCHING, "監視中", "bg-yellow-100 text-yellow-800", held=False),
+    StatusChoice(
+        StockStatus.SELL_PLANNED_LOSS,
+        "売却予定（損切り）",
+        "bg-orange-100 text-orange-800",
+        held=True,
+    ),
+    StatusChoice(
+        StockStatus.SOLD_PROFIT,
+        "売却済み（利益確定）",
+        "bg-green-100 text-green-800",
+        held=False,
+    ),
+    StatusChoice(
+        StockStatus.SOLD_LOSS,
+        "売却済み（損切り）",
+        "bg-red-100 text-red-800",
+        held=False,
+    ),
+    StatusChoice(
+        StockStatus.WATCHING, "監視中", "bg-yellow-100 text-yellow-800", held=False
+    ),
     StatusChoice(StockStatus.EXCLUDED, "除外", "bg-gray-200 text-gray-700", held=False),
 )
 

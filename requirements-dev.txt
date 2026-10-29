@@ -1,5 +1,6 @@
 pytest
-flake8
-black
-isort
+# 整形・静的解析ツールはバージョンを固定する (新しい版で整形ルールが変わると CI が落ちるため)
+flake8==7.5.0
+black==26.10.1
+isort==9.0.2
 playwright==1.64.1

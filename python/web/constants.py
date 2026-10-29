@@ -28,10 +28,18 @@ __all__ = [
 # --- 保有目的 -----------------------------------------------------------------
 # 保存値は英字キー (data/my_stock*.csv の purpose 列)、表示は日本語。
 PURPOSE_CHOICES: Tuple[Dict[str, str], ...] = (
-    {"key": "long", "label": "長期（バリュー投資）", "badge_class": "bg-green-100 text-green-800"},
+    {
+        "key": "long",
+        "label": "長期（バリュー投資）",
+        "badge_class": "bg-green-100 text-green-800",
+    },
     {"key": "middle", "label": "中期", "badge_class": "bg-blue-100 text-blue-800"},
     {"key": "present", "label": "優待目的", "badge_class": "bg-pink-100 text-pink-800"},
-    {"key": "swing", "label": "スイングトレード", "badge_class": "bg-orange-100 text-orange-800"},
+    {
+        "key": "swing",
+        "label": "スイングトレード",
+        "badge_class": "bg-orange-100 text-orange-800",
+    },
 )
 
 DEFAULT_PURPOSE_BADGE_CLASS = "bg-gray-100 text-gray-800"

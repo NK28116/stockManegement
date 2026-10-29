@@ -37,8 +37,12 @@ def normalize_exception(exc: Exception, context: str) -> ObservabilityError:
     """
     name = type(exc).__name__
     if name in _PERMISSION_EXCEPTION_NAMES or getattr(exc, "code", None) in (401, 403):
-        error: ObservabilityError = ObservabilityPermissionError(f"{context}: 権限が不足しています")
+        error: ObservabilityError = ObservabilityPermissionError(
+            f"{context}: 権限が不足しています"
+        )
     else:
-        error = ObservabilityUnavailableError(f"{context}: 取得できませんでした ({name})")
+        error = ObservabilityUnavailableError(
+            f"{context}: 取得できませんでした ({name})"
+        )
     error.__cause__ = exc
     return error

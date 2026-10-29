@@ -45,7 +45,9 @@ def _env_float(name: str, default: float) -> float:
     try:
         value = float(raw)
     except ValueError:
-        logger.warning(f"{name} を数値として解釈できないため既定値 {default} を使用します")
+        logger.warning(
+            f"{name} を数値として解釈できないため既定値 {default} を使用します"
+        )
         return default
     if value < 0:
         logger.warning(f"{name} が負の値のため既定値 {default} を使用します")
@@ -81,7 +83,9 @@ def get_startup_settings() -> StartupSettings:
             loading_delay_seconds=_env_float(
                 "STARTUP_LOADING_DELAY_SECONDS", DEFAULT_LOADING_DELAY_SECONDS
             ),
-            timeout_seconds=_env_float("STARTUP_TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS),
+            timeout_seconds=_env_float(
+                "STARTUP_TIMEOUT_SECONDS", DEFAULT_TIMEOUT_SECONDS
+            ),
         )
     return _settings_cache
 
@@ -134,7 +138,8 @@ class StartupMetrics:
             "degraded": self.failed,
             "elapsed_seconds": self.elapsed_seconds,
             "target_seconds": settings.target_seconds,
-            "within_target": self.ready and self.elapsed_seconds <= settings.target_seconds,
+            "within_target": self.ready
+            and self.elapsed_seconds <= settings.target_seconds,
         }
         if self.detail:
             payload["detail"] = self.detail

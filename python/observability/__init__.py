@@ -13,7 +13,10 @@ from python.observability.health import (
 )
 from python.observability.masking import mask_mapping, mask_text
 from python.observability.models import LogEntry, MetricSample
-from python.observability.settings import ObservabilitySettings, get_observability_settings
+from python.observability.settings import (
+    ObservabilitySettings,
+    get_observability_settings,
+)
 
 __all__ = [
     "HealthStatus",

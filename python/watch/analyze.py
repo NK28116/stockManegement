@@ -151,7 +151,6 @@ def detect_patterns(df: pd.DataFrame) -> List[str]:
     # --- ダブルボトム (簡易判定) ---
     # 直近20本の安値で、最近の安値2点が近い水準にある場合
     if len(close) >= 20:
-        window = close.tail(20)
         low_window = df["low"].tail(20)
         local_mins_idx = _find_local_minima(low_window)
         if len(local_mins_idx) >= 2:
@@ -177,7 +176,6 @@ def detect_patterns(df: pd.DataFrame) -> List[str]:
 
     # --- フラッグ (簡易判定: 直近の高値・安値が収縮傾向) ---
     if len(close) >= 10:
-        recent = close.tail(10)
         high_range = df["high"].tail(10).max() - df["low"].tail(10).min()
         prev_range = (
             df["high"].iloc[-20:-10].max() - df["low"].iloc[-20:-10].min()

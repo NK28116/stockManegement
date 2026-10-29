@@ -52,7 +52,9 @@ async def buy_stock(code: str, buy_request: BuyRequest):
         df = buy_and_sell_stock.load_codes(buy_and_sell_stock.config.codes_path)
 
         # buy関数を呼び出してデータフレームを更新
-        updated_df = buy_and_sell_stock.buy(df, code, buy_request.quantity, buy_request.price)
+        updated_df = buy_and_sell_stock.buy(
+            df, code, buy_request.quantity, buy_request.price
+        )
 
         # purposeが指定されていれば更新
         if buy_request.purpose and code in updated_df["code"].values:
@@ -136,7 +138,9 @@ async def _run_market_update():
 
         # --- Step 1: intraday データ取得 (watch.main) ---
         if watch is None:
-            logger.warning("python.watch module is not available; skipping intraday fetch.")
+            logger.warning(
+                "python.watch module is not available; skipping intraday fetch."
+            )
         else:
             try:
                 await loop.run_in_executor(None, watch.main)
@@ -297,7 +301,9 @@ async def get_action_status():
         "cooldown_remaining_seconds": (
             max(
                 0,
-                (_UPDATE_COOLDOWN - (datetime.now() - _state.last_update_time)).total_seconds(),
+                (
+                    _UPDATE_COOLDOWN - (datetime.now() - _state.last_update_time)
+                ).total_seconds(),
             )
             if _state.last_update_time
             else 0

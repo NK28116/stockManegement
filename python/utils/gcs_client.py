@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional
 
 # Try importing GCS client, but don't fail if not present (for local dev without requirements yet)
 try:
-    from google.cloud import storage
     from google.api_core.exceptions import NotFound
+    from google.cloud import storage
 
     GCS_AVAILABLE = True
 except ImportError:

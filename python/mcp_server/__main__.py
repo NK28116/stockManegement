@@ -4,6 +4,7 @@ Usage:
     python -m python.mcp_server --transport stdio
     python -m python.mcp_server --transport http --host 0.0.0.0 --port 8765
 """
+
 import argparse
 import logging
 import sys

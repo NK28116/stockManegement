@@ -4,6 +4,7 @@ Watchlist Service
 監視銘柄 (Watchlist) と銘柄メモ (StockNote) のドメインロジック。
 FastAPI ルートと MCP サーバーの両方から呼び出される純粋関数群。
 """
+
 from datetime import datetime
 from typing import Optional
 

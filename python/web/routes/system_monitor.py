@@ -25,7 +25,9 @@ logger = get_logger("web", "system_monitor_ui")
 
 router = APIRouter(tags=["system-monitor"])
 
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
+templates = Jinja2Templates(
+    directory=str(Path(__file__).resolve().parent.parent / "templates")
+)
 
 __all__ = [
     "SystemMonitorUISettings",
@@ -49,7 +51,9 @@ def _env_int(name: str, default: int) -> int:
     try:
         value = int(raw)
     except ValueError:
-        logger.warning(f"{name} を整数として解釈できないため既定値 {default} を使用します")
+        logger.warning(
+            f"{name} を整数として解釈できないため既定値 {default} を使用します"
+        )
         return default
     return value if value > 0 else default
 
@@ -92,8 +96,12 @@ def get_ui_settings() -> SystemMonitorUISettings:
             enable_load_more=_env_bool(
                 "SYSTEM_MONITOR_ENABLE_LOAD_MORE", DEFAULT_ENABLE_LOAD_MORE
             ),
-            load_more_count=_env_int("SYSTEM_MONITOR_LOAD_MORE_COUNT", DEFAULT_LOAD_MORE_COUNT),
-            max_error_count=_env_int("SYSTEM_MONITOR_MAX_ERROR_COUNT", DEFAULT_MAX_ERROR_COUNT),
+            load_more_count=_env_int(
+                "SYSTEM_MONITOR_LOAD_MORE_COUNT", DEFAULT_LOAD_MORE_COUNT
+            ),
+            max_error_count=_env_int(
+                "SYSTEM_MONITOR_MAX_ERROR_COUNT", DEFAULT_MAX_ERROR_COUNT
+            ),
         )
     return _settings_cache
 

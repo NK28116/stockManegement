@@ -4,6 +4,7 @@ Analytics API Router
 ポートフォリオ分析APIのエンドポイント定義
 総資産額と評価損益のサマリーを提供
 """
+
 from fastapi import APIRouter, HTTPException, Query
 
 from python.utils.logger import get_logger
@@ -45,4 +46,6 @@ async def get_analytics_summary(
         return result
     except Exception as e:
         logger.error(f"分析エラー: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"分析処理でエラーが発生しました: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"分析処理でエラーが発生しました: {e}"
+        )

@@ -55,9 +55,20 @@ BUNDLED_FONT = "IPAexGothic"
 
 # OS 標準の日本語フォント候補 (存在すればより自然な字形になる)
 _OS_FONT_CANDIDATES = {
-    "Darwin": ("Hiragino Sans", "Hiragino Kaku Gothic ProN", "Hiragino Maru Gothic Pro"),
+    "Darwin": (
+        "Hiragino Sans",
+        "Hiragino Kaku Gothic ProN",
+        "Hiragino Maru Gothic Pro",
+    ),
     "Windows": ("Meiryo", "Yu Gothic", "MS Gothic"),
-    "Linux": ("Noto Sans CJK JP", "Noto Sans JP", "IPAexGothic", "IPAGothic", "TakaoGothic", "VL Gothic"),
+    "Linux": (
+        "Noto Sans CJK JP",
+        "Noto Sans JP",
+        "IPAexGothic",
+        "IPAGothic",
+        "TakaoGothic",
+        "VL Gothic",
+    ),
 }
 
 _cached_result: Optional[FontSetupResult] = None
@@ -87,7 +98,9 @@ def japanese_font_candidates() -> Tuple[str, ...]:
     return tuple(dict.fromkeys(candidates))
 
 
-def resolve_japanese_font(candidates: Optional[Tuple[str, ...]] = None) -> Optional[str]:
+def resolve_japanese_font(
+    candidates: Optional[Tuple[str, ...]] = None,
+) -> Optional[str]:
     """インストール済みフォントから最初に利用できる候補を返す。無ければ None。"""
     candidates = candidates if candidates is not None else japanese_font_candidates()
     installed = {font.name for font in fm.fontManager.ttflist}
@@ -98,7 +111,11 @@ def resolve_japanese_font(candidates: Optional[Tuple[str, ...]] = None) -> Optio
 
 
 def _strict_mode() -> bool:
-    return os.getenv("MATPLOTLIB_FONT_STRICT", "").strip().lower() in ("1", "true", "yes")
+    return os.getenv("MATPLOTLIB_FONT_STRICT", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
 
 def setup_japanese_font(*, force: bool = False) -> FontSetupResult:
@@ -138,7 +155,9 @@ def setup_japanese_font(*, force: bool = False) -> FontSetupResult:
     else:
         matplotlib.rcParams["font.family"] = resolved
         logger.info(f"matplotlib の日本語フォントを設定しました: {resolved}")
-        result = FontSetupResult(family=resolved, japanese_supported=True, candidates=candidates)
+        result = FontSetupResult(
+            family=resolved, japanese_supported=True, candidates=candidates
+        )
 
     # マイナス記号の文字化け対策 (フォント有無に関わらず適用)
     matplotlib.rcParams["axes.unicode_minus"] = False

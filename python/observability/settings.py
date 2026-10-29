@@ -77,7 +77,9 @@ def _env_int(name: str, default: int) -> int:
     try:
         value = int(raw)
     except ValueError:
-        logger.warning(f"{name} を整数として解釈できないため既定値 {default} を使用します")
+        logger.warning(
+            f"{name} を整数として解釈できないため既定値 {default} を使用します"
+        )
         return default
     if value <= 0:
         logger.warning(f"{name} が 0 以下のため既定値 {default} を使用します")
@@ -147,7 +149,9 @@ def get_observability_settings() -> ObservabilitySettings:
             max_lookback_days=_env_int(
                 "OBSERVABILITY_LOG_MAX_LOOKBACK_DAYS", MAX_LOG_LOOKBACK_DAYS
             ),
-            default_limit=_env_int("OBSERVABILITY_LOG_DEFAULT_LIMIT", DEFAULT_LOG_LIMIT),
+            default_limit=_env_int(
+                "OBSERVABILITY_LOG_DEFAULT_LIMIT", DEFAULT_LOG_LIMIT
+            ),
             max_limit=_env_int("OBSERVABILITY_LOG_MAX_LIMIT", MAX_LOG_LIMIT),
             monitored_metrics=_resolve_metrics(),
         )

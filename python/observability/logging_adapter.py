@@ -10,9 +10,15 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable, List, Optional
 
-from python.observability.errors import ObservabilityUnavailableError, normalize_exception
+from python.observability.errors import (
+    ObservabilityUnavailableError,
+    normalize_exception,
+)
 from python.observability.models import LogEntry
-from python.observability.settings import ObservabilitySettings, get_observability_settings
+from python.observability.settings import (
+    ObservabilitySettings,
+    get_observability_settings,
+)
 from python.utils.logger import get_logger
 
 logger = get_logger("observability", "logging")
@@ -23,7 +29,9 @@ __all__ = ["CloudLoggingReader", "build_filter"]
 DEFAULT_MIN_SEVERITY = "WARNING"
 
 
-def build_filter(*, lookback_hours: int, min_severity: str, now: Optional[datetime] = None) -> str:
+def build_filter(
+    *, lookback_hours: int, min_severity: str, now: Optional[datetime] = None
+) -> str:
     """Cloud Logging のフィルタ式を組み立てる。"""
     now = now or datetime.now(timezone.utc)
     since = (now - timedelta(hours=lookback_hours)).isoformat()
@@ -64,7 +72,9 @@ class CloudLoggingReader:
         try:
             self._client = cloud_logging.Client(project=self._settings.project_id)
         except Exception as exc:  # noqa: BLE001 - SDK 例外を正規化する
-            raise normalize_exception(exc, "Cloud Logging クライアントの初期化") from exc
+            raise normalize_exception(
+                exc, "Cloud Logging クライアントの初期化"
+            ) from exc
         return self._client
 
     def fetch_recent(
